@@ -1,5 +1,6 @@
 export async function apiRequest(endpoint: string, options: RequestInit = {}) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  console.log("API BASE URL:", process.env.NEXT_PUBLIC_API_BASE_URL);
 
   const res = await fetch(`${baseUrl}${endpoint}`, {
     headers: {
