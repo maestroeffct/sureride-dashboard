@@ -25,7 +25,7 @@ export default function LoginPage() {
     try {
       setLoading(true);
 
-      const response = await apiRequest("/admin/auth/login", {
+      const response = await apiRequest("/api/admin/auth/login", {
         method: "POST",
         body: JSON.stringify({ username, password }),
       });
