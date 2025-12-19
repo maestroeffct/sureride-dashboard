@@ -1,5 +1,9 @@
 import type { CSSProperties } from "react";
 
+/* =========================
+   SIDEBAR CONTAINER
+========================= */
+
 const container: CSSProperties = {
   width: 260,
   height: "100vh",
@@ -10,108 +14,142 @@ const container: CSSProperties = {
   boxSizing: "border-box",
 };
 
+/* =========================
+   LOGO
+========================= */
+
 const logoRow: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: 10,
-  marginBottom: 28,
+  marginBottom: 24,
   paddingLeft: 6,
-};
-
-const logoIcon: CSSProperties = {
-  width: 34,
-  height: 34,
-  borderRadius: 10,
-  background: "linear-gradient(135deg, #7C3AED, #4F46E5)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontWeight: 700,
 };
 
 const logoText: CSSProperties = {
   fontSize: 16,
   fontWeight: 600,
   color: "#E5E7EB",
+  letterSpacing: 0.4,
 };
+
+/* =========================
+   MENU
+========================= */
 
 const menu: CSSProperties = {
   flex: 1,
   overflowY: "auto",
+  paddingRight: 4,
 };
+
+/* =========================
+   SECTION (COLLAPSIBLE)
+========================= */
 
 const section: CSSProperties = {
-  marginBottom: 22,
+  marginBottom: 16,
 };
 
-const sectionLabel: CSSProperties = {
-  fontSize: 11,
-  color: "#6B7280",
-  marginBottom: 8,
-  paddingLeft: 8,
-  letterSpacing: 0.8,
-};
-
-const item: CSSProperties = {
+const sectionHeader: CSSProperties = {
+  width: "100%",
   display: "flex",
   alignItems: "center",
-  gap: 12,
+  justifyContent: "space-between",
   padding: "10px 12px",
   borderRadius: 10,
   cursor: "pointer",
-  color: "#D1D5DB",
-  fontSize: 14,
-  transition: "background 0.15s ease",
+  background: "transparent",
+  border: "none",
+  color: "#CBD5E1",
+  fontSize: 13,
+  fontWeight: 500,
+  transition: "background 0.15s ease, color 0.15s ease",
 };
 
-const itemActive: CSSProperties = {
-  background: "rgba(124, 58, 237, 0.15)",
+const sectionHeaderActive: CSSProperties = {
+  background: "rgba(58, 237, 225, 0.12)",
   color: "#FFFFFF",
 };
 
-const itemIcon: CSSProperties = {
-  width: 20,
-  textAlign: "center",
-};
-
-const footer: CSSProperties = {
+const sectionLeft: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: 10,
-  padding: "14px 10px",
-  borderTop: "1px solid rgba(255,255,255,0.05)",
 };
 
-const avatar: CSSProperties = {
-  width: 36,
-  height: 36,
-  borderRadius: "50%",
-  background: "#374151",
+const sectionItems: CSSProperties = {
+  marginTop: 6,
+  marginLeft: 18,
+  display: "flex",
+  flexDirection: "column",
+  gap: 2,
 };
 
-const userName: CSSProperties = {
+/* =========================
+   ITEM
+========================= */
+
+const item: CSSProperties = {
+  padding: "8px 12px",
+  borderRadius: 8,
+  cursor: "pointer",
+  color: "#D1D5DB",
+  fontSize: 13,
+  transition: "background 0.15s ease, color 0.15s ease",
+};
+
+const itemActive: CSSProperties = {
+  background: "rgba(58, 237, 225, 0.18)",
+  color: "#FFFFFF",
+};
+
+/* =========================
+   FOOTER
+========================= */
+
+const footer: CSSProperties = {
+  paddingTop: 12,
+  borderTop: "1px solid rgba(255,255,255,0.06)",
+};
+
+const logoutButton: CSSProperties = {
+  width: "100%",
+  padding: "10px 12px",
+  borderRadius: 10,
+  border: "none",
+  cursor: "pointer",
+  background: "rgba(239,68,68,0.12)",
+  color: "#F87171",
   fontSize: 13,
   fontWeight: 500,
+  transition: "background 0.15s ease",
 };
 
-const userRole: CSSProperties = {
-  fontSize: 11,
-  color: "#9CA3AF",
+const logoutButtonHover: CSSProperties = {
+  background: "rgba(239,68,68,0.2)",
 };
+
+/* =========================
+   EXPORT
+========================= */
 
 export default {
   container,
   logoRow,
-  logoIcon,
   logoText,
   menu,
+
   section,
-  sectionLabel,
+  sectionHeader,
+  sectionHeaderActive,
+  sectionLeft,
+  sectionItems,
+
   item,
   itemActive,
-  itemIcon,
+
   footer,
-  avatar,
-  userName,
-  userRole,
+  logoutButton,
+  logoutButtonHover,
 } as const;

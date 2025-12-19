@@ -1,3 +1,4 @@
+// src/components/dashboard/Sidebar/SidebarItem.tsx
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
@@ -7,7 +8,6 @@ interface Props {
   item: {
     label: string;
     path: string;
-    icon?: React.ReactNode;
   };
 }
 
@@ -25,7 +25,6 @@ export default function SidebarItem({ item }: Props) {
         ...(isActive ? styles.itemActive : {}),
       }}
     >
-      <span style={styles.itemIcon}>{item.icon}</span>
       <span>{item.label}</span>
     </div>
   );
