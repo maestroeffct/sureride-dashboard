@@ -49,10 +49,20 @@ export default function ProvidersTable({
     const aVal = a[sortKey as keyof RentalProvider];
     const bVal = b[sortKey as keyof RentalProvider];
 
-    if (aVal === bVal) return 0;
+    // Handle null/undefined values explicitly
+    if (aVal == null && bVal == null) return 0;
+    if (aVal == null) return sortOrder === "asc" ? 1 : -1;
+    if (bVal == null) return sortOrder === "asc" ? -1 : 1;
 
-    if (sortOrder === "asc") return aVal > bVal ? 1 : -1;
-    return aVal < bVal ? 1 : -1;
+    // Normalize to strings and use localeCompare to handle numeric and string comparisons
+    const aStr = String(aVal);
+    const bStr = String(bVal);
+    const cmp = aStr.localeCompare(bStr, undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+
+    return sortOrder === "asc" ? cmp : -cmp;
   });
 
   const toggleSort = (key: SortKey) => {
