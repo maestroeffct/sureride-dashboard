@@ -41,6 +41,8 @@ export default function AddRentalProviderPage() {
     contactName: "",
     contactRole: "",
     contactEmail: "",
+    contactDialCode: "+234",
+    contactCountry: "Nigeria",
     contactPhone: "+234",
 
     country: "Nigeria",
