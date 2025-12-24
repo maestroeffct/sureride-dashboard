@@ -139,7 +139,13 @@ export default function AddRentalProviderPage() {
       case "financials":
         return <Step5Financials form={form} setField={setField} />;
       case "review":
-        return <Step6ReviewSubmit form={form} setField={setField} />;
+        return (
+          <Step6ReviewSubmit
+            onEdit={(step) => setActiveStep(step)}
+            form={form}
+            setField={setField}
+          />
+        );
       default:
         return null;
     }

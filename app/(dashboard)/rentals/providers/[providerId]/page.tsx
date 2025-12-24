@@ -15,7 +15,12 @@ const TABS = [
 ];
 
 export default function ProviderDetailPage() {
-  const { providerId } = useParams();
+  const params = useParams();
+  const rawProviderId = params.providerId;
+  const providerId = Array.isArray(rawProviderId)
+    ? rawProviderId[0]
+    : rawProviderId ?? "";
+
   const [activeTab, setActiveTab] = useState("Overview");
 
   // 🔌 Replace with API fetch
