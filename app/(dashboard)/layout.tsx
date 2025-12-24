@@ -1,7 +1,6 @@
 import type { CSSProperties } from "react";
-import Sidebar from "@/src/components/dashboard/Sidebar/Sidebar";
-import Topbar from "@/src/components/dashboard/Topbar/Topbar";
 import { RequireAdmin } from "@/src/components/auth/RequireAdmin";
+import Topbar from "@/src/components/dashboard/Topbar/Topbar";
 
 export default function DashboardLayout({
   children,
@@ -11,36 +10,31 @@ export default function DashboardLayout({
   return (
     <RequireAdmin>
       <div style={styles.wrapper}>
-        <Sidebar />
-
         <div style={styles.main}>
           <Topbar />
-          <div style={styles.content}>{children}</div>
+          <div style={styles.content}>
+            {children} {/* modules render here */}
+          </div>
         </div>
       </div>
     </RequireAdmin>
   );
 }
-const styles: {
-  wrapper: CSSProperties;
-  main: CSSProperties;
-  content: CSSProperties;
-} = {
+
+const styles: Record<string, CSSProperties> = {
   wrapper: {
-    display: "flex",
     height: "100vh",
     background: "#0B0E14",
     color: "#E5E7EB",
   },
   main: {
-    flex: 1,
     display: "flex",
     flexDirection: "column",
-    overflow: "hidden",
+    height: "100%",
   },
   content: {
     flex: 1,
-    padding: 24,
-    overflowY: "auto",
+    // display: "flex", // 👈 IMPORTANT
+    overflow: "hidden",
   },
 };

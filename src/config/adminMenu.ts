@@ -1,5 +1,3 @@
-// src/config/adminMenu.ts
-
 export type SidebarIconKey =
   | "dashboard"
   | "users"
@@ -18,11 +16,17 @@ export interface AdminMenuItem {
 }
 
 export interface AdminMenuSection {
-  label: string; // 👈 this IS the label shown before SidebarSection
+  label: string;
   icon: SidebarIconKey;
   items: AdminMenuItem[];
 }
 
+/**
+ * PLATFORM ADMIN MENU (SUPER ADMIN / OPS)
+ * - Manages vendors
+ * - Oversees cars & bookings
+ * - Controls pricing rules
+ */
 export const adminMenu: AdminMenuSection[] = [
   /* =========================
      DASHBOARD
@@ -30,25 +34,20 @@ export const adminMenu: AdminMenuSection[] = [
   {
     label: "Dashboard",
     icon: "dashboard",
-    items: [
-      { label: "Overview", path: "/dashboard" },
-      { label: "KPI Overview", path: "/dashboard/kpi" },
-      { label: "Live Activity", path: "/dashboard/activity" },
-      { label: "Alerts", path: "/dashboard/alerts" },
-    ],
+    items: [{ label: "Overview", path: "/dashboard" }],
   },
 
   /* =========================
      USER MANAGEMENT
   ========================= */
   {
-    label: "User Management",
+    label: "Users",
     icon: "users",
     items: [
       { label: "All Users", path: "/users" },
       { label: "Active Users", path: "/users/active" },
       { label: "Suspended Users", path: "/users/suspended" },
-      { label: "User Verification", path: "/users/verification" },
+      { label: "Verification", path: "/users/verification" },
       { label: "Reports & Flags", path: "/users/reports" },
     ],
   },
@@ -62,24 +61,49 @@ export const adminMenu: AdminMenuSection[] = [
     items: [
       { label: "Login Sessions", path: "/auth/sessions" },
       { label: "Failed Logins", path: "/auth/failed-logins" },
-      { label: "Device Management", path: "/auth/devices" },
+      { label: "Devices", path: "/auth/devices" },
       { label: "IP Restrictions", path: "/auth/ip-rules" },
     ],
   },
 
   /* =========================
-     CAR RENTAL MANAGEMENT
+     CAR RENTAL (PLATFORM VIEW)
   ========================= */
   {
     label: "Car Rental",
     icon: "rentals",
     items: [
-      { label: "Rentals Dashboard", path: "/rentals" },
-      { label: "Cars", path: "/rentals/cars" },
+      { label: "Overview", path: "/rentals" },
+
+      // PROVIDERS (VENDORS)
+      { label: "Rental Providers", path: "/rentals/providers" },
+      { label: "Pending Providers", path: "/rentals/providers/pending" },
+
+      // INVENTORY (OWNED BY PROVIDERS)
+      { label: "All Cars", path: "/rentals/cars" },
+      { label: "Pending Car Approval", path: "/rentals/cars/pending" },
+      { label: "Flagged Cars", path: "/rentals/cars/flagged" },
+
+      // OPERATIONS
       { label: "Bookings", path: "/rentals/bookings" },
-      { label: "Issues", path: "/rentals/issues" },
+      { label: "Issues & Claims", path: "/rentals/issues" },
+
+      // BUSINESS RULES
       { label: "Pricing & Deposits", path: "/rentals/pricing" },
-      { label: "Reviews", path: "/rentals/reviews" },
+      { label: "Reviews & Ratings", path: "/rentals/reviews" },
+    ],
+  },
+
+  /* =========================
+     PAYMENTS & REVENUE
+  ========================= */
+  {
+    label: "Payments",
+    icon: "payments",
+    items: [
+      { label: "Transactions", path: "/payments" },
+      { label: "Vendor Payouts", path: "/payments/payouts" },
+      { label: "Commissions", path: "/payments/commissions" },
     ],
   },
 

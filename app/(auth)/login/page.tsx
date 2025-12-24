@@ -38,7 +38,7 @@ export default function LoginPage() {
       document.cookie = `sureride_admin_token=${response.token}; path=/; secure; samesite=lax`;
 
       toast.success("Login successful");
-      router.push("/dashboard");
+      router.push("/modules");
     } catch (err: unknown) {
       const message =
         err instanceof Error

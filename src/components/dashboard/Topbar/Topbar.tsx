@@ -14,10 +14,22 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 
+export type DashboardModule =
+  | "modules"
+  | "rentals"
+  | "rideshare"
+  | "insurance"
+  | "mechanic"
+  | "autodeal"
+  | "parts"
+  | "diagnostics";
+
 export default function Topbar() {
   const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [open, setOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const pathname = window.location.pathname;
+  const currentModule = pathname.split("/")[2] ?? "modules";
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -71,7 +83,16 @@ export default function Topbar() {
       <div style={styles.left}>
         <div style={styles.searchPill}>
           <Search size={16} style={styles.searchIcon} />
-          <input placeholder="Search something..." style={styles.searchInput} />
+          <input
+            placeholder={
+              currentModule === "modules"
+                ? "Search modules..."
+                : `Search ${currentModule}...`
+            }
+            style={styles.searchInput}
+          />
+
+          {/* <input placeholder="Search something..." /> */}
         </div>
 
         <button style={styles.searchButton}>Search</button>
