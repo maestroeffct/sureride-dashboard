@@ -24,8 +24,8 @@ export const rentalsMenu: SidebarItem[] = [
         icon: sidebarIcons.addProvider,
       },
       {
-        label: "Pending Providers",
-        path: "/rentals/providers/pending",
+        label: "Providers Requests",
+        path: "/rentals/providers/requests",
         icon: sidebarIcons.pendingProviders,
       },
     ],
