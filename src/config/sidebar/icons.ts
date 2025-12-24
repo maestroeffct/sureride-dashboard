@@ -27,6 +27,10 @@ export const sidebarIcons = {
   bookings: Calendar,
   pricing: DollarSign,
   reviews: Star,
+  reports: FileText,
+  settings: Shield,
+  category: Car,
+  brand: UserCheck,
 
   // common
   users: Users,

@@ -33,7 +33,7 @@ export const rentalsMenu: SidebarItem[] = [
 
   // INVENTORY
   {
-    label: "Cars",
+    label: "Cars Management",
     icon: sidebarIcons.cars,
     children: [
       {
@@ -76,5 +76,40 @@ export const rentalsMenu: SidebarItem[] = [
     label: "Reviews & Ratings",
     path: "/rentals/reviews",
     icon: sidebarIcons.reviews,
+  },
+
+  // REPORTS
+  {
+    label: "Reports",
+    path: "/rentals/reports",
+    icon: sidebarIcons.reports,
+  },
+
+  // CONFIGURATION
+  {
+    label: "CONFIGURATION",
+    icon: sidebarIcons.settings,
+    children: [
+      {
+        label: "Car Categories",
+        path: "/rentals/configuration/car-categories",
+        icon: sidebarIcons.category,
+      },
+      {
+        label: "Car Brands",
+        path: "/rentals/configuration/car-brands",
+        icon: sidebarIcons.brand,
+      },
+      {
+        label: "Car Models",
+        path: "/rentals/configuration/car-models",
+        icon: sidebarIcons.settings,
+      },
+      {
+        label: "Model Requests",
+        path: "/rentals/configuration/model-requests",
+        icon: sidebarIcons.settings,
+      },
+    ],
   },
 ];

@@ -16,14 +16,16 @@ export default function Sidebar({ module }: { module: SidebarModule }) {
 
   return (
     <aside style={styles.sidebar}>
-      {menu.map((item) => (
-        <SidebarItemView
-          key={item.label}
-          item={item}
-          pathname={pathname}
-          module={module}
-        />
-      ))}
+      <div style={styles.scrollArea}>
+        {menu.map((item) => (
+          <SidebarItemView
+            key={item.label}
+            item={item}
+            pathname={pathname}
+            module={module}
+          />
+        ))}
+      </div>
     </aside>
   );
 }
@@ -162,18 +164,28 @@ function SidebarItemView({
 /* ------------------------------------------------------------------ */
 /* Styles */
 /* ------------------------------------------------------------------ */
-
 const styles: {
   sidebar: React.CSSProperties;
+  scrollArea: React.CSSProperties;
   item: React.CSSProperties;
   groupButton: React.CSSProperties;
   childItem: React.CSSProperties;
 } = {
   sidebar: {
     width: 260,
-    padding: 16,
+    height: "100vh",
     background: "#020617",
     borderRight: "1px solid #1F2937",
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden", // 🔑 prevent sidebar itself from growing
+  },
+
+  scrollArea: {
+    flex: 1, // 🔑 take available height
+    minHeight: 0, // 🔑 allow overflow
+    overflowY: "auto", // 🔑 THIS is what scrolls
+    padding: 16,
     display: "flex",
     flexDirection: "column",
     gap: 6,
@@ -185,9 +197,8 @@ const styles: {
     gap: 12,
     padding: "10px 12px",
     borderRadius: 10,
-    textDecoration: "none",
     fontSize: 14,
-    transition: "background 0.2s ease, transform 0.15s ease",
+    textDecoration: "none",
   },
 
   groupButton: {
@@ -200,9 +211,8 @@ const styles: {
     border: "none",
     cursor: "pointer",
     width: "100%",
-    color: "#9CA3AF",
     fontSize: 14,
-    transition: "background 0.2s ease",
+    color: "#9CA3AF",
   },
 
   childItem: {
@@ -211,8 +221,7 @@ const styles: {
     gap: 12,
     padding: "8px 12px 8px 40px",
     borderRadius: 8,
-    textDecoration: "none",
     fontSize: 13,
-    transition: "background 0.2s ease, transform 0.15s ease",
+    textDecoration: "none",
   },
 };
