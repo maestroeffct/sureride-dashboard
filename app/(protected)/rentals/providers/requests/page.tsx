@@ -29,6 +29,7 @@ export default function ProviderRequestsPage() {
         businessType: "Company",
         contactName: "John Doe",
         contactEmail: "john@sixt.com",
+        contactPhone: "08012345678",
         city: "Lagos",
         state: "Ikeja",
         country: "Nigeria",
