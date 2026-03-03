@@ -33,6 +33,7 @@ const styles: Record<string, CSSProperties> = {
   },
   content: {
     flex: 1,
+    minHeight: 0,
     overflow: "hidden",
   },
 };

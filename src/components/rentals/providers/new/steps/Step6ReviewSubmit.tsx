@@ -203,7 +203,6 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     gap: 14,
-    height: "100%",
   },
 
   title: { fontSize: 18, fontWeight: 700 },

@@ -1,6 +1,5 @@
 import type { CSSProperties } from "react";
 import Sidebar from "@/src/components/dashboard/Sidebar/Sidebar";
-import Topbar from "@/src/components/dashboard/Topbar/Topbar";
 
 export default function RentalsLayout({
   children,
@@ -18,10 +17,12 @@ export default function RentalsLayout({
 const styles: Record<string, CSSProperties> = {
   wrapper: {
     display: "flex",
-    height: "100vh",
+    height: "100%",
+    minHeight: 0,
   },
   main: {
     flex: 1,
+    minHeight: 0,
     padding: 24,
     overflowY: "auto",
   },

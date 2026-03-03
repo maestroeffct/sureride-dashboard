@@ -2,11 +2,11 @@ import type { CSSProperties } from "react";
 
 export const styles: Record<string, CSSProperties> = {
   page: {
-    height: "100%",
+    minHeight: "100%",
     display: "flex",
     flexDirection: "column",
     gap: 20,
-    paddingBottom: 88, // space for sticky bar
+    paddingBottom: 120, // space for sticky bar
   },
 
   topBar: {
