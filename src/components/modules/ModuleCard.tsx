@@ -4,10 +4,6 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { CSSProperties } from "react";
 
-/* ---------------------------------------------
-   Types
---------------------------------------------- */
-
 interface Props {
   title: string;
   description: string;
@@ -16,10 +12,6 @@ interface Props {
   accent: string;
   isLastUsed?: boolean;
 }
-
-/* ---------------------------------------------
-   Animation Variants (Child)
---------------------------------------------- */
 
 const cardVariants = {
   hidden: {
@@ -31,10 +23,6 @@ const cardVariants = {
     y: 0,
   },
 };
-
-/* ---------------------------------------------
-   Component
---------------------------------------------- */
 
 export function ModuleCard({
   title,
@@ -84,10 +72,6 @@ export function ModuleCard({
   );
 }
 
-/* ---------------------------------------------
-   Styles
---------------------------------------------- */
-
 const cardStyle: CSSProperties = {
   display: "flex",
   flexDirection: "column",
@@ -100,8 +84,8 @@ const cardStyle: CSSProperties = {
   padding: 24,
   borderRadius: 16,
   border: "1.5px solid transparent",
-  background: "linear-gradient(180deg, #0F172A, #020617)",
-  color: "#E5E7EB",
+  background: "var(--module-card-bg)",
+  color: "var(--foreground)",
   textDecoration: "none",
   cursor: "pointer",
 };
@@ -133,11 +117,11 @@ const titleStyle: CSSProperties = {
 
 const descStyle: CSSProperties = {
   fontSize: 13,
-  color: "#9CA3AF",
+  color: "var(--muted-foreground)",
 };
 
 const badgeStyle: CSSProperties = {
   marginTop: 10,
   fontSize: 11,
-  color: "#A7F3D0",
+  color: "#10b981",
 };

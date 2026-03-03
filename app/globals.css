@@ -1,26 +1,135 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+:root,
+html[data-theme="dark"] {
+  --background: #0b0e14;
+  --foreground: #e5e7eb;
+
+  --muted-foreground: #9ca3af;
+  --fg-55: rgba(229, 231, 235, 0.55);
+  --fg-60: rgba(229, 231, 235, 0.6);
+  --fg-65: rgba(229, 231, 235, 0.65);
+  --fg-70: rgba(229, 231, 235, 0.7);
+  --fg-75: rgba(229, 231, 235, 0.75);
+  --fg-80: rgba(229, 231, 235, 0.8);
+  --fg-85: rgba(229, 231, 235, 0.85);
+
+  --surface-1: #0f172a;
+  --surface-2: #020617;
+  --surface-3: #1e293b;
+  --surface-soft: rgba(255, 255, 255, 0.06);
+  --surface-soft-strong: rgba(255, 255, 255, 0.1);
+
+  --glass-015: rgba(255, 255, 255, 0.015);
+  --glass-03: rgba(255, 255, 255, 0.03);
+  --glass-035: rgba(255, 255, 255, 0.035);
+  --glass-04: rgba(255, 255, 255, 0.04);
+  --glass-06: rgba(255, 255, 255, 0.06);
+  --glass-08: rgba(255, 255, 255, 0.08);
+  --glass-10: rgba(255, 255, 255, 0.1);
+  --glass-12: rgba(255, 255, 255, 0.12);
+  --glass-14: rgba(255, 255, 255, 0.14);
+
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+
+  --topbar-bg: rgba(11, 14, 20, 0.65);
+  --topbar-border: rgba(255, 255, 255, 0.06);
+  --topbar-chip-bg: rgba(255, 255, 255, 0.06);
+  --topbar-chip-border: rgba(255, 255, 255, 0.08);
+  --topbar-icon-color: rgba(229, 231, 235, 0.75);
+  --topbar-icon-active-bg: rgba(255, 255, 255, 0.12);
+  --topbar-icon-active-fg: #ffffff;
+  --topbar-divider: rgba(255, 255, 255, 0.12);
+  --topbar-dropdown-bg: rgba(15, 23, 42, 0.95);
+  --topbar-dropdown-border: rgba(255, 255, 255, 0.08);
+  --topbar-dropdown-fg: #e5e7eb;
+  --topbar-dropdown-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+
+  --sidebar-bg: #01120c;
+  --sidebar-border: #1f2937;
+  --sidebar-item-fg: #d1d5db;
+  --sidebar-item-fg-muted: #9ca3af;
+  --sidebar-item-active-fg: #e5e7eb;
+  --sidebar-item-active-bg: #1e293b;
+  --sidebar-group-open-bg: #0f172a;
+
+  --input-bg: #01120c;
+  --input-border: #1f2937;
+  --input-fg: #e5e7eb;
+
+  --module-card-bg: linear-gradient(180deg, #0f172a, #020617);
+}
+
+html[data-theme="light"] {
+  --background: #f4f7fb;
+  --foreground: #111827;
+
+  --muted-foreground: #64748b;
+  --fg-55: rgba(15, 23, 42, 0.55);
+  --fg-60: rgba(15, 23, 42, 0.6);
+  --fg-65: rgba(15, 23, 42, 0.65);
+  --fg-70: rgba(15, 23, 42, 0.7);
+  --fg-75: rgba(15, 23, 42, 0.75);
+  --fg-80: rgba(15, 23, 42, 0.8);
+  --fg-85: rgba(15, 23, 42, 0.85);
+
+  --surface-1: #ffffff;
+  --surface-2: #f8fafc;
+  --surface-3: #e2e8f0;
+  --surface-soft: rgba(15, 23, 42, 0.05);
+  --surface-soft-strong: rgba(15, 23, 42, 0.1);
+
+  --glass-015: rgba(15, 23, 42, 0.015);
+  --glass-03: rgba(15, 23, 42, 0.03);
+  --glass-035: rgba(15, 23, 42, 0.035);
+  --glass-04: rgba(15, 23, 42, 0.04);
+  --glass-06: rgba(15, 23, 42, 0.06);
+  --glass-08: rgba(15, 23, 42, 0.08);
+  --glass-10: rgba(15, 23, 42, 0.1);
+  --glass-12: rgba(15, 23, 42, 0.12);
+  --glass-14: rgba(15, 23, 42, 0.14);
+
+  --border-subtle: rgba(15, 23, 42, 0.1);
+  --border-strong: rgba(15, 23, 42, 0.16);
+
+  --topbar-bg: rgba(255, 255, 255, 0.82);
+  --topbar-border: rgba(15, 23, 42, 0.08);
+  --topbar-chip-bg: rgba(15, 23, 42, 0.05);
+  --topbar-chip-border: rgba(15, 23, 42, 0.08);
+  --topbar-icon-color: rgba(30, 41, 59, 0.8);
+  --topbar-icon-active-bg: rgba(15, 23, 42, 0.14);
+  --topbar-icon-active-fg: #0f172a;
+  --topbar-divider: rgba(15, 23, 42, 0.16);
+  --topbar-dropdown-bg: rgba(255, 255, 255, 0.98);
+  --topbar-dropdown-border: rgba(15, 23, 42, 0.12);
+  --topbar-dropdown-fg: #1f2937;
+  --topbar-dropdown-shadow: 0 12px 30px rgba(15, 23, 42, 0.16);
+
+  --sidebar-bg: #ffffff;
+  --sidebar-border: #e5e7eb;
+  --sidebar-item-fg: #1f2937;
+  --sidebar-item-fg-muted: #64748b;
+  --sidebar-item-active-fg: #0f172a;
+  --sidebar-item-active-bg: #e2e8f0;
+  --sidebar-group-open-bg: #f1f5f9;
+
+  --input-bg: #ffffff;
+  --input-border: #cbd5e1;
+  --input-fg: #0f172a;
+
+  --module-card-bg: linear-gradient(180deg, #ffffff, #f8fafc);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-poppins);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-poppins), system-ui, sans-serif;
 }

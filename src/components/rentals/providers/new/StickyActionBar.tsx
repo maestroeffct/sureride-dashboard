@@ -66,7 +66,7 @@ const styles: Record<string, React.CSSProperties> = {
     bottom: 0,
     padding: "14px 18px",
     background: "rgba(2, 6, 23, 0.9)",
-    borderTop: "1px solid #1F2937",
+    borderTop: "1px solid var(--input-border)",
     backdropFilter: "blur(10px)",
     display: "flex",
     justifyContent: "space-between",
@@ -76,17 +76,17 @@ const styles: Record<string, React.CSSProperties> = {
 
   cancel: {
     background: "transparent",
-    border: "1px solid #1F2937",
-    color: "#E5E7EB",
+    border: "1px solid var(--input-border)",
+    color: "var(--foreground)",
     padding: "10px 14px",
     borderRadius: 10,
     cursor: "pointer",
   },
 
   secondary: {
-    background: "#020617",
-    border: "1px solid #1F2937",
-    color: "#E5E7EB",
+    background: "var(--surface-2)",
+    border: "1px solid var(--input-border)",
+    color: "var(--foreground)",
     padding: "10px 14px",
     borderRadius: 10,
     cursor: "pointer",

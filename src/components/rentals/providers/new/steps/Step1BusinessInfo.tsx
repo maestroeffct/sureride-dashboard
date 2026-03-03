@@ -56,8 +56,8 @@ function Field({
 }
 
 const h2: React.CSSProperties = { fontSize: 18, fontWeight: 700, margin: 0 };
-const hint: React.CSSProperties = { fontSize: 12, color: "#9CA3AF", margin: 0 };
-const labelStyle: React.CSSProperties = { fontSize: 13, color: "#9CA3AF" };
+const hint: React.CSSProperties = { fontSize: 12, color: "var(--muted-foreground)", margin: 0 };
+const labelStyle: React.CSSProperties = { fontSize: 13, color: "var(--muted-foreground)" };
 const grid: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "1fr 1fr",
@@ -66,7 +66,7 @@ const grid: React.CSSProperties = {
 const input: React.CSSProperties = {
   padding: "10px 12px",
   borderRadius: 10,
-  background: "#0B1220",
-  border: "1px solid #1F2937",
-  color: "#E5E7EB",
+  background: "var(--surface-1)",
+  border: "1px solid var(--input-border)",
+  color: "var(--foreground)",
 };

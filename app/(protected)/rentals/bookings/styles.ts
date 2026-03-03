@@ -27,14 +27,14 @@ const pageTitleRow: CSSProperties = {
 };
 
 const pageTitleIcon: CSSProperties = {
-  color: "rgba(229,231,235,0.85)",
+  color: "var(--fg-85)",
 };
 
 const pageTitle: CSSProperties = {
   margin: 0,
   fontSize: 22,
   fontWeight: 700,
-  color: "#E5E7EB",
+  color: "var(--foreground)",
   letterSpacing: 0.2,
 };
 
@@ -46,15 +46,15 @@ const countBadge: CSSProperties = {
   borderRadius: 999,
   fontSize: 12,
   fontWeight: 600,
-  color: "#E5E7EB",
-  background: "rgba(255,255,255,0.08)",
-  border: "1px solid rgba(255,255,255,0.08)",
+  color: "var(--foreground)",
+  background: "var(--glass-08)",
+  border: "1px solid var(--glass-08)",
 };
 
 const pageSubtitle: CSSProperties = {
   margin: 0,
   fontSize: 13,
-  color: "rgba(229,231,235,0.65)",
+  color: "var(--fg-65)",
 };
 
 const headerActions: CSSProperties = {
@@ -71,9 +71,9 @@ const exportButton: CSSProperties = {
   height: 44,
   padding: "0 14px",
   borderRadius: 12,
-  border: "1px solid rgba(255,255,255,0.10)",
-  background: "rgba(255,255,255,0.06)",
-  color: "#E5E7EB",
+  border: "1px solid var(--glass-10)",
+  background: "var(--glass-06)",
+  color: "var(--foreground)",
   cursor: "pointer",
   display: "flex",
   alignItems: "center",
@@ -88,7 +88,7 @@ const exportDropdown: CSSProperties = {
   right: 0,
   width: 180,
   borderRadius: 12,
-  border: "1px solid rgba(255,255,255,0.10)",
+  border: "1px solid var(--glass-10)",
   background: "rgba(16,18,24,0.98)",
   boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
   overflow: "hidden",
@@ -101,7 +101,7 @@ const exportItem: CSSProperties = {
   textAlign: "left",
   border: "none",
   background: "transparent",
-  color: "#E5E7EB",
+  color: "var(--foreground)",
   cursor: "pointer",
   fontSize: 13,
 };
@@ -110,9 +110,9 @@ const filtersButton: CSSProperties = {
   height: 44,
   padding: "0 14px",
   borderRadius: 12,
-  border: "1px solid rgba(255,255,255,0.10)",
-  background: "rgba(255,255,255,0.06)",
-  color: "#E5E7EB",
+  border: "1px solid var(--glass-10)",
+  background: "var(--glass-06)",
+  color: "var(--foreground)",
   cursor: "pointer",
   display: "flex",
   alignItems: "center",
@@ -132,9 +132,9 @@ const tab: CSSProperties = {
   height: 40,
   padding: "0 12px",
   borderRadius: 999,
-  border: "1px solid rgba(255,255,255,0.10)",
-  background: "rgba(255,255,255,0.04)",
-  color: "#E5E7EB",
+  border: "1px solid var(--glass-10)",
+  background: "var(--glass-04)",
+  color: "var(--foreground)",
   cursor: "pointer",
   display: "inline-flex",
   alignItems: "center",
@@ -143,8 +143,8 @@ const tab: CSSProperties = {
 };
 
 const tabActive: CSSProperties = {
-  background: "rgba(255,255,255,0.10)",
-  border: "1px solid rgba(255,255,255,0.14)",
+  background: "var(--glass-10)",
+  border: "1px solid var(--glass-14)",
 };
 
 const tabLabel: CSSProperties = {
@@ -161,9 +161,9 @@ const tabCount: CSSProperties = {
   justifyContent: "center",
   fontSize: 12,
   fontWeight: 700,
-  background: "rgba(255,255,255,0.08)",
-  border: "1px solid rgba(255,255,255,0.10)",
-  color: "rgba(229,231,235,0.85)",
+  background: "var(--glass-08)",
+  border: "1px solid var(--glass-10)",
+  color: "var(--fg-85)",
 };
 
 const tabCountActive: CSSProperties = {
@@ -173,8 +173,8 @@ const tabCountActive: CSSProperties = {
 
 const card: CSSProperties = {
   borderRadius: 18,
-  background: "rgba(255,255,255,0.04)",
-  border: "1px solid rgba(255,255,255,0.08)",
+  background: "var(--glass-04)",
+  border: "1px solid var(--glass-08)",
   overflow: "hidden",
 };
 
@@ -191,8 +191,8 @@ const searchBox: CSSProperties = {
   width: 440,
   maxWidth: "100%",
   borderRadius: 12,
-  border: "1px solid rgba(255,255,255,0.10)",
-  background: "rgba(255,255,255,0.06)",
+  border: "1px solid var(--glass-10)",
+  background: "var(--glass-06)",
   display: "flex",
   alignItems: "center",
   overflow: "hidden",
@@ -204,7 +204,7 @@ const searchInput: CSSProperties = {
   border: "none",
   outline: "none",
   background: "transparent",
-  color: "#E5E7EB",
+  color: "var(--foreground)",
   padding: "0 14px",
   fontSize: 14,
 };
@@ -215,13 +215,13 @@ const searchIconWrap: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  borderLeft: "1px solid rgba(255,255,255,0.10)",
-  color: "rgba(229,231,235,0.8)",
+  borderLeft: "1px solid var(--glass-10)",
+  color: "var(--fg-80)",
 };
 
 const divider: CSSProperties = {
   height: 1,
-  background: "rgba(255,255,255,0.08)",
+  background: "var(--glass-08)",
 };
 
 const tableWrap: CSSProperties = {
@@ -237,16 +237,16 @@ const table: CSSProperties = {
 };
 
 const trHead: CSSProperties = {
-  background: "rgba(255,255,255,0.03)",
+  background: "var(--glass-03)",
 };
 
 const th: CSSProperties = {
   textAlign: "left",
   fontSize: 13,
   fontWeight: 700,
-  color: "rgba(229,231,235,0.75)",
+  color: "var(--fg-75)",
   padding: "14px 14px",
-  borderBottom: "1px solid rgba(255,255,255,0.08)",
+  borderBottom: "1px solid var(--glass-08)",
   whiteSpace: "nowrap",
 };
 
@@ -256,14 +256,14 @@ const thRight: CSSProperties = {
 };
 
 const tr: CSSProperties = {
-  borderBottom: "1px solid rgba(255,255,255,0.06)",
+  borderBottom: "1px solid var(--glass-06)",
 };
 
 const td: CSSProperties = {
   padding: "14px 14px",
   fontSize: 13,
-  color: "rgba(229,231,235,0.85)",
-  borderBottom: "1px solid rgba(255,255,255,0.06)",
+  color: "var(--fg-85)",
+  borderBottom: "1px solid var(--glass-06)",
   verticalAlign: "middle",
   whiteSpace: "nowrap",
 };
@@ -276,7 +276,7 @@ const tdRight: CSSProperties = {
 const tdStrong: CSSProperties = {
   ...td,
   fontWeight: 800,
-  color: "#E5E7EB",
+  color: "var(--foreground)",
 };
 
 const twoLine: CSSProperties = {
@@ -287,12 +287,12 @@ const twoLine: CSSProperties = {
 
 const primaryText: CSSProperties = {
   fontWeight: 700,
-  color: "#E5E7EB",
+  color: "var(--foreground)",
 };
 
 const secondaryText: CSSProperties = {
   fontSize: 12,
-  color: "rgba(229,231,235,0.60)",
+  color: "var(--fg-60)",
 };
 
 const amountBox: CSSProperties = {
@@ -304,7 +304,7 @@ const amountBox: CSSProperties = {
 
 const amountValue: CSSProperties = {
   fontWeight: 800,
-  color: "#E5E7EB",
+  color: "var(--foreground)",
 };
 
 const paymentText: CSSProperties = {
@@ -315,7 +315,7 @@ const paymentText: CSSProperties = {
 const paymentPaid: CSSProperties = { color: "#34D399" };
 const paymentPending: CSSProperties = { color: "#FBBF24" };
 const paymentFailed: CSSProperties = { color: "#EF4444" };
-const paymentRefunded: CSSProperties = { color: "rgba(229,231,235,0.70)" };
+const paymentRefunded: CSSProperties = { color: "var(--fg-70)" };
 
 const statusPill: CSSProperties = {
   display: "inline-flex",
@@ -326,7 +326,7 @@ const statusPill: CSSProperties = {
   borderRadius: 999,
   fontSize: 12,
   fontWeight: 800,
-  border: "1px solid rgba(255,255,255,0.10)",
+  border: "1px solid var(--glass-10)",
 };
 
 const statusUpcoming: CSSProperties = {
@@ -375,9 +375,9 @@ const iconAction: CSSProperties = {
   width: 38,
   height: 38,
   borderRadius: 12,
-  border: "1px solid rgba(255,255,255,0.10)",
-  background: "rgba(255,255,255,0.06)",
-  color: "#E5E7EB",
+  border: "1px solid var(--glass-10)",
+  background: "var(--glass-06)",
+  color: "var(--foreground)",
   cursor: "pointer",
   display: "inline-flex",
   alignItems: "center",
@@ -387,7 +387,7 @@ const iconAction: CSSProperties = {
 const emptyCell: CSSProperties = {
   padding: 22,
   textAlign: "center",
-  color: "rgba(229,231,235,0.65)",
+  color: "var(--fg-65)",
 };
 
 export default {

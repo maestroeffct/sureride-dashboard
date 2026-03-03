@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import styles from "./styles";
 import { Plus, Search, Edit2, Power } from "lucide-react";
 
@@ -88,96 +89,95 @@ export default function CarBrandsPage() {
 
       {/* TABLE */}
       <div style={styles.card}>
-        <table style={styles.table}>
-          <thead style={styles.thead}>
-            <tr>
-              <th style={styles.th}>Brand</th>
-              <th style={styles.th}>Cars Using</th>
-              <th style={styles.th}>Status</th>
-              <th style={{ ...styles.th, ...styles.actionsCol }}>Actions</th>
-            </tr>
-          </thead>
+        <div style={styles.tableWrap}>
+          <table style={styles.table}>
+            <thead style={styles.thead}>
+              <tr>
+                <th style={styles.th}>Brand</th>
+                <th style={styles.th}>Cars Using</th>
+                <th style={styles.th}>Status</th>
+                <th style={styles.thRight}>Actions</th>
+              </tr>
+            </thead>
 
-          <tbody>
-            {filtered.map((r) => (
-              <tr
-                key={r.id}
-                style={styles.tr}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = "rgba(255,255,255,0.035)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.background = "rgba(255,255,255,0.015)")
-                }
-              >
-                {/* BRAND */}
-                <td style={styles.td}>
-                  <div style={styles.brandCell}>
-                    <div style={styles.logoBox}>
-                      {r.logo ? (
-                        <img src={r.logo} alt={r.name} style={styles.logo} />
-                      ) : (
-                        <span style={styles.logoFallback}>
-                          {r.name.charAt(0)}
-                        </span>
-                      )}
+            <tbody>
+              {filtered.map((r) => (
+                <tr key={r.id} style={styles.tr}>
+                  {/* BRAND */}
+                  <td style={styles.td}>
+                    <div style={styles.brandCell}>
+                      <div style={styles.logoBox}>
+                        {r.logo ? (
+                          <Image
+                            src={r.logo}
+                            alt={r.name}
+                            width={36}
+                            height={36}
+                            style={styles.logo}
+                          />
+                        ) : (
+                          <span style={styles.logoFallback}>
+                            {r.name.charAt(0)}
+                          </span>
+                        )}
+                      </div>
+                      <span style={styles.primaryText}>{r.name}</span>
                     </div>
-                    <span style={styles.primaryText}>{r.name}</span>
-                  </div>
-                </td>
+                  </td>
 
-                {/* COUNT */}
-                <td style={styles.td}>{r.carsCount}</td>
+                  {/* COUNT */}
+                  <td style={styles.td}>{r.carsCount}</td>
 
-                {/* STATUS */}
-                <td style={styles.td}>
-                  <span
-                    style={{
-                      ...styles.statusPill,
-                      ...(r.status === "Active"
-                        ? styles.statusActive
-                        : styles.statusDisabled),
-                    }}
-                  >
-                    {r.status}
-                  </span>
-                </td>
-
-                {/* ACTIONS */}
-                <td style={{ ...styles.td, ...styles.actionsCol }}>
-                  <div style={styles.actions}>
-                    <button
-                      style={styles.iconBtn}
-                      title="Edit"
-                      onClick={() => {
-                        setEditing(r);
-                        setOpen(true);
+                  {/* STATUS */}
+                  <td style={styles.td}>
+                    <span
+                      style={{
+                        ...styles.statusPill,
+                        ...(r.status === "Active"
+                          ? styles.statusActive
+                          : styles.statusDisabled),
                       }}
                     >
-                      <Edit2 size={16} />
-                    </button>
+                      {r.status}
+                    </span>
+                  </td>
 
-                    <button
-                      style={styles.iconBtn}
-                      title="Disable"
-                      disabled={r.carsCount > 0}
-                    >
-                      <Power size={16} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  {/* ACTIONS */}
+                  <td style={styles.tdRight}>
+                    <div style={styles.actions}>
+                      <button
+                        style={styles.iconBtn}
+                        title="Edit"
+                        onClick={() => {
+                          setEditing(r);
+                          setOpen(true);
+                        }}
+                      >
+                        <Edit2 size={16} />
+                      </button>
 
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={4} style={styles.empty}>
-                  No brands found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                      <button
+                        style={styles.iconBtn}
+                        title="Disable"
+                        disabled={r.carsCount > 0}
+                      >
+                        <Power size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={4} style={styles.empty}>
+                    No brands found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {open && <BrandModal initial={editing} onClose={() => setOpen(false)} />}
@@ -219,6 +219,7 @@ function BrandModal({
             onChange={(e) => setLogo(e.target.files?.[0] ?? null)}
             style={styles.input}
           />
+          {logo && <small style={{ color: "var(--fg-60)" }}>{logo.name}</small>}
         </label>
 
         <div style={styles.modalActions}>

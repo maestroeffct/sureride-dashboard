@@ -1,6 +1,7 @@
 import { CSSProperties } from "react";
+import { bookingsTableTheme } from "@/src/components/rentals/table/sharedTableStyles";
 
-export default {
+const styles = {
   page: {
     display: "flex",
     flexDirection: "column",
@@ -18,13 +19,13 @@ export default {
     fontSize: 22,
     fontWeight: 700,
     margin: 0,
-    color: "#E5E7EB",
+    color: "var(--foreground)",
   },
 
   subtitle: {
     margin: 0,
     fontSize: 13,
-    color: "rgba(229,231,235,0.6)",
+    color: "var(--fg-60)",
   },
 
   headerActions: {
@@ -40,9 +41,9 @@ export default {
     height: 44,
     padding: "0 14px",
     borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(255,255,255,0.06)",
-    color: "#E5E7EB",
+    border: "1px solid var(--glass-10)",
+    background: "var(--glass-06)",
+    color: "var(--foreground)",
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
@@ -57,7 +58,7 @@ export default {
     right: 0,
     width: 180,
     borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.10)",
+    border: "1px solid var(--glass-10)",
     background: "rgba(16,18,24,0.98)",
     boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
     overflow: "hidden",
@@ -70,7 +71,7 @@ export default {
     textAlign: "left",
     border: "none",
     background: "transparent",
-    color: "#E5E7EB",
+    color: "var(--foreground)",
     cursor: "pointer",
     fontSize: 13,
   },
@@ -79,9 +80,9 @@ export default {
     height: 44,
     padding: "0 14px",
     borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(255,255,255,0.06)",
-    color: "#E5E7EB",
+    border: "1px solid var(--glass-10)",
+    background: "var(--glass-06)",
+    color: "var(--foreground)",
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
@@ -90,32 +91,17 @@ export default {
     fontWeight: 600,
   },
 
-  actionBtn: {
-    height: 40,
-    padding: "0 14px",
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(255,255,255,0.06)",
-    color: "#E5E7EB",
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    cursor: "pointer",
-    fontSize: 13,
-    fontWeight: 600,
-  },
-
   tabs: {
     display: "flex",
     gap: 24,
-    borderBottom: "1px solid rgba(255,255,255,0.08)",
+    borderBottom: "1px solid var(--glass-08)",
   },
 
   tab: {
     padding: "10px 0",
     background: "transparent",
     border: "none",
-    color: "rgba(229,231,235,0.6)",
+    color: "var(--fg-60)",
     fontSize: 15,
     cursor: "pointer",
   },
@@ -125,84 +111,7 @@ export default {
     borderBottom: "2px solid #3B82F6",
   },
 
-  //   card: {
-  //     borderRadius: 16,
-  //     border: "1px solid rgba(255,255,255,0.08)",
-  //     background: "rgba(255,255,255,0.04)",
-  //     overflow: "hidden",
-  //   },
-
-  //   searchRow: {
-  //     padding: 14,
-  //   },
-
-  //   search: {
-  //     width: 320,
-  //     padding: "10px 12px",
-  //     borderRadius: 10,
-  //     border: "1px solid rgba(255,255,255,0.12)",
-  //     background: "rgba(255,255,255,0.06)",
-  //     color: "#E5E7EB",
-  //   },
-
-  //   table: {
-  //     width: "100%",
-  //     borderCollapse: "collapse",
-  //   },
-
-  //   twoLine: {
-  //     display: "flex",
-  //     flexDirection: "column",
-  //     gap: 4,
-  //     fontSize: 13,
-  //     color: "rgba(229,231,235,0.65)",
-  //   },
-
-  //   statusPill: {
-  //     padding: "4px 10px",
-  //     borderRadius: 999,
-  //     fontSize: 12,
-  //     fontWeight: 700,
-  //   },
-
-  //   statusPending: {
-  //     background: "rgba(250,204,21,0.15)",
-  //     color: "#FDE68A",
-  //   },
-
-  //   statusRejected: {
-  //     background: "rgba(239,68,68,0.15)",
-  //     color: "#FCA5A5",
-  //   },
-
-  //   actions: {
-  //     display: "flex",
-  //     justifyContent: "flex-end",
-  //     gap: 8,
-  //   },
-
-  //   iconBtn: {
-  //     width: 34,
-  //     height: 34,
-  //     borderRadius: 10,
-  //     border: "1px solid rgba(255,255,255,0.12)",
-  //     background: "rgba(255,255,255,0.06)",
-  //     color: "#E5E7EB",
-  //     cursor: "pointer",
-  //   },
-
-  //   empty: {
-  //     padding: 40,
-  //     textAlign: "center",
-  //     color: "rgba(229,231,235,0.6)",
-  //   },
-
-  card: {
-    borderRadius: 16,
-    border: "1px solid rgba(255,255,255,0.08)",
-    background: "rgba(255,255,255,0.04)",
-    overflow: "hidden",
-  },
+  card: bookingsTableTheme.card,
 
   searchRow: {
     padding: 18,
@@ -217,8 +126,8 @@ export default {
     width: 440,
     maxWidth: "100%",
     borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(255,255,255,0.06)",
+    border: "1px solid var(--glass-10)",
+    background: "var(--glass-06)",
     display: "flex",
     alignItems: "center",
     overflow: "hidden",
@@ -230,7 +139,7 @@ export default {
     border: "none",
     outline: "none",
     background: "transparent",
-    color: "#E5E7EB",
+    color: "var(--foreground)",
     padding: "0 14px",
     fontSize: 14,
   },
@@ -241,102 +150,63 @@ export default {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    borderLeft: "1px solid rgba(255,255,255,0.10)",
-    color: "rgba(229,231,235,0.8)",
+    borderLeft: "1px solid var(--glass-10)",
+    color: "var(--fg-80)",
   },
 
-  tableWrap: {
-    width: "100%",
-    overflowX: "hidden", // ✅ no useless horizontal scroll
-  },
+  tableWrap: bookingsTableTheme.tableWrap,
 
-  table: {
-    width: "100%",
-    borderCollapse: "separate", // ✅ needed for clean grid lines
-    borderSpacing: 0,
-  },
+  table: bookingsTableTheme.table,
 
-  theadRow: {
-    background: "rgba(255,255,255,0.03)",
-  },
+  theadRow: bookingsTableTheme.theadRow,
 
   th: {
-    textAlign: "left",
+    ...bookingsTableTheme.th,
     padding: "14px 16px",
-    fontSize: 13,
     fontWeight: 800,
-    color: "rgba(229,231,235,0.75)",
-    borderBottom: "1px solid rgba(255,255,255,0.10)", // ✅ header line
-    whiteSpace: "nowrap",
+    borderBottom: "1px solid var(--glass-10)",
   },
 
   thRight: {
-    textAlign: "right",
+    ...bookingsTableTheme.thRight,
     padding: "14px 16px",
-    fontSize: 13,
     fontWeight: 800,
-    color: "rgba(229,231,235,0.75)",
-    borderBottom: "1px solid rgba(255,255,255,0.10)",
-    whiteSpace: "nowrap",
+    borderBottom: "1px solid var(--glass-10)",
   },
 
-  tr: {
-    transition: "background 0.15s ease",
-  },
+  tr: bookingsTableTheme.tr,
 
-  trHover: {
-    background: "rgba(255,255,255,0.03)", // ✅ hover row highlight
-  },
+  trHover: bookingsTableTheme.trHover,
 
   td: {
+    ...bookingsTableTheme.td,
     padding: "14px 16px",
-    fontSize: 13,
-    color: "rgba(229,231,235,0.85)",
-    borderBottom: "1px solid rgba(255,255,255,0.08)", // ✅ row line
-    verticalAlign: "middle",
+    borderBottom: "1px solid var(--glass-08)",
   },
 
   tdRight: {
+    ...bookingsTableTheme.tdRight,
     padding: "14px 16px",
-    fontSize: 13,
-    color: "rgba(229,231,235,0.85)",
-    borderBottom: "1px solid rgba(255,255,255,0.08)",
-    verticalAlign: "middle",
-    textAlign: "right",
+    borderBottom: "1px solid var(--glass-08)",
   },
 
-  // optional: subtle vertical dividers (makes it feel structured)
-  tdDivider: {
-    borderRight: "1px solid rgba(255,255,255,0.06)",
-  },
+  tdDivider: bookingsTableTheme.tdDivider,
 
-  twoLine: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 4,
-    lineHeight: 1.25,
-  },
+  twoLine: bookingsTableTheme.twoLine,
 
   primary: {
     fontWeight: 800,
-    color: "#E5E7EB",
+    color: "var(--foreground)",
   },
 
   secondary: {
     fontSize: 12,
-    color: "rgba(229,231,235,0.55)",
+    color: "var(--fg-55)",
   },
 
   statusPill: {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    height: 30,
-    padding: "0 12px",
-    borderRadius: 999,
-    fontSize: 12,
+    ...bookingsTableTheme.statusPill,
     fontWeight: 800,
-    border: "1px solid rgba(255,255,255,0.10)",
   },
 
   statusPending: {
@@ -357,23 +227,13 @@ export default {
     gap: 10,
   },
 
-  iconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(255,255,255,0.06)",
-    color: "#E5E7EB",
-    cursor: "pointer",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  iconBtn: bookingsTableTheme.iconBtn,
 
   empty: {
+    ...bookingsTableTheme.emptyCell,
     padding: 44,
-    textAlign: "center",
-    color: "rgba(229,231,235,0.6)",
-    borderBottom: "1px solid rgba(255,255,255,0.08)",
+    borderBottom: "1px solid var(--glass-08)",
   },
 } satisfies Record<string, CSSProperties>;
+
+export default styles;

@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { RentalProvider } from "@/src/types/rentalProvider";
 import ProviderStatusBadge from "./ProviderStatusBadge";
 import ProvidersActions from "./ProvidersActions";
 import { ChevronUp, ChevronDown } from "lucide-react";
+import { bookingsTableTheme } from "@/src/components/rentals/table/sharedTableStyles";
 
 type SortKey =
   | "name"
@@ -41,23 +43,17 @@ export default function ProvidersTable({
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
 
-  /* ---------------- Sorting ---------------- */
-
   const sortedProviders = [...providers].sort((a, b) => {
     if (!sortKey) return 0;
 
     const aVal = a[sortKey as keyof RentalProvider];
     const bVal = b[sortKey as keyof RentalProvider];
 
-    // Handle null/undefined values explicitly
     if (aVal == null && bVal == null) return 0;
     if (aVal == null) return sortOrder === "asc" ? 1 : -1;
     if (bVal == null) return sortOrder === "asc" ? -1 : 1;
 
-    // Normalize to strings and use localeCompare to handle numeric and string comparisons
-    const aStr = String(aVal);
-    const bStr = String(bVal);
-    const cmp = aStr.localeCompare(bStr, undefined, {
+    const cmp = String(aVal).localeCompare(String(bVal), undefined, {
       numeric: true,
       sensitivity: "base",
     });
@@ -69,21 +65,23 @@ export default function ProvidersTable({
     if (sortKey !== key) {
       setSortKey(key);
       setSortOrder("asc");
-    } else if (sortOrder === "asc") {
-      setSortOrder("desc");
-    } else {
-      setSortKey(null);
+      return;
     }
-  };
 
-  /* ---------------- Bulk Select ---------------- */
+    if (sortOrder === "asc") {
+      setSortOrder("desc");
+      return;
+    }
+
+    setSortKey(null);
+  };
 
   const toggleSelectAll = () => {
     if (selected.length === providers.length) {
       setSelected([]);
-    } else {
-      setSelected(providers.map((p) => p.id));
+      return;
     }
+    setSelected(providers.map((p) => p.id));
   };
 
   const toggleSelectOne = (id: string) => {
@@ -92,137 +90,151 @@ export default function ProvidersTable({
     );
   };
 
-  /* ---------------- Render ---------------- */
-
   return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={styles.table}>
-        <thead>
-          <tr>
-            {COLUMNS.map((col) => (
-              <th
-                key={col.key}
-                style={styles.th}
-                onClick={() => col.sortable && toggleSort(col.key as SortKey)}
-              >
-                <div style={styles.thInner}>
-                  {col.key === "select" ? (
-                    <input
-                      type="checkbox"
-                      checked={
-                        selected.length === providers.length &&
-                        providers.length > 0
-                      }
-                      onChange={toggleSelectAll}
-                    />
-                  ) : (
-                    col.label
-                  )}
-
-                  {col.sortable && (
-                    <span style={styles.sortIcon}>
-                      {sortKey === col.key ? (
-                        sortOrder === "asc" ? (
-                          <ChevronUp size={14} />
-                        ) : (
-                          <ChevronDown size={14} />
-                        )
+    <div style={styles.card}>
+      <div style={styles.tableWrap}>
+        <table style={styles.table}>
+          <thead>
+            <tr style={styles.trHead}>
+              {COLUMNS.map((col) => {
+                const isActions = col.key === "actions";
+                const thStyle = isActions ? styles.thRight : styles.th;
+                return (
+                  <th
+                    key={col.key}
+                    style={{
+                      ...thStyle,
+                      ...(col.sortable ? styles.thSortable : {}),
+                    }}
+                    onClick={() => col.sortable && toggleSort(col.key as SortKey)}
+                  >
+                    <div style={styles.thInner}>
+                      {col.key === "select" ? (
+                        <input
+                          type="checkbox"
+                          checked={
+                            selected.length === providers.length &&
+                            providers.length > 0
+                          }
+                          onChange={toggleSelectAll}
+                        />
                       ) : (
-                        <ChevronUp size={14} opacity={0.3} />
+                        col.label
                       )}
-                    </span>
-                  )}
-                </div>
-              </th>
-            ))}
-          </tr>
-        </thead>
 
-        <tbody>
-          {sortedProviders.length === 0 ? (
-            <tr>
-              <td colSpan={COLUMNS.length} style={styles.emptyCell}>
-                <div style={styles.emptyContent}>
-                  <p>No rental providers yet.</p>
-                  <a href="/rentals/providers/new">+ Add Provider</a>
-                </div>
-              </td>
+                      {col.sortable && (
+                        <span style={styles.sortIcon}>
+                          {sortKey === col.key ? (
+                            sortOrder === "asc" ? (
+                              <ChevronUp size={14} />
+                            ) : (
+                              <ChevronDown size={14} />
+                            )
+                          ) : (
+                            <ChevronUp size={14} opacity={0.3} />
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                );
+              })}
             </tr>
-          ) : (
-            sortedProviders.map((p, index) => (
-              <tr key={p.id}>
-                <td>{index + 1}</td>
+          </thead>
 
-                <td>
-                  <input
-                    type="checkbox"
-                    checked={selected.includes(p.id)}
-                    onChange={() => toggleSelectOne(p.id)}
-                  />
-                </td>
-
-                <td>{p.name}</td>
-                <td>{p.contactPerson}</td>
-                <td>
-                  {p.email}
-                  <br />
-                  {p.phone}
-                </td>
-                <td>{p.city}</td>
-                <td>{p.totalCars}</td>
-                <td>{p.activeCars}</td>
-                <td>{p.pendingCars}</td>
-                <td>
-                  <ProviderStatusBadge status={p.status} />
-                </td>
-                <td>{new Date(p.joinedOn).toLocaleDateString()}</td>
-                <td>
-                  <ProvidersActions provider={p} />
+          <tbody>
+            {sortedProviders.length === 0 ? (
+              <tr>
+                <td colSpan={COLUMNS.length} style={styles.emptyCell}>
+                  <div style={styles.emptyContent}>
+                    <p>No rental providers yet.</p>
+                    <Link href="/rentals/providers/new">+ Add Provider</Link>
+                  </div>
                 </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              sortedProviders.map((p, index) => (
+                <tr key={p.id} style={styles.tr}>
+                  <td style={styles.td}>{index + 1}</td>
+
+                  <td style={styles.td}>
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(p.id)}
+                      onChange={() => toggleSelectOne(p.id)}
+                    />
+                  </td>
+
+                  <td style={styles.tdStrong}>{p.name}</td>
+                  <td style={styles.td}>{p.contactPerson}</td>
+
+                  <td style={styles.td}>
+                    <div style={styles.twoLine}>
+                      <span style={styles.primaryText}>{p.email}</span>
+                      <span style={styles.secondaryText}>{p.phone}</span>
+                    </div>
+                  </td>
+
+                  <td style={styles.td}>{p.city}</td>
+                  <td style={styles.td}>{p.totalCars}</td>
+                  <td style={styles.td}>{p.activeCars}</td>
+                  <td style={styles.td}>{p.pendingCars}</td>
+
+                  <td style={styles.td}>
+                    <ProviderStatusBadge status={p.status} />
+                  </td>
+
+                  <td style={styles.td}>
+                    {new Date(p.joinedOn).toLocaleDateString()}
+                  </td>
+
+                  <td style={styles.tdRight}>
+                    <ProvidersActions provider={p} />
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  card: bookingsTableTheme.card,
+  tableWrap: bookingsTableTheme.tableWrap,
   table: {
-    width: "100%",
-    borderCollapse: "collapse",
-    background: "#020617",
-    borderRadius: 12,
+    ...bookingsTableTheme.table,
+    minWidth: 1200,
   },
-
-  th: {
-    padding: "12px 14px",
-    textAlign: "left",
-    fontSize: 13,
-    color: "#9CA3AF",
-    borderBottom: "1px solid #1F2937",
+  trHead: bookingsTableTheme.theadRow,
+  th: bookingsTableTheme.th,
+  thRight: bookingsTableTheme.thRight,
+  thSortable: {
     cursor: "pointer",
     userSelect: "none",
   },
-
   thInner: {
     display: "flex",
     alignItems: "center",
     gap: 6,
   },
-
   sortIcon: {
     display: "flex",
     alignItems: "center",
   },
-
+  tr: bookingsTableTheme.tr,
+  td: bookingsTableTheme.td,
+  tdRight: bookingsTableTheme.tdRight,
+  tdStrong: bookingsTableTheme.tdStrong,
+  twoLine: bookingsTableTheme.twoLine,
+  primaryText: bookingsTableTheme.primaryText,
+  secondaryText: bookingsTableTheme.secondaryText,
   emptyCell: {
+    ...bookingsTableTheme.emptyCell,
     padding: 48,
-    textAlign: "center",
-    color: "#9CA3AF",
   },
-
   emptyContent: {
     display: "flex",
     flexDirection: "column",

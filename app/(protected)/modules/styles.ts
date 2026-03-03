@@ -5,7 +5,6 @@ export const styles: Record<string, CSSProperties> = {
     padding: 30,
     display: "flex",
     flexDirection: "column",
-    // alignItems: "center",
   },
 
   header: {
@@ -21,20 +20,21 @@ export const styles: Record<string, CSSProperties> = {
 
   subtitle: {
     fontSize: 14,
-    color: "#9CA3AF",
+    color: "var(--muted-foreground)",
     marginBottom: 20,
   },
 
   search: {
     padding: "12px 16px",
     borderRadius: 12,
-    border: "1px solid #1F2937",
-    background: "#020617",
-    color: "#E5E7EB",
+    border: "1px solid var(--input-border)",
+    background: "var(--input-bg)",
+    color: "var(--input-fg)",
     width: "100%",
     maxWidth: 360,
     outline: "none",
   },
+
   grid: {
     width: "100%",
     display: "grid",

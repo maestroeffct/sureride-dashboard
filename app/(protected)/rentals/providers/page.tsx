@@ -65,8 +65,8 @@ const btnPrimary: React.CSSProperties = {
 
 const btnSecondary: React.CSSProperties = {
   padding: "10px 14px",
-  background: "#020617",
-  border: "1px solid #1F2937",
-  color: "#E5E7EB",
+  background: "var(--surface-2)",
+  border: "1px solid var(--input-border)",
+  color: "var(--foreground)",
   borderRadius: 8,
 };

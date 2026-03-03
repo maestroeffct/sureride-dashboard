@@ -1,14 +1,14 @@
 import type { CSSProperties } from "react";
 
 const card: CSSProperties = {
-  background: "#0F172A",
+  background: "var(--surface-1)",
   borderRadius: 16,
   padding: 20,
 };
 
 const title: CSSProperties = {
   fontSize: 13,
-  color: "#9CA3AF",
+  color: "var(--muted-foreground)",
 };
 
 const value: CSSProperties = {

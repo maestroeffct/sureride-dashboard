@@ -126,10 +126,10 @@ const styles: Record<string, React.CSSProperties> = {
   title: { fontSize: 18, fontWeight: 700 },
 
   card: {
-    border: "1px solid #1F2937",
+    border: "1px solid var(--input-border)",
     borderRadius: 14,
     padding: 16,
-    background: "#020617",
+    background: "var(--surface-2)",
     display: "flex",
     flexDirection: "column",
     gap: 12,
@@ -145,11 +145,11 @@ const styles: Record<string, React.CSSProperties> = {
 
   uploadBox: {
     padding: 24,
-    border: "1px dashed #1F2937",
+    border: "1px dashed var(--input-border)",
     borderRadius: 12,
     textAlign: "center",
     cursor: "pointer",
-    color: "#9CA3AF",
+    color: "var(--muted-foreground)",
   },
 
   previewWrapper: {
@@ -164,7 +164,7 @@ const styles: Record<string, React.CSSProperties> = {
     height: 80,
     objectFit: "cover",
     borderRadius: 10,
-    border: "1px solid #1F2937",
+    border: "1px solid var(--input-border)",
   },
 
   pdfPreview: {
@@ -172,7 +172,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     gap: 8,
     fontSize: 13,
-    color: "#E5E7EB",
+    color: "var(--foreground)",
   },
 
   fileActions: {

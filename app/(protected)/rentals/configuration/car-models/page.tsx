@@ -96,75 +96,148 @@ export default function CarModelsPage() {
 
       {/* TABLE */}
       <div style={styles.card}>
-        <table style={styles.table}>
-          <thead style={styles.thead}>
-            <tr>
-              <th style={styles.th}>Model</th>
-              <th style={styles.th}>Category</th>
-              <th style={styles.th}>Year Range</th>
-              <th style={styles.th}>Cars Using</th>
-              <th style={styles.th}>Status</th>
-              <th style={{ ...styles.th, ...styles.actionsCol }}>Actions</th>
-            </tr>
-          </thead>
+        <div style={styles.tableWrap}>
+          <table style={styles.table}>
+            <thead style={styles.thead}>
+              <tr>
+                <th style={styles.th}>Model</th>
+                <th style={styles.th}>Category</th>
+                <th style={styles.th}>Year Range</th>
+                <th style={styles.th}>Cars Using</th>
+                <th style={styles.th}>Status</th>
+                <th style={styles.thRight}>Actions</th>
+              </tr>
+            </thead>
 
-          <tbody>
-            {filtered.map((r) => (
-              <tr key={r.id} style={styles.tr}>
-                <td style={styles.td}>
-                  <strong>{r.brand}</strong> {r.model}
-                </td>
-                <td style={styles.td}>{r.category}</td>
-                <td style={styles.td}>{r.yearRange}</td>
-                <td style={styles.td}>{r.carsCount}</td>
-                <td style={styles.td}>
-                  <span
-                    style={{
-                      ...styles.statusPill,
-                      ...(r.status === "Active"
-                        ? styles.statusActive
-                        : styles.statusDisabled),
-                    }}
-                  >
-                    {r.status}
-                  </span>
-                </td>
-                <td style={{ ...styles.td, ...styles.actionsCol }}>
-                  <div style={styles.actions}>
-                    <button
-                      style={styles.iconBtn}
-                      title="Edit"
-                      onClick={() => {
-                        setEditing(r);
-                        setOpen(true);
+            <tbody>
+              {filtered.map((r) => (
+                <tr key={r.id} style={styles.tr}>
+                  <td style={styles.td}>
+                    <strong>{r.brand}</strong> {r.model}
+                  </td>
+                  <td style={styles.td}>{r.category}</td>
+                  <td style={styles.td}>{r.yearRange}</td>
+                  <td style={styles.td}>{r.carsCount}</td>
+                  <td style={styles.td}>
+                    <span
+                      style={{
+                        ...styles.statusPill,
+                        ...(r.status === "Active"
+                          ? styles.statusActive
+                          : styles.statusDisabled),
                       }}
                     >
-                      <Edit2 size={16} />
-                    </button>
-                    <button
-                      style={styles.iconBtn}
-                      title="Disable"
-                      disabled={r.carsCount > 0}
-                    >
-                      <Power size={16} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                      {r.status}
+                    </span>
+                  </td>
+                  <td style={styles.tdRight}>
+                    <div style={styles.actions}>
+                      <button
+                        style={styles.iconBtn}
+                        title="Edit"
+                        onClick={() => {
+                          setEditing(r);
+                          setOpen(true);
+                        }}
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        style={styles.iconBtn}
+                        title="Disable"
+                        disabled={r.carsCount > 0}
+                      >
+                        <Power size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
 
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={6} style={styles.empty}>
-                  No models found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={6} style={styles.empty}>
+                    No models found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {open && <ModelModal initial={editing} onClose={() => setOpen(false)} />}
+    </div>
+  );
+}
+
+function ModelModal({
+  initial,
+  onClose,
+}: {
+  initial: CarModelRow | null;
+  onClose: () => void;
+}) {
+  const [brand, setBrand] = useState(initial?.brand ?? "");
+  const [model, setModel] = useState(initial?.model ?? "");
+  const [category, setCategory] = useState(initial?.category ?? "");
+  const [yearRange, setYearRange] = useState(initial?.yearRange ?? "");
+
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.modal}>
+        <h3>{initial ? "Edit Model" : "Add Model"}</h3>
+
+        <label>
+          Brand *
+          <input
+            value={brand}
+            onChange={(e) => setBrand(e.target.value)}
+            style={styles.input}
+          />
+        </label>
+
+        <label>
+          Model *
+          <input
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            style={styles.input}
+          />
+        </label>
+
+        <label>
+          Category
+          <input
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            style={styles.input}
+          />
+        </label>
+
+        <label>
+          Year Range
+          <input
+            value={yearRange}
+            onChange={(e) => setYearRange(e.target.value)}
+            style={styles.input}
+            placeholder="e.g. 2018 - 2025"
+          />
+        </label>
+
+        <div style={styles.modalActions}>
+          <button style={styles.btnGhost} onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            style={styles.primaryBtn}
+            disabled={!brand.trim() || !model.trim()}
+            onClick={onClose}
+          >
+            Save
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -19,7 +19,7 @@ export const styles: Record<string, CSSProperties> = {
     width: "fit-content",
     background: "transparent",
     border: "none",
-    color: "#9CA3AF",
+    color: "var(--muted-foreground)",
     cursor: "pointer",
     padding: 0,
   },
@@ -38,7 +38,7 @@ export const styles: Record<string, CSSProperties> = {
   },
 
   subtitle: {
-    color: "#9CA3AF",
+    color: "var(--muted-foreground)",
     marginTop: 6,
     marginBottom: 0,
   },
@@ -47,12 +47,12 @@ export const styles: Record<string, CSSProperties> = {
     padding: "6px 12px",
     borderRadius: 999,
     fontSize: 12,
-    border: "1px solid #1F2937",
+    border: "1px solid var(--input-border)",
     height: "fit-content",
   },
 
-  statusDraft: { background: "#0B1220", color: "#93C5FD" },
-  statusPending: { background: "#111827", color: "#FBBF24" },
+  statusDraft: { background: "var(--surface-1)", color: "#93C5FD" },
+  statusPending: { background: "var(--surface-2)", color: "#FBBF24" },
 
   body: {
     display: "grid",
@@ -68,8 +68,8 @@ export const styles: Record<string, CSSProperties> = {
   },
 
   right: {
-    background: "#020617",
-    border: "1px solid #1F2937",
+    background: "var(--surface-2)",
+    border: "1px solid var(--input-border)",
     borderRadius: 14,
     padding: 18,
     minHeight: 420,

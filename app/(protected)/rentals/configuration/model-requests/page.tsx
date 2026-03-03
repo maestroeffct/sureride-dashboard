@@ -53,44 +53,50 @@ export default function ModelRequestsPage() {
       </div>
 
       <div style={styles.card}>
-        <table style={styles.table}>
-          <thead style={styles.thead}>
-            <tr>
-              <th style={styles.th}>Brand</th>
-              <th style={styles.th}>Model</th>
-              <th style={styles.th}>Category</th>
-              <th style={styles.th}>Year Range</th>
-              <th style={styles.th}>Requested By</th>
-              <th style={styles.th}>Status</th>
-              <th style={{ ...styles.th, ...styles.actionsCol }}>Actions</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} style={styles.tr}>
-                <td style={styles.td}>{r.brand}</td>
-                <td style={styles.td}>{r.model}</td>
-                <td style={styles.td}>{r.category}</td>
-                <td style={styles.td}>{r.yearRange}</td>
-                <td style={styles.td}>{r.provider}</td>
-                <td style={styles.td}>
-                  <span style={styles.statusPending}>{r.status}</span>
-                </td>
-                <td style={{ ...styles.td, ...styles.actionsCol }}>
-                  <div style={styles.actions}>
-                    <button style={styles.iconBtn} title="Approve">
-                      <Check size={16} />
-                    </button>
-                    <button style={styles.iconBtn} title="Reject">
-                      <X size={16} />
-                    </button>
-                  </div>
-                </td>
+        <div style={styles.tableWrap}>
+          <table style={styles.table}>
+            <thead style={styles.thead}>
+              <tr>
+                <th style={styles.th}>Brand</th>
+                <th style={styles.th}>Model</th>
+                <th style={styles.th}>Category</th>
+                <th style={styles.th}>Year Range</th>
+                <th style={styles.th}>Requested By</th>
+                <th style={styles.th}>Status</th>
+                <th style={styles.thRight}>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} style={styles.tr}>
+                  <td style={styles.td}>{r.brand}</td>
+                  <td style={styles.td}>{r.model}</td>
+                  <td style={styles.td}>{r.category}</td>
+                  <td style={styles.td}>{r.yearRange}</td>
+                  <td style={styles.td}>{r.provider}</td>
+                  <td style={styles.td}>
+                    <span
+                      style={{ ...styles.statusPill, ...styles.statusPending }}
+                    >
+                      {r.status}
+                    </span>
+                  </td>
+                  <td style={styles.tdRight}>
+                    <div style={styles.actions}>
+                      <button style={styles.iconBtn} title="Approve">
+                        <Check size={16} />
+                      </button>
+                      <button style={styles.iconBtn} title="Reject">
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

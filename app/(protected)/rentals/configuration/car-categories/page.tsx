@@ -89,82 +89,73 @@ export default function CarCategoriesPage() {
       {/* TABLE CARD */}
       <div style={styles.card}>
         <div style={styles.tableInner}>
-          <table style={styles.table}>
-            <thead style={styles.thead}>
-              <tr>
-                <th style={styles.th}>Category</th>
-                <th style={styles.th}>Pricing Multiplier</th>
-                <th style={styles.th}>Cars Using</th>
-                <th style={styles.th}>Status</th>
-                <th style={{ ...styles.th, ...styles.actionsCol }}>Actions</th>
-              </tr>
-            </thead>
+          <div style={styles.tableWrap}>
+            <table style={styles.table}>
+              <thead style={styles.thead}>
+                <tr>
+                  <th style={styles.th}>Category</th>
+                  <th style={styles.th}>Pricing Multiplier</th>
+                  <th style={styles.th}>Cars Using</th>
+                  <th style={styles.th}>Status</th>
+                  <th style={styles.thRight}>Actions</th>
+                </tr>
+              </thead>
 
-            <tbody>
-              {filtered.map((r) => (
-                <tr
-                  key={r.id}
-                  style={styles.tr}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.background =
-                      "rgba(255,255,255,0.035)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.background =
-                      "rgba(255,255,255,0.015)")
-                  }
-                >
-                  <td style={styles.tdStrong}>{r.name}</td>
-                  <td style={styles.td}>
-                    {r.multiplier ? `${r.multiplier}×` : "—"}
-                  </td>
-                  <td style={styles.td}>{r.carsCount}</td>
-                  <td style={styles.td}>
-                    <span
-                      style={{
-                        ...styles.statusPill,
-                        ...(r.status === "Active"
-                          ? styles.statusActive
-                          : styles.statusDisabled),
-                      }}
-                    >
-                      {r.status}
-                    </span>
-                  </td>
-                  <td style={{ ...styles.td, ...styles.actionsCol }}>
-                    <div style={styles.actions}>
-                      <button
-                        style={styles.iconBtn}
-                        title="Edit"
-                        onClick={() => {
-                          setEditing(r);
-                          setOpen(true);
+              <tbody>
+                {filtered.map((r) => (
+                  <tr key={r.id} style={styles.tr}>
+                    <td style={styles.tdStrong}>{r.name}</td>
+                    <td style={styles.td}>
+                      {r.multiplier ? `${r.multiplier}×` : "—"}
+                    </td>
+                    <td style={styles.td}>{r.carsCount}</td>
+                    <td style={styles.td}>
+                      <span
+                        style={{
+                          ...styles.statusPill,
+                          ...(r.status === "Active"
+                            ? styles.statusActive
+                            : styles.statusDisabled),
                         }}
                       >
-                        <Edit2 size={16} />
-                      </button>
+                        {r.status}
+                      </span>
+                    </td>
+                    <td style={styles.tdRight}>
+                      <div style={styles.actions}>
+                        <button
+                          style={styles.iconBtn}
+                          title="Edit"
+                          onClick={() => {
+                            setEditing(r);
+                            setOpen(true);
+                          }}
+                        >
+                          <Edit2 size={16} />
+                        </button>
 
-                      <button
-                        style={styles.iconBtn}
-                        title="Disable"
-                        disabled={r.carsCount > 0}
-                      >
-                        <Power size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        <button
+                          style={styles.iconBtn}
+                          title="Disable"
+                          disabled={r.carsCount > 0}
+                        >
+                          <Power size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
 
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={5} style={styles.empty}>
-                    No categories found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={5} style={styles.empty}>
+                      No categories found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 

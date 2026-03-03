@@ -43,7 +43,7 @@ export default function ProviderStepper({
             onClick={() => onSelect(s.key)}
             style={{
               ...styles.item,
-              background: isActive ? "#0F172A" : "transparent",
+              background: isActive ? "var(--surface-1)" : "transparent",
               borderColor: isActive ? "#1D4ED8" : "transparent",
             }}
           >
@@ -54,8 +54,8 @@ export default function ProviderStepper({
                   ? "#22C55E22"
                   : isActive
                   ? "#2563EB22"
-                  : "#111827",
-                color: isDone ? "#22C55E" : isActive ? "#60A5FA" : "#9CA3AF",
+                  : "var(--surface-2)",
+                color: isDone ? "#22C55E" : isActive ? "#60A5FA" : "var(--muted-foreground)",
               }}
             >
               {isDone ? "✓" : idx + 1}
@@ -86,8 +86,8 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: "column",
     gap: 8,
     padding: 10,
-    background: "#020617",
-    border: "1px solid #1F2937",
+    background: "var(--surface-2)",
+    border: "1px solid var(--input-border)",
     borderRadius: 14,
     overflow: "hidden",
     transition: "width 0.25s ease",
@@ -104,7 +104,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: "transparent",
     cursor: "pointer",
     textAlign: "left",
-    color: "#E5E7EB",
+    color: "var(--foreground)",
     transition: "background 0.2s ease, border 0.2s ease",
   },
 
@@ -115,7 +115,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: "grid",
     placeItems: "center",
     fontSize: 12,
-    border: "1px solid #1F2937",
+    border: "1px solid var(--input-border)",
     flexShrink: 0,
   },
 

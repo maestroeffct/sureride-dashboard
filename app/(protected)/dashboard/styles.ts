@@ -17,7 +17,7 @@ const title: CSSProperties = {
 
 const subtitle: CSSProperties = {
   fontSize: 14,
-  color: "#9CA3AF",
+  color: "var(--muted-foreground)",
 };
 
 const statsGrid: CSSProperties = {
@@ -33,14 +33,14 @@ const chartsGrid: CSSProperties = {
 };
 
 const chartCard: CSSProperties = {
-  background: "#0F172A",
+  background: "var(--surface-1)",
   borderRadius: 16,
   padding: 24,
   minHeight: 220,
 };
 
 const tableCard: CSSProperties = {
-  background: "#0F172A",
+  background: "var(--surface-1)",
   borderRadius: 16,
   padding: 24,
 };
@@ -49,7 +49,7 @@ const tableRow: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "1fr 2fr 1fr",
   padding: "12px 0",
-  borderBottom: "1px solid rgba(255,255,255,0.05)",
+  borderBottom: "1px solid var(--border-subtle)",
 };
 
 export default {

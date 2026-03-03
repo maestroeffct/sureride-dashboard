@@ -13,7 +13,7 @@ export const styles: Record<string, CSSProperties> = {
   },
 
   subtitle: {
-    color: "#9CA3AF",
+    color: "var(--muted-foreground)",
   },
 
   kpiGrid: {
@@ -25,8 +25,8 @@ export const styles: Record<string, CSSProperties> = {
   kpiCard: {
     padding: 20,
     borderRadius: 14,
-    background: "linear-gradient(180deg, #020617, #020617)",
-    border: "1px solid #1F2937",
+    background: "linear-gradient(180deg, var(--surface-2), var(--surface-2))",
+    border: "1px solid var(--input-border)",
     display: "flex",
     flexDirection: "column",
     gap: 6,
@@ -34,7 +34,7 @@ export const styles: Record<string, CSSProperties> = {
 
   kpiLabel: {
     fontSize: 13,
-    color: "#9CA3AF",
+    color: "var(--muted-foreground)",
   },
 
   kpiValue: {
@@ -51,11 +51,11 @@ export const styles: Record<string, CSSProperties> = {
   placeholder: {
     height: 140,
     borderRadius: 12,
-    background: "#020617",
-    border: "1px dashed #1F2937",
+    background: "var(--surface-2)",
+    border: "1px dashed var(--input-border)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    color: "#6B7280",
+    color: "var(--muted-foreground)",
   },
 };

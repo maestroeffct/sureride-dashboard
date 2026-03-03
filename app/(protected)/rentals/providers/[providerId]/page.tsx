@@ -78,7 +78,7 @@ export default function ProviderDetailPage() {
         )}
 
         {activeTab !== "Overview" && (
-          <div style={{ color: "#9CA3AF" }}>
+          <div style={{ color: "var(--muted-foreground)" }}>
             {activeTab} content coming next…
           </div>
         )}
@@ -99,23 +99,23 @@ const styles: Record<string, React.CSSProperties> = {
   tabs: {
     display: "flex",
     gap: 8,
-    borderBottom: "1px solid #1F2937",
+    borderBottom: "1px solid var(--input-border)",
   },
   tab: {
     padding: "10px 14px",
     background: "transparent",
     border: "none",
-    color: "#9CA3AF",
+    color: "var(--muted-foreground)",
     cursor: "pointer",
   },
   tabActive: {
-    color: "#E5E7EB",
+    color: "var(--foreground)",
     borderBottom: "2px solid #2563EB",
   },
   content: {
     padding: 16,
-    background: "#020617",
-    border: "1px solid #1F2937",
+    background: "var(--surface-2)",
+    border: "1px solid var(--input-border)",
     borderRadius: 12,
   },
 };

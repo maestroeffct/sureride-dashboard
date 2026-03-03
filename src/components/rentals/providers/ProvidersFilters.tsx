@@ -59,16 +59,16 @@ export default function ProvidersFilters({
 const input: React.CSSProperties = {
   padding: "10px 14px",
   width: 260,
-  background: "#020617",
-  border: "1px solid #1F2937",
+  background: "var(--surface-2)",
+  border: "1px solid var(--input-border)",
   borderRadius: 8,
-  color: "#E5E7EB",
+  color: "var(--foreground)",
 };
 
 const select: React.CSSProperties = {
   padding: "10px 14px",
-  background: "#020617",
-  border: "1px solid #1F2937",
+  background: "var(--surface-2)",
+  border: "1px solid var(--input-border)",
   borderRadius: 8,
-  color: "#E5E7EB",
+  color: "var(--foreground)",
 };

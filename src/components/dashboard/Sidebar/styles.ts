@@ -7,7 +7,7 @@ import type { CSSProperties } from "react";
 const container: CSSProperties = {
   width: 260,
   height: "100vh",
-  background: "linear-gradient(180deg, #0B0E14 0%, #0E1320 100%)",
+  background: "linear-gradient(180deg, var(--background) 0%, var(--surface-2) 100%)",
   display: "flex",
   flexDirection: "column",
   padding: "20px 14px",
@@ -29,7 +29,7 @@ const logoRow: CSSProperties = {
 const logoText: CSSProperties = {
   fontSize: 16,
   fontWeight: 600,
-  color: "#E5E7EB",
+  color: "var(--foreground)",
   letterSpacing: 0.4,
 };
 
@@ -61,7 +61,7 @@ const sectionHeader: CSSProperties = {
   cursor: "pointer",
   background: "transparent",
   border: "none",
-  color: "#CBD5E1",
+  color: "var(--muted-foreground)",
   fontSize: 13,
   fontWeight: 500,
   transition: "background 0.15s ease, color 0.15s ease",
@@ -69,7 +69,7 @@ const sectionHeader: CSSProperties = {
 
 const sectionHeaderActive: CSSProperties = {
   background: "rgba(58, 237, 225, 0.12)",
-  color: "#FFFFFF",
+  color: "var(--foreground)",
 };
 
 const sectionLeft: CSSProperties = {
@@ -94,14 +94,14 @@ const item: CSSProperties = {
   padding: "8px 12px",
   borderRadius: 8,
   cursor: "pointer",
-  color: "#D1D5DB",
+  color: "var(--muted-foreground)",
   fontSize: 13,
   transition: "background 0.15s ease, color 0.15s ease",
 };
 
 const itemActive: CSSProperties = {
   background: "rgba(58, 237, 225, 0.18)",
-  color: "#FFFFFF",
+  color: "var(--foreground)",
 };
 
 /* =========================
@@ -110,7 +110,7 @@ const itemActive: CSSProperties = {
 
 const footer: CSSProperties = {
   paddingTop: 12,
-  borderTop: "1px solid rgba(255,255,255,0.06)",
+  borderTop: "1px solid var(--glass-06)",
 };
 
 const logoutButton: CSSProperties = {

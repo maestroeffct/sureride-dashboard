@@ -196,7 +196,7 @@ function DropdownItem({
       onMouseLeave={() => setHover(false)}
       style={{
         ...dropdownItem,
-        background: hover ? "#0F172A" : "transparent",
+        background: hover ? "var(--surface-1)" : "transparent",
       }}
     >
       <span style={itemLeft}>
@@ -220,8 +220,8 @@ function countryCodeToFlag(code: string) {
 /* -------------------------------- */
 
 const h2: React.CSSProperties = { fontSize: 18, fontWeight: 700, margin: 0 };
-const hint: React.CSSProperties = { fontSize: 12, color: "#9CA3AF", margin: 0 };
-const labelStyle: React.CSSProperties = { fontSize: 13, color: "#9CA3AF" };
+const hint: React.CSSProperties = { fontSize: 12, color: "var(--muted-foreground)", margin: 0 };
+const labelStyle: React.CSSProperties = { fontSize: 13, color: "var(--muted-foreground)" };
 
 const grid: React.CSSProperties = {
   display: "grid",
@@ -232,9 +232,9 @@ const grid: React.CSSProperties = {
 const input: React.CSSProperties = {
   padding: "10px 12px",
   borderRadius: 10,
-  background: "#0B1220",
-  border: "1px solid #1F2937",
-  color: "#E5E7EB",
+  background: "var(--surface-1)",
+  border: "1px solid var(--input-border)",
+  color: "var(--foreground)",
 };
 
 const phoneRow: React.CSSProperties = {
@@ -256,9 +256,9 @@ const dialButton: React.CSSProperties = {
   height: "100%",
   padding: "10px 12px",
   borderRadius: 10,
-  background: "#0B1220",
-  border: "1px solid #1F2937",
-  color: "#E5E7EB",
+  background: "var(--surface-1)",
+  border: "1px solid var(--input-border)",
+  color: "var(--foreground)",
   cursor: "pointer",
   textAlign: "center",
   width: "100%",
@@ -271,8 +271,8 @@ const dropdown: React.CSSProperties = {
   width: 260,
   maxHeight: 260,
   overflowY: "auto",
-  background: "#020617",
-  border: "1px solid #1F2937",
+  background: "var(--surface-2)",
+  border: "1px solid var(--input-border)",
   borderRadius: 12,
   zIndex: 20,
 };
@@ -282,7 +282,7 @@ const dropdownItem: React.CSSProperties = {
   padding: "10px 12px",
   background: "transparent",
   border: "none",
-  color: "#E5E7EB",
+  color: "var(--foreground)",
   textAlign: "left",
   cursor: "pointer",
 };
@@ -299,9 +299,9 @@ const searchInput: React.CSSProperties = {
   width: "100%",
   padding: "8px 10px",
   borderRadius: 8,
-  background: "#0B1220",
-  border: "1px solid #1F2937",
-  color: "#E5E7EB",
+  background: "var(--surface-1)",
+  border: "1px solid var(--input-border)",
+  color: "var(--foreground)",
   marginBottom: 8,
 };
 
@@ -312,7 +312,7 @@ const itemLeft: React.CSSProperties = {
 };
 
 const itemCode: React.CSSProperties = {
-  color: "#9CA3AF",
+  color: "var(--muted-foreground)",
   fontSize: 13,
 };
 
@@ -320,7 +320,7 @@ const emptyState: React.CSSProperties = {
   padding: 12,
   textAlign: "center",
   fontSize: 13,
-  color: "#6B7280",
+  color: "var(--muted-foreground)",
 };
 
-// dropdownItem[":hover"] = { background: "#0F172A" };
+// dropdownItem[":hover"] = { background: "var(--surface-1)" };

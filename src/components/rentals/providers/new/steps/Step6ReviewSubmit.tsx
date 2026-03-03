@@ -222,10 +222,10 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   card: {
-    border: "1px solid #1F2937",
+    border: "1px solid var(--input-border)",
     borderRadius: 12,
     padding: 14,
-    background: "#020617",
+    background: "var(--surface-2)",
     display: "flex",
     flexDirection: "column",
     gap: 8,

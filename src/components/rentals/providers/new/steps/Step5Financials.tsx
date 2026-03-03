@@ -72,7 +72,7 @@ function Field({
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <label style={{ fontSize: 13, color: "#9CA3AF" }}>{label}</label>
+      <label style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{label}</label>
       {children}
     </div>
   );
@@ -93,19 +93,19 @@ const styles: Record<string, React.CSSProperties> = {
   input: {
     padding: "10px 12px",
     borderRadius: 10,
-    background: "#0B1220",
-    border: "1px solid #1F2937",
-    color: "#E5E7EB",
+    background: "var(--surface-1)",
+    border: "1px solid var(--input-border)",
+    color: "var(--foreground)",
   },
 
-  hint: { fontSize: 12, color: "#9CA3AF" },
+  hint: { fontSize: 12, color: "var(--muted-foreground)" },
 
   readOnlyBox: {
     padding: 14,
     borderRadius: 12,
-    background: "#020617",
-    border: "1px solid #1F2937",
+    background: "var(--surface-2)",
+    border: "1px solid var(--input-border)",
     fontSize: 13,
-    color: "#9CA3AF",
+    color: "var(--muted-foreground)",
   },
 };

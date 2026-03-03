@@ -8,8 +8,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-/* ------------------------------------------------------------------ */
-
 export default function Sidebar({ module }: { module: SidebarModule }) {
   const pathname = usePathname();
   const menu = sidebarMenus[module];
@@ -29,10 +27,6 @@ export default function Sidebar({ module }: { module: SidebarModule }) {
     </aside>
   );
 }
-
-/* ------------------------------------------------------------------ */
-/* Sidebar Item */
-/* ------------------------------------------------------------------ */
 
 function SidebarItemView({
   item,
@@ -60,23 +54,18 @@ function SidebarItemView({
     return stored ? stored === "open" : hasActiveChild;
   });
 
-  // keep in sync with route
   useEffect(() => {
     if (hasActiveChild) {
-      // Defer the state update to avoid synchronous setState inside the effect
       const id = window.setTimeout(() => setOpen(true), 0);
       return () => window.clearTimeout(id);
     }
   }, [hasActiveChild]);
 
-  // persist open state
   useEffect(() => {
     localStorage.setItem(storageKey, open ? "open" : "closed");
   }, [open, storageKey]);
 
   const isActive = item.path && pathname === item.path;
-
-  /* ---------------- GROUP (DROPDOWN) ---------------- */
 
   if (item.children) {
     return (
@@ -85,7 +74,7 @@ function SidebarItemView({
           onClick={() => setOpen((v) => !v)}
           style={{
             ...styles.groupButton,
-            background: open ? "#0F172A" : "transparent",
+            background: open ? "var(--sidebar-group-open-bg)" : "transparent",
           }}
         >
           {Icon && <Icon size={18} />}
@@ -99,7 +88,6 @@ function SidebarItemView({
           </motion.span>
         </button>
 
-        {/* Animated dropdown */}
         <AnimatePresence initial={false}>
           {open && (
             <motion.div
@@ -120,15 +108,19 @@ function SidebarItemView({
                     animate={{ opacity: 1, x: 0 }}
                     transition={{
                       duration: 0.2,
-                      delay: index * 0.04, // 👈 subtle stagger
+                      delay: index * 0.04,
                     }}
                   >
                     <Link
                       href={child.path!}
                       style={{
                         ...styles.childItem,
-                        background: active ? "#1E293B" : "transparent",
-                        color: active ? "#E5E7EB" : "#9CA3AF",
+                        background: active
+                          ? "var(--sidebar-item-active-bg)"
+                          : "transparent",
+                        color: active
+                          ? "var(--sidebar-item-active-fg)"
+                          : "var(--sidebar-item-fg-muted)",
                       }}
                     >
                       {ChildIcon && <ChildIcon size={16} />}
@@ -144,15 +136,15 @@ function SidebarItemView({
     );
   }
 
-  /* ---------------- SINGLE ITEM ---------------- */
-
   return (
     <Link
       href={item.path!}
       style={{
         ...styles.item,
-        background: isActive ? "#1E293B" : "transparent",
-        color: isActive ? "#E5E7EB" : "#9CA3AF",
+        background: isActive ? "var(--sidebar-item-active-bg)" : "transparent",
+        color: isActive
+          ? "var(--sidebar-item-active-fg)"
+          : "var(--sidebar-item-fg-muted)",
       }}
     >
       {Icon && <Icon size={18} />}
@@ -161,9 +153,6 @@ function SidebarItemView({
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Styles */
-/* ------------------------------------------------------------------ */
 const styles: {
   sidebar: React.CSSProperties;
   scrollArea: React.CSSProperties;
@@ -174,17 +163,17 @@ const styles: {
   sidebar: {
     width: 260,
     height: "100vh",
-    background: "#020617",
-    borderRight: "1px solid #1F2937",
+    background: "var(--sidebar-bg)",
+    borderRight: "1px solid var(--sidebar-border)",
     display: "flex",
     flexDirection: "column",
-    overflow: "hidden", // 🔑 prevent sidebar itself from growing
+    overflow: "hidden",
   },
 
   scrollArea: {
-    flex: 1, // 🔑 take available height
-    minHeight: 0, // 🔑 allow overflow
-    overflowY: "auto", // 🔑 THIS is what scrolls
+    flex: 1,
+    minHeight: 0,
+    overflowY: "auto",
     padding: 16,
     display: "flex",
     flexDirection: "column",
@@ -212,7 +201,7 @@ const styles: {
     cursor: "pointer",
     width: "100%",
     fontSize: 14,
-    color: "#9CA3AF",
+    color: "var(--sidebar-item-fg-muted)",
   },
 
   childItem: {

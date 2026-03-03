@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import Image from "next/image";
 import styles from "./styles";
 import {
-  Search,
   Bell,
   MessageCircle,
   Settings,
@@ -13,6 +13,10 @@ import {
   LogOut,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import logoIcon from "@/src/assets/logo_icon.png";
+import logoNameWhite from "@/src/assets/logo_name_white.png";
+import logoNameBlack from "@/src/assets/logog_name_black.png";
+import { useTheme } from "@/src/hooks/useTheme";
 
 export type DashboardModule =
   | "modules"
@@ -25,13 +29,10 @@ export type DashboardModule =
   | "diagnostics";
 
 export default function Topbar() {
-  const [theme, setTheme] = useState<"light" | "dark">("dark");
+  const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
-  const pathname = window.location.pathname;
-  const currentModule = pathname.split("/")[2] ?? "modules";
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (
@@ -49,7 +50,7 @@ export default function Topbar() {
   const handleLogout = async () => {
     try {
       await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/auth/logout`,
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/admin/auth/logout`,
         {
           method: "POST",
           headers: {
@@ -60,47 +61,32 @@ export default function Topbar() {
           },
         }
       );
-    } catch (error) {
+    } catch {
       console.warn("Logout API failed, proceeding with local logout");
     } finally {
-      // Clear frontend auth state
       localStorage.removeItem("sureride_admin_token");
       localStorage.removeItem("sureride_admin_user");
-
-      // If you ever add cookies later, this stays safe
       document.cookie =
         "sureride_admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
 
       toast.success("Logged out successfully");
-      // Redirect
       window.location.href = "/login";
     }
   };
 
   return (
     <header style={styles.container}>
-      {/* LEFT: SEARCH */}
       <div style={styles.left}>
-        <div style={styles.searchPill}>
-          <Search size={16} style={styles.searchIcon} />
-          <input
-            placeholder={
-              currentModule === "modules"
-                ? "Search modules..."
-                : `Search ${currentModule}...`
-            }
-            style={styles.searchInput}
-          />
-
-          {/* <input placeholder="Search something..." /> */}
-        </div>
-
-        <button style={styles.searchButton}>Search</button>
+        <Image src={logoIcon} alt="Sureride icon" priority style={styles.brandIcon} />
+        <Image
+          src={theme === "dark" ? logoNameWhite : logoNameBlack}
+          alt="Sureride"
+          priority
+          style={styles.brandName}
+        />
       </div>
 
-      {/* RIGHT */}
       <div style={styles.right}>
-        {/* ICON GROUP 1 */}
         <div style={styles.iconGroup}>
           <button style={styles.iconButton}>
             <Bell size={18} />
@@ -116,7 +102,6 @@ export default function Topbar() {
           </button>
         </div>
 
-        {/* ICON GROUP 2 (THEME) */}
         <div style={styles.iconGroup}>
           <button
             style={{
@@ -124,6 +109,7 @@ export default function Topbar() {
               ...(theme === "light" ? styles.iconActive : {}),
             }}
             onClick={() => setTheme("light")}
+            aria-label="Switch to light mode"
           >
             <Sun size={18} />
           </button>
@@ -136,12 +122,12 @@ export default function Topbar() {
               ...(theme === "dark" ? styles.iconActive : {}),
             }}
             onClick={() => setTheme("dark")}
+            aria-label="Switch to dark mode"
           >
             <Moon size={18} />
           </button>
         </div>
 
-        {/* PROFILE */}
         <div style={styles.profileWrapper} ref={profileRef}>
           <button
             style={styles.profileButton}
@@ -158,7 +144,7 @@ export default function Topbar() {
               <div style={styles.dropdownDivider} />
 
               <button
-                style={{ ...styles.dropdownItem, color: "#EF4444" }}
+                style={{ ...styles.dropdownItem, color: "#ef4444" }}
                 onClick={handleLogout}
               >
                 <LogOut size={16} />

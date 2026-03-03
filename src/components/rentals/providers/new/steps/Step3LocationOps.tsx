@@ -140,7 +140,7 @@ function Field({
 /* -------------------------------- */
 
 const h2: React.CSSProperties = { fontSize: 18, fontWeight: 700, margin: 0 };
-const labelStyle: React.CSSProperties = { fontSize: 13, color: "#9CA3AF" };
+const labelStyle: React.CSSProperties = { fontSize: 13, color: "var(--muted-foreground)" };
 const grid: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "1fr 1fr 1fr",
@@ -149,9 +149,9 @@ const grid: React.CSSProperties = {
 const input: React.CSSProperties = {
   padding: "10px 12px",
   borderRadius: 10,
-  background: "#0B1220",
-  border: "1px solid #1F2937",
-  color: "#E5E7EB",
+  background: "var(--surface-1)",
+  border: "1px solid var(--input-border)",
+  color: "var(--foreground)",
 };
 const chips: React.CSSProperties = {
   display: "flex",
@@ -162,9 +162,9 @@ const chips: React.CSSProperties = {
 const chip: React.CSSProperties = {
   padding: "8px 12px",
   borderRadius: 999,
-  border: "1px solid #1F2937",
-  background: "#020617",
-  color: "#9CA3AF",
+  border: "1px solid var(--input-border)",
+  background: "var(--surface-2)",
+  color: "var(--muted-foreground)",
   cursor: "pointer",
 };
 const chipActive: React.CSSProperties = {

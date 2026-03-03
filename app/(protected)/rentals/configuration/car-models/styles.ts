@@ -1,13 +1,13 @@
 import type { CSSProperties } from "react";
+import { bookingsTableTheme } from "@/src/components/rentals/table/sharedTableStyles";
 
 const styles: Record<string, CSSProperties> = {
-  /* PAGE */
   page: {
     maxWidth: 1200,
     margin: "0 auto",
     display: "flex",
     flexDirection: "column",
-    gap: 18,
+    gap: 20,
   },
 
   header: {
@@ -19,16 +19,15 @@ const styles: Record<string, CSSProperties> = {
   title: {
     fontSize: 22,
     fontWeight: 700,
-    color: "#E5E7EB",
+    color: "var(--foreground)",
   },
 
   subtitle: {
     fontSize: 13,
-    color: "rgba(229,231,235,0.6)",
+    color: "var(--fg-60)",
     marginTop: 4,
   },
 
-  /* SEARCH */
   searchRow: {
     display: "flex",
     justifyContent: "space-between",
@@ -40,8 +39,8 @@ const styles: Record<string, CSSProperties> = {
     gap: 8,
     padding: "10px 12px",
     borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(255,255,255,0.06)",
+    border: "1px solid var(--glass-10)",
+    background: "var(--glass-06)",
     width: 300,
   },
 
@@ -49,56 +48,32 @@ const styles: Record<string, CSSProperties> = {
     border: "none",
     background: "transparent",
     outline: "none",
-    color: "#E5E7EB",
+    color: "var(--foreground)",
     width: "100%",
     fontSize: 14,
   },
 
-  /* CARD */
-  card: {
-    borderRadius: 18,
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.08)",
-    overflow: "hidden",
-  },
+  card: bookingsTableTheme.card,
 
-  /* TABLE */
-  table: {
-    width: "100%",
-    borderCollapse: "separate",
-    borderSpacing: 0,
-  },
+  tableWrap: bookingsTableTheme.tableWrap,
 
-  thead: {
-    background: "rgba(255,255,255,0.03)",
-  },
+  table: bookingsTableTheme.table,
 
-  th: {
-    padding: "14px 16px",
-    fontSize: 13,
-    fontWeight: 700,
-    color: "rgba(229,231,235,0.75)",
-    textAlign: "left",
-    borderBottom: "1px solid rgba(255,255,255,0.08)",
-    whiteSpace: "nowrap",
-  },
+  thead: bookingsTableTheme.theadRow,
 
-  tr: {
-    transition: "background 0.15s ease",
-  },
+  th: bookingsTableTheme.th,
 
-  td: {
-    padding: "14px 16px",
-    fontSize: 13,
-    color: "rgba(229,231,235,0.85)",
-    borderBottom: "1px solid rgba(255,255,255,0.06)",
-    verticalAlign: "middle",
-    whiteSpace: "nowrap",
-  },
+  thRight: bookingsTableTheme.thRight,
+
+  tr: bookingsTableTheme.tr,
+
+  td: bookingsTableTheme.td,
+
+  tdRight: bookingsTableTheme.tdRight,
 
   strong: {
     fontWeight: 700,
-    color: "#E5E7EB",
+    color: "var(--foreground)",
   },
 
   actionsCol: {
@@ -111,31 +86,9 @@ const styles: Record<string, CSSProperties> = {
     gap: 10,
   },
 
-  iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(255,255,255,0.06)",
-    color: "#E5E7EB",
-    cursor: "pointer",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  iconBtn: bookingsTableTheme.iconBtn,
 
-  /* STATUS */
-  statusPill: {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    height: 30,
-    padding: "0 12px",
-    borderRadius: 999,
-    fontSize: 12,
-    fontWeight: 700,
-    border: "1px solid rgba(255,255,255,0.10)",
-  },
+  statusPill: bookingsTableTheme.statusPill,
 
   statusActive: {
     background: "rgba(16,185,129,0.16)",
@@ -155,7 +108,6 @@ const styles: Record<string, CSSProperties> = {
     border: "1px solid rgba(250,204,21,0.20)",
   },
 
-  /* BUTTONS */
   primaryBtn: {
     padding: "10px 14px",
     borderRadius: 12,
@@ -171,13 +123,10 @@ const styles: Record<string, CSSProperties> = {
   },
 
   empty: {
-    padding: 28,
-    textAlign: "center",
-    color: "rgba(229,231,235,0.6)",
+    ...bookingsTableTheme.emptyCell,
     fontSize: 14,
   },
 
-  /* MODAL */
   modalOverlay: {
     position: "fixed",
     inset: 0,
@@ -189,8 +138,8 @@ const styles: Record<string, CSSProperties> = {
 
   modal: {
     width: 420,
-    background: "#020617",
-    border: "1px solid rgba(255,255,255,0.10)",
+    background: "var(--surface-2)",
+    border: "1px solid var(--glass-10)",
     borderRadius: 18,
     padding: 20,
     display: "flex",
@@ -203,9 +152,9 @@ const styles: Record<string, CSSProperties> = {
     marginTop: 6,
     padding: "10px 12px",
     borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(255,255,255,0.06)",
-    color: "#E5E7EB",
+    border: "1px solid var(--glass-10)",
+    background: "var(--glass-06)",
+    color: "var(--foreground)",
   },
 
   modalActions: {
@@ -219,8 +168,8 @@ const styles: Record<string, CSSProperties> = {
     padding: "10px 14px",
     borderRadius: 12,
     background: "transparent",
-    border: "1px solid rgba(255,255,255,0.10)",
-    color: "#E5E7EB",
+    border: "1px solid var(--glass-10)",
+    color: "var(--foreground)",
     cursor: "pointer",
   },
 };

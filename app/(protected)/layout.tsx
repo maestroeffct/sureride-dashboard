@@ -12,9 +12,7 @@ export default function DashboardLayout({
       <div style={styles.wrapper}>
         <div style={styles.main}>
           <Topbar />
-          <div style={styles.content}>
-            {children} {/* modules render here */}
-          </div>
+          <div style={styles.content}>{children}</div>
         </div>
       </div>
     </RequireAdmin>
@@ -24,8 +22,9 @@ export default function DashboardLayout({
 const styles: Record<string, CSSProperties> = {
   wrapper: {
     height: "100vh",
-    background: "#0B0E14",
-    color: "#E5E7EB",
+    background: "var(--background)",
+    color: "var(--foreground)",
+    fontFamily: "var(--font-poppins), system-ui, sans-serif",
   },
   main: {
     display: "flex",
@@ -34,7 +33,6 @@ const styles: Record<string, CSSProperties> = {
   },
   content: {
     flex: 1,
-    // display: "flex", // 👈 IMPORTANT
     overflow: "hidden",
   },
 };
