@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { styles } from "./styles";
 import { ModuleCard } from "@/src/components/modules/ModuleCard";
@@ -80,12 +80,15 @@ const MODULES = [
 --------------------------------------------- */
 
 export default function ModuleSelectorPage() {
-  const [lastUsed, setLastUsed] = useState<string | null>(null);
+  const [lastUsed, setLastUsed] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      return localStorage.getItem("sureride_last_module");
+    } catch {
+      return null;
+    }
+  });
   const [query, setQuery] = useState("");
-
-  useEffect(() => {
-    setLastUsed(localStorage.getItem("sureride_last_module"));
-  }, []);
 
   const filteredModules = useMemo(() => {
     return MODULES.filter(

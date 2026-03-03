@@ -6,6 +6,8 @@ import { useState } from "react";
 import { apiRequest } from "@/src/lib/api";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import logoIcon from "@/src/assets/logo_icon.png";
+import logoNameWhite from "@/src/assets/logo_name_white.png";
 import styles from "./styles";
 
 export default function LoginPage() {
@@ -25,7 +27,7 @@ export default function LoginPage() {
     try {
       setLoading(true);
 
-      const response = await apiRequest("/api/admin/auth/login", {
+      const response = await apiRequest("/admin/auth/login", {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
@@ -54,7 +56,6 @@ export default function LoginPage() {
 
   return (
     <div style={styles.screen}>
-      {/* Background */}
       <Image
         src="/images/login-bg.jpg"
         alt="Background"
@@ -63,25 +64,31 @@ export default function LoginPage() {
         style={styles.backgroundImage}
       />
 
-      {/* Overlay */}
       <div style={styles.overlay} />
 
-      {/* Logo */}
-      <div style={styles.logo}>SURERIDE</div>
+      <div style={styles.logo}>
+        <Image
+          src={logoIcon}
+          alt="Sureride icon"
+          priority
+          style={styles.logoMiniIcon}
+        />
+        <Image src={logoNameWhite} alt="Sureride" priority style={styles.logoName} />
+      </div>
 
-      {/* Card wrapper */}
       <div style={styles.cardWrapper}>
         <div style={styles.card}>
-          {/* Icon */}
           <div style={styles.iconWrapper}>
-            <div style={styles.iconCircle}>
-              <span style={styles.iconText}>S</span>
-            </div>
+            <Image
+              src={logoIcon}
+              alt="Sureride logo icon"
+              priority
+              style={styles.brandIcon}
+            />
           </div>
 
           <h2 style={styles.title}>ADMIN LOGIN</h2>
 
-          {/* Email */}
           <div style={styles.inputGroup}>
             <label style={styles.label}>Username</label>
             <input
@@ -92,7 +99,6 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* Password */}
           <div style={{ ...styles.inputGroup, position: "relative" }}>
             <label style={styles.label}>Password</label>
             <input
@@ -111,7 +117,6 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {/* Submit */}
           <button
             onClick={handleLogin}
             disabled={loading}

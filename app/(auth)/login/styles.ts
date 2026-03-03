@@ -23,10 +23,20 @@ export const logo: CSSProperties = {
   top: 32,
   left: 40,
   zIndex: 2,
-  color: "#FFFFFF",
-  fontSize: 20,
-  fontWeight: 600,
-  letterSpacing: 1,
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+};
+
+export const logoMiniIcon: CSSProperties = {
+  width: 50,
+  height: 50,
+  objectFit: "contain",
+};
+
+export const logoName: CSSProperties = {
+  width: 170,
+  height: "auto",
 };
 
 export const cardWrapper: CSSProperties = {
@@ -57,19 +67,10 @@ export const iconWrapper: CSSProperties = {
   marginBottom: 24,
 };
 
-export const iconCircle: CSSProperties = {
-  width: 64,
-  height: 64,
-  borderRadius: "50%",
-  background: "rgba(255,255,255,0.15)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-};
-
-export const iconText: CSSProperties = {
-  fontSize: 24,
-  fontWeight: 700,
+export const brandIcon: CSSProperties = {
+  width: 68,
+  height: 68,
+  objectFit: "contain",
 };
 
 export const title: CSSProperties = {
@@ -142,11 +143,12 @@ export default {
   backgroundImage,
   overlay,
   logo,
+  logoMiniIcon,
+  logoName,
   cardWrapper,
   card,
   iconWrapper,
-  iconCircle,
-  iconText,
+  brandIcon,
   title,
   inputGroup,
   label,
