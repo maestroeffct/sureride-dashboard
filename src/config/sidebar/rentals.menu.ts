@@ -42,6 +42,11 @@ export const rentalsMenu: SidebarItem[] = [
         icon: sidebarIcons.cars,
       },
       {
+        label: "Add Car",
+        path: "/rentals/cars/new",
+        icon: sidebarIcons.addProvider,
+      },
+      {
         label: "Pending Approval",
         path: "/rentals/cars/pending",
         icon: sidebarIcons.pendingProviders,

@@ -215,6 +215,12 @@ const styles = {
     border: "1px solid rgba(250,204,21,0.22)",
   },
 
+  statusApproved: {
+    background: "rgba(34,197,94,0.14)",
+    color: "#86EFAC",
+    border: "1px solid rgba(34,197,94,0.22)",
+  },
+
   statusRejected: {
     background: "rgba(239,68,68,0.14)",
     color: "#FCA5A5",
@@ -225,6 +231,26 @@ const styles = {
     display: "flex",
     justifyContent: "flex-end",
     gap: 10,
+  },
+
+  approveBtn: {
+    border: "1px solid rgba(34,197,94,0.4)",
+    background: "rgba(34,197,94,0.16)",
+    color: "#86EFAC",
+    borderRadius: 8,
+    padding: "6px 10px",
+    fontSize: 12,
+    cursor: "pointer",
+  },
+
+  rejectBtn: {
+    border: "1px solid rgba(239,68,68,0.4)",
+    background: "rgba(239,68,68,0.16)",
+    color: "#FCA5A5",
+    borderRadius: 8,
+    padding: "6px 10px",
+    fontSize: 12,
+    cursor: "pointer",
   },
 
   iconBtn: bookingsTableTheme.iconBtn,

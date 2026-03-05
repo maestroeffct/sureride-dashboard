@@ -6,6 +6,7 @@ export default function ProviderStatusBadge({
   status: ProviderStatus;
 }) {
   const colors = {
+    draft: "#94A3B8",
     active: "#22C55E",
     pending: "#F59E0B",
     suspended: "#EF4444",
@@ -19,6 +20,7 @@ export default function ProviderStatusBadge({
         fontSize: 12,
         background: colors[status] + "22",
         color: colors[status],
+        textTransform: "capitalize",
       }}
     >
       {status}

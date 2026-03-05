@@ -1,4 +1,4 @@
-export type ProviderStatus = "active" | "pending" | "suspended";
+export type ProviderStatus = "draft" | "active" | "pending" | "suspended";
 
 export interface RentalProvider {
   id: string;
@@ -60,18 +60,18 @@ export interface ProviderDraftForm {
   confirmAccurate: boolean;
 }
 
-export type ProviderRequestStatus = "Pending" | "Approved" | "Rejected";
+export type ProviderRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export type ProviderRequestRow = {
   id: string;
   businessName: string;
-  businessType: string;
-  contactName: string;
+  businessType?: string;
+  contactName?: string;
   contactEmail: string;
-  contactPhone: string;
-  city: string;
-  state: string;
-  country: string;
+  contactPhone?: string;
+  city?: string;
+  state?: string;
+  country?: string;
   createdAt: string;
   status: ProviderRequestStatus;
 };

@@ -1,16 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 import { styles } from "./styles";
 import ProviderStepper from "@/src/components/rentals/providers/new/ProviderStepper";
 import StickyActionBar from "@/src/components/rentals/providers/new/StickyActionBar";
-
 import Step1BusinessInfo from "@/src/components/rentals/providers/new/steps/Step1BusinessInfo";
 import Step2ContactPerson from "@/src/components/rentals/providers/new/steps/Step2ContactPerson";
 import Step3LocationOps from "@/src/components/rentals/providers/new/steps/Step3LocationOps";
-// import Step4Documents from "@/src/components/rentals/providers/new/steps/Step4Documents";
-// import Step5Financials from "@/src/components/rentals/providers/new/steps/Step5Financials";
-// import Step6ReviewSubmit from "@/src/components/rentals/providers/new/steps/Step6ReviewSubmit";
 import {
   ProviderDraftForm,
   ProviderDraftStatus,
@@ -19,6 +17,7 @@ import {
 import Step4Documents from "@/src/components/rentals/providers/new/steps/Step4Documents";
 import Step5Financials from "@/src/components/rentals/providers/new/steps/Step5Financials";
 import Step6ReviewSubmit from "@/src/components/rentals/providers/new/steps/Step6ReviewSubmit";
+import { saveProviderDraft, submitProvider } from "@/src/lib/providersApi";
 
 const STEP_ORDER: StepKey[] = [
   "business",
@@ -30,9 +29,12 @@ const STEP_ORDER: StepKey[] = [
 ];
 
 export default function AddRentalProviderPage() {
+  const router = useRouter();
   const [status, setStatus] = useState<ProviderDraftStatus>("draft");
   const [activeStep, setActiveStep] = useState<StepKey>("business");
   const [stepperExpanded, setStepperExpanded] = useState(false);
+  const [providerId, setProviderId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState<ProviderDraftForm>({
     businessName: "",
@@ -67,7 +69,6 @@ export default function AddRentalProviderPage() {
   const setField = (key: keyof ProviderDraftForm, value: any) =>
     setForm((p) => ({ ...p, [key]: value }));
 
-  // ✅ Step validation gates (Next disabled until valid)
   const stepValidity = useMemo(() => {
     const businessValid =
       form.businessName.trim().length > 1 && !!form.businessType;
@@ -104,18 +105,18 @@ export default function AddRentalProviderPage() {
   const canGoNext = stepValidity[activeStep];
 
   const goNext = () => {
-    if (!canGoNext) return;
+    if (!canGoNext || saving) return;
     const next = STEP_ORDER[Math.min(stepIndex + 1, STEP_ORDER.length - 1)];
     setActiveStep(next);
   };
 
   const goPrev = () => {
+    if (saving) return;
     const prev = STEP_ORDER[Math.max(stepIndex - 1, 0)];
     setActiveStep(prev);
   };
 
   const completedSteps = useMemo(() => {
-    // completed = those before current that are valid
     const map: Record<StepKey, boolean> = {
       business: stepValidity.business,
       contact: stepValidity.contact,
@@ -127,6 +128,75 @@ export default function AddRentalProviderPage() {
 
     return map;
   }, [stepValidity]);
+
+  const buildDraftPayload = () => {
+    const cleanPhone = form.contactPhone.trim();
+    const fullPhone = cleanPhone.startsWith("+")
+      ? cleanPhone
+      : `${form.contactDialCode}${cleanPhone}`;
+
+    return {
+      id: providerId ?? undefined,
+      name: form.businessName.trim(),
+      email: form.contactEmail.trim().toLowerCase(),
+      phone: fullPhone,
+      contactPersonName: form.contactName.trim() || undefined,
+      contactPersonRole: form.contactRole.trim() || undefined,
+      contactPersonPhone: fullPhone,
+      businessAddress: [form.city, form.state, form.country]
+        .filter(Boolean)
+        .join(", "),
+      bankName: form.bankName.trim() || undefined,
+      bankAccountName: form.accountName.trim() || undefined,
+      bankAccountNumber: form.accountNumber.trim() || undefined,
+    };
+  };
+
+  const handleSaveDraft = async () => {
+    if (saving) return;
+
+    try {
+      setSaving(true);
+      const payload = buildDraftPayload();
+      const draft = await saveProviderDraft(payload);
+      setProviderId(draft.id);
+      setStatus(draft.status === "pending" ? "pending" : "draft");
+      toast.success("Draft saved");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save draft";
+      toast.error(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (saving) return;
+
+    if (!stepValidity.review) {
+      toast.error("Complete the review confirmations before submitting");
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      const payload = buildDraftPayload();
+      const draft = await saveProviderDraft(payload);
+      const submitted = await submitProvider(draft.id);
+
+      setProviderId(submitted.provider.id);
+      setStatus("pending");
+
+      toast.success("Provider submitted for admin approval");
+      router.push("/rentals/providers");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to submit";
+      toast.error(message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const renderStep = () => {
     switch (activeStep) {
@@ -155,7 +225,6 @@ export default function AddRentalProviderPage() {
 
   return (
     <div style={styles.page}>
-      {/* Top bar */}
       <div style={styles.topBar}>
         <button style={styles.backBtn} onClick={() => history.back()}>
           ← Back to Providers
@@ -164,17 +233,13 @@ export default function AddRentalProviderPage() {
         <div style={styles.topBarRight}>
           <div>
             <h1 style={styles.title}>Add Rental Provider</h1>
-            <p style={styles.subtitle}>
-              Manually onboard a new rental provider
-            </p>
+            <p style={styles.subtitle}>Manually onboard a new rental provider</p>
           </div>
 
           <span
             style={{
               ...styles.statusBadge,
-              ...(status === "draft"
-                ? styles.statusDraft
-                : styles.statusPending),
+              ...(status === "draft" ? styles.statusDraft : styles.statusPending),
             }}
           >
             {status === "draft" ? "Draft" : "Pending"}
@@ -182,7 +247,6 @@ export default function AddRentalProviderPage() {
         </div>
       </div>
 
-      {/* Body: Stepper + Content */}
       <div
         style={{
           ...styles.body,
@@ -195,32 +259,23 @@ export default function AddRentalProviderPage() {
             completed={completedSteps}
             expanded={stepperExpanded}
             onHoverChange={setStepperExpanded}
-            onSelect={(s) => setActiveStep(s)}
+            onSelect={(s) => !saving && setActiveStep(s)}
           />
         </div>
 
         <div style={styles.right}>{renderStep()}</div>
       </div>
 
-      {/* Sticky Action Bar */}
       <StickyActionBar
         status={status}
-        canGoNext={canGoNext}
+        canGoNext={canGoNext && !saving}
         isFirst={stepIndex === 0}
         isLast={stepIndex === STEP_ORDER.length - 1}
         onPrev={goPrev}
         onNext={goNext}
         onCancel={() => history.back()}
-        onSaveDraft={() => {
-          // 🔌 API later: save draft
-          setStatus("draft");
-          alert("Saved as draft (wire API later).");
-        }}
-        onSubmit={() => {
-          // 🔌 API later: submit -> pending + redirect
-          setStatus("pending");
-          alert("Submitted for approval (wire API + redirect next).");
-        }}
+        onSaveDraft={handleSaveDraft}
+        onSubmit={handleSubmit}
       />
     </div>
   );

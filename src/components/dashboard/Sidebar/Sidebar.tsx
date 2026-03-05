@@ -162,7 +162,8 @@ const styles: {
 } = {
   sidebar: {
     width: 260,
-    height: "100vh",
+    height: "100%",
+    minHeight: 0,
     background: "var(--sidebar-bg)",
     borderRight: "1px solid var(--sidebar-border)",
     display: "flex",

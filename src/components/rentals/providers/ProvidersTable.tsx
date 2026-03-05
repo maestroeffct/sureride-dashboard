@@ -36,8 +36,12 @@ const COLUMNS = [
 
 export default function ProvidersTable({
   providers,
+  loading = false,
+  onMutated,
 }: {
   providers: RentalProvider[];
+  loading?: boolean;
+  onMutated?: () => Promise<void> | void;
 }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [sortKey, setSortKey] = useState<SortKey>(null);
@@ -86,7 +90,7 @@ export default function ProvidersTable({
 
   const toggleSelectOne = (id: string) => {
     setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   };
 
@@ -143,7 +147,13 @@ export default function ProvidersTable({
           </thead>
 
           <tbody>
-            {sortedProviders.length === 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={COLUMNS.length} style={styles.emptyCell}>
+                  Loading providers...
+                </td>
+              </tr>
+            ) : sortedProviders.length === 0 ? (
               <tr>
                 <td colSpan={COLUMNS.length} style={styles.emptyCell}>
                   <div style={styles.emptyContent}>
@@ -166,16 +176,16 @@ export default function ProvidersTable({
                   </td>
 
                   <td style={styles.tdStrong}>{p.name}</td>
-                  <td style={styles.td}>{p.contactPerson}</td>
+                  <td style={styles.td}>{p.contactPerson || "-"}</td>
 
                   <td style={styles.td}>
                     <div style={styles.twoLine}>
                       <span style={styles.primaryText}>{p.email}</span>
-                      <span style={styles.secondaryText}>{p.phone}</span>
+                      <span style={styles.secondaryText}>{p.phone || "-"}</span>
                     </div>
                   </td>
 
-                  <td style={styles.td}>{p.city}</td>
+                  <td style={styles.td}>{p.city || "-"}</td>
                   <td style={styles.td}>{p.totalCars}</td>
                   <td style={styles.td}>{p.activeCars}</td>
                   <td style={styles.td}>{p.pendingCars}</td>
@@ -189,7 +199,7 @@ export default function ProvidersTable({
                   </td>
 
                   <td style={styles.tdRight}>
-                    <ProvidersActions provider={p} />
+                    <ProvidersActions provider={p} onMutated={onMutated} />
                   </td>
                 </tr>
               ))
