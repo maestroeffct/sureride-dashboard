@@ -1,14 +1,19 @@
+"use client";
+
 import type { CSSProperties } from "react";
 import Sidebar from "@/src/components/dashboard/Sidebar/Sidebar";
+import { useLayoutUI } from "@/src/hooks/useLayoutUI";
 
 export default function RentalsLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { sidebarCollapsed } = useLayoutUI();
+
   return (
     <div style={styles.wrapper}>
-      <Sidebar module="rentals" />
+      <Sidebar module="rentals" collapsed={sidebarCollapsed} />
       <main style={styles.main}>{children}</main>
     </div>
   );

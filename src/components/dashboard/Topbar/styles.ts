@@ -17,6 +17,24 @@ const left: CSSProperties = {
   gap: 10,
 };
 
+const menuButton: CSSProperties = {
+  width: 38,
+  height: 38,
+  borderRadius: 10,
+  border: "1px solid var(--topbar-chip-border)",
+  background: "var(--topbar-chip-bg)",
+  color: "var(--topbar-icon-color)",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+const menuButtonActive: CSSProperties = {
+  background: "var(--topbar-icon-active-bg)",
+  color: "var(--topbar-icon-active-fg)",
+};
+
 const brandIcon: CSSProperties = {
   width: 34,
   height: 34,
@@ -133,6 +151,8 @@ const dropdownDivider: CSSProperties = {
 export default {
   container,
   left,
+  menuButton,
+  menuButtonActive,
   brandIcon,
   brandName,
   right,

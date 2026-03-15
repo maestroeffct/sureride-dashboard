@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { RequireAdmin } from "@/src/components/auth/RequireAdmin";
 import Topbar from "@/src/components/dashboard/Topbar/Topbar";
+import { LayoutUIProvider } from "@/src/providers/LayoutUIProvider";
 
 export default function DashboardLayout({
   children,
@@ -9,12 +10,14 @@ export default function DashboardLayout({
 }) {
   return (
     <RequireAdmin>
-      <div style={styles.wrapper}>
-        <div style={styles.main}>
-          <Topbar />
-          <div style={styles.content}>{children}</div>
+      <LayoutUIProvider>
+        <div style={styles.wrapper}>
+          <div style={styles.main}>
+            <Topbar />
+            <div style={styles.content}>{children}</div>
+          </div>
         </div>
-      </div>
+      </LayoutUIProvider>
     </RequireAdmin>
   );
 }

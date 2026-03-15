@@ -8,13 +8,33 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function Sidebar({ module }: { module: SidebarModule }) {
+export default function Sidebar({
+  module,
+  collapsed = false,
+}: {
+  module: SidebarModule;
+  collapsed?: boolean;
+}) {
   const pathname = usePathname();
   const menu = sidebarMenus[module];
 
   return (
-    <aside style={styles.sidebar}>
-      <div style={styles.scrollArea}>
+    <aside
+      style={{
+        ...styles.sidebar,
+        width: collapsed ? 0 : 260,
+        minWidth: collapsed ? 0 : 260,
+        borderRight: collapsed ? "none" : "1px solid var(--sidebar-border)",
+        opacity: collapsed ? 0 : 1,
+      }}
+      aria-hidden={collapsed}
+    >
+      <div
+        style={{
+          ...styles.scrollArea,
+          pointerEvents: collapsed ? "none" : "auto",
+        }}
+      >
         {menu.map((item) => (
           <SidebarItemView
             key={item.label}
@@ -169,6 +189,7 @@ const styles: {
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
+    transition: "width 220ms ease, opacity 180ms ease, border-color 180ms ease",
   },
 
   scrollArea: {

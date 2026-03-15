@@ -66,6 +66,22 @@ export const rentalsMenu: SidebarItem[] = [
     icon: sidebarIcons.bookings,
   },
   {
+    label: "Users",
+    icon: sidebarIcons.users,
+    children: [
+      {
+        label: "All Users",
+        path: "/rentals/users",
+        icon: sidebarIcons.users,
+      },
+      {
+        label: "Add User",
+        path: "/rentals/users/new",
+        icon: sidebarIcons.addProvider,
+      },
+    ],
+  },
+  {
     label: "Issues & Claims",
     path: "/rentals/issues",
     icon: sidebarIcons.claims,
