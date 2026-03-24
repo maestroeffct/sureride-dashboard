@@ -2,9 +2,26 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Check, ChevronDown, Download, Flag, Search } from "lucide-react";
+import {
+  Ban,
+  Check,
+  ChevronDown,
+  Download,
+  Flag,
+  RotateCcw,
+  Search,
+  ShieldOff,
+} from "lucide-react";
 import toast from "react-hot-toast";
-import { listCars } from "@/src/lib/carsApi";
+import {
+  activateAdminCar,
+  approveAdminCar,
+  deactivateAdminCar,
+  flagAdminCar,
+  listCars,
+  rejectAdminCar,
+  unflagAdminCar,
+} from "@/src/lib/carsApi";
 import { bookingsTableTheme } from "@/src/components/rentals/table/sharedTableStyles";
 import type { DashboardCarStatus, RentalCarRow } from "@/src/types/rentalCar";
 
@@ -13,75 +30,235 @@ type ViewMode = "all" | "pending" | "flagged";
 export default function CarsManagementView({ mode }: { mode: ViewMode }) {
   const [cars, setCars] = useState<RentalCarRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [total, setTotal] = useState(0);
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
-  const [provider, setProvider] = useState("");
-  const [city, setCity] = useState("");
 
   const title =
     mode === "all"
       ? "All Cars"
       : mode === "pending"
-      ? "Pending Car Approval"
-      : "Flagged Cars";
+        ? "Pending Car Approval"
+        : "Flagged Cars";
 
   const subtitle =
     mode === "all"
       ? "Monitor all cars across providers"
       : mode === "pending"
-      ? "Cars awaiting moderation/approval"
-      : "Cars that require review or action";
+        ? "Cars awaiting moderation and approval"
+        : "Cars that require review or corrective action";
+
+  const effectiveStatus =
+    mode === "pending"
+      ? "pending"
+      : mode === "flagged"
+        ? "flagged"
+        : status;
 
   const loadCars = useCallback(async () => {
     try {
       setLoading(true);
-      const rows = await listCars();
-      setCars(rows);
+      const response = await listCars({
+        q: search.trim() || undefined,
+        status: effectiveStatus as DashboardCarStatus | "",
+        page: 1,
+        limit: 100,
+      });
+      setCars(response.items);
+      setTotal(response.meta.total);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load cars";
       toast.error(message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [effectiveStatus, search]);
 
   useEffect(() => {
     void loadCars();
   }, [loadCars]);
 
-  const visibleCars = useMemo(() => {
-    const modeStatus: DashboardCarStatus | "" =
-      mode === "all" ? "" : mode === "pending" ? "pending" : "flagged";
+  const visibleCars = useMemo(() => cars, [cars]);
 
-    return cars.filter((car) => {
-      if (modeStatus && car.dashboardStatus !== modeStatus) return false;
-      if (status && car.dashboardStatus !== status) return false;
+  const runAction = async (
+    key: string,
+    action: () => Promise<{ message: string } | { message?: string }>,
+    successMessage: string,
+  ) => {
+    try {
+      setProcessingId(key);
+      const response = await action();
+      toast.success(response.message || successMessage);
+      await loadCars();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Action failed";
+      toast.error(message);
+    } finally {
+      setProcessingId(null);
+    }
+  };
 
-      const matchSearch = `${car.brand} ${car.model} ${car.providerName}`
-        .toLowerCase()
-        .includes(search.toLowerCase());
-      if (!matchSearch) return false;
+  const handleApprove = (car: RentalCarRow) => {
+    const note = window.prompt("Approval note (optional):", car.moderationNote || "");
+    if (note === null) return;
 
-      if (
-        provider &&
-        !car.providerName.toLowerCase().includes(provider.toLowerCase())
-      ) {
-        return false;
-      }
+    void runAction(
+      `${car.id}:approve`,
+      () => approveAdminCar(car.id, note.trim() || undefined),
+      "Car approved",
+    );
+  };
 
-      if (city && !car.city.toLowerCase().includes(city.toLowerCase())) {
-        return false;
-      }
+  const handleReject = (car: RentalCarRow) => {
+    const reason = window.prompt(
+      "Reason for rejection:",
+      car.moderationNote || "Car details need review.",
+    );
+    if (!reason || reason.trim().length < 2) return;
 
-      return true;
-    });
-  }, [cars, city, mode, provider, search, status]);
+    void runAction(
+      `${car.id}:reject`,
+      () => rejectAdminCar(car.id, reason.trim()),
+      "Car rejected",
+    );
+  };
 
-  const onAction = (label: string, carId: string) => {
-    toast(
-      `${label} for ${carId}. Backend action endpoint is still required for this operation.`,
+  const handleFlag = (car: RentalCarRow) => {
+    const reason = window.prompt(
+      "Reason for flagging:",
+      car.flaggedReason || "This listing needs admin review.",
+    );
+    if (!reason || reason.trim().length < 2) return;
+
+    void runAction(
+      `${car.id}:flag`,
+      () => flagAdminCar(car.id, reason.trim()),
+      "Car flagged",
+    );
+  };
+
+  const handleUnflag = (car: RentalCarRow) => {
+    const note = window.prompt(
+      "Unflag note (optional):",
+      car.moderationNote || "Resolved and restored.",
+    );
+    if (note === null) return;
+
+    void runAction(
+      `${car.id}:unflag`,
+      () => unflagAdminCar(car.id, note.trim() || undefined),
+      "Car unflagged",
+    );
+  };
+
+  const handleDeactivate = (car: RentalCarRow) => {
+    const reason = window.prompt(
+      "Reason for deactivation (optional):",
+      car.moderationNote || "Temporarily removed from active listings.",
+    );
+    if (reason === null) return;
+
+    void runAction(
+      `${car.id}:deactivate`,
+      () => deactivateAdminCar(car.id, reason.trim() || undefined),
+      "Car deactivated",
+    );
+  };
+
+  const handleActivate = (car: RentalCarRow) => {
+    void runAction(
+      `${car.id}:activate`,
+      () => activateAdminCar(car.id),
+      "Car activated",
+    );
+  };
+
+  const renderActions = (car: RentalCarRow) => {
+    const isBusy = processingId?.startsWith(car.id);
+
+    if (car.dashboardStatus === "pending") {
+      return (
+        <div style={styles.actions}>
+          <button
+            type="button"
+            style={{ ...styles.actionBtn, ...styles.approveBtn }}
+            onClick={() => handleApprove(car)}
+            disabled={Boolean(isBusy)}
+            title="Approve"
+          >
+            <Check size={15} />
+            <span>{isBusy ? "Working..." : "Approve"}</span>
+          </button>
+          <button
+            type="button"
+            style={{ ...styles.actionBtn, ...styles.rejectBtn }}
+            onClick={() => handleReject(car)}
+            disabled={Boolean(isBusy)}
+            title="Reject"
+          >
+            <Ban size={15} />
+            <span>Reject</span>
+          </button>
+        </div>
+      );
+    }
+
+    if (car.dashboardStatus === "flagged") {
+      return (
+        <div style={styles.actions}>
+          <button
+            type="button"
+            style={{ ...styles.actionBtn, ...styles.restoreBtn }}
+            onClick={() => handleUnflag(car)}
+            disabled={Boolean(isBusy)}
+            title="Unflag"
+          >
+            <RotateCcw size={15} />
+            <span>{isBusy ? "Working..." : "Unflag"}</span>
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div style={styles.actions}>
+        <button
+          type="button"
+          style={{ ...styles.actionBtn, ...styles.flagBtn }}
+          onClick={() => handleFlag(car)}
+          disabled={Boolean(isBusy)}
+          title="Flag"
+        >
+          <Flag size={15} />
+          <span>Flag</span>
+        </button>
+        {car.isActive ? (
+          <button
+            type="button"
+            style={{ ...styles.actionBtn, ...styles.rejectBtn }}
+            onClick={() => handleDeactivate(car)}
+            disabled={Boolean(isBusy)}
+            title="Deactivate"
+          >
+            <ShieldOff size={15} />
+            <span>{isBusy ? "Working..." : "Deactivate"}</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            style={{ ...styles.actionBtn, ...styles.approveBtn }}
+            onClick={() => handleActivate(car)}
+            disabled={Boolean(isBusy)}
+            title="Activate"
+          >
+            <Check size={15} />
+            <span>{isBusy ? "Working..." : "Activate"}</span>
+          </button>
+        )}
+      </div>
     );
   };
 
@@ -91,6 +268,7 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
         <div>
           <h1 style={styles.title}>{title}</h1>
           <p style={styles.subtitle}>{subtitle}</p>
+          <p style={styles.metaText}>{total.toLocaleString()} cars</p>
         </div>
 
         <div style={styles.headerActions}>
@@ -124,7 +302,7 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search cars / provider"
+            placeholder="Search brand / model"
             style={styles.searchInput}
           />
           <div style={styles.searchIconWrap}>
@@ -139,19 +317,6 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
           <option value="flagged">Flagged</option>
         </select>
 
-        <input
-          value={provider}
-          onChange={(e) => setProvider(e.target.value)}
-          placeholder="Provider"
-          style={styles.selectLikeInput}
-        />
-
-        <input
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-          placeholder="City"
-          style={styles.selectLikeInput}
-        />
       </div>
 
       <div style={styles.card}>
@@ -223,41 +388,24 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
                     </td>
 
                     <td style={styles.td}>
-                      <span
-                        style={{
-                          ...styles.statusPill,
-                          ...(car.dashboardStatus === "active"
-                            ? styles.statusActive
-                            : car.dashboardStatus === "pending"
-                            ? styles.statusPending
-                            : styles.statusFlagged),
-                        }}
-                      >
-                        {car.dashboardStatus}
-                      </span>
-                    </td>
-
-                    <td style={styles.tdRight}>
-                      <div style={styles.actions}>
-                        {car.dashboardStatus !== "active" ? (
-                          <button
-                            style={styles.iconBtn}
-                            onClick={() => onAction("Approve", car.id)}
-                            title="Approve"
-                          >
-                            <Check size={16} />
-                          </button>
-                        ) : (
-                          <button
-                            style={styles.iconBtn}
-                            onClick={() => onAction("Flag", car.id)}
-                            title="Flag"
-                          >
-                            <Flag size={16} />
-                          </button>
-                        )}
+                      <div style={styles.twoLine}>
+                        <span
+                          style={{
+                            ...styles.statusPill,
+                            ...(car.dashboardStatus === "active"
+                              ? styles.statusActive
+                              : car.dashboardStatus === "pending"
+                                ? styles.statusPending
+                                : styles.statusFlagged),
+                          }}
+                        >
+                          {car.dashboardStatus}
+                        </span>
+                        <span style={styles.secondaryText}>{car.backendStatus}</span>
                       </div>
                     </td>
+
+                    <td style={styles.tdRight}>{renderActions(car)}</td>
                   </tr>
                 ))
               )}
@@ -280,6 +428,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
+    gap: 16,
   },
   title: {
     fontSize: 22,
@@ -291,6 +440,11 @@ const styles: Record<string, React.CSSProperties> = {
     margin: 0,
     fontSize: 13,
     color: "var(--fg-60)",
+  },
+  metaText: {
+    margin: "6px 0 0",
+    fontSize: 12,
+    color: "var(--fg-55)",
   },
   headerActions: {
     display: "flex",
@@ -342,7 +496,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#fff",
     borderRadius: 8,
     textDecoration: "none",
-    fontWeight: 500,
+    fontWeight: 600,
     cursor: "pointer",
   },
   filtersRow: {
@@ -415,14 +569,45 @@ const styles: Record<string, React.CSSProperties> = {
   twoLine: bookingsTableTheme.twoLine,
   primaryText: bookingsTableTheme.primaryText,
   secondaryText: bookingsTableTheme.secondaryText,
-  iconBtn: bookingsTableTheme.iconBtn,
+  emptyCell: bookingsTableTheme.emptyCell,
+  statusPill: bookingsTableTheme.statusPill,
   actions: {
     display: "flex",
     justifyContent: "flex-end",
-    gap: 10,
+    gap: 8,
+    flexWrap: "wrap",
   },
-  emptyCell: bookingsTableTheme.emptyCell,
-  statusPill: bookingsTableTheme.statusPill,
+  actionBtn: {
+    border: "none",
+    borderRadius: 8,
+    padding: "8px 10px",
+    cursor: "pointer",
+    fontSize: 12,
+    fontWeight: 700,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+  },
+  approveBtn: {
+    background: "rgba(34,197,94,0.16)",
+    color: "#86EFAC",
+    border: "1px solid rgba(34,197,94,0.22)",
+  },
+  rejectBtn: {
+    background: "rgba(239,68,68,0.16)",
+    color: "#FCA5A5",
+    border: "1px solid rgba(239,68,68,0.22)",
+  },
+  flagBtn: {
+    background: "rgba(245,158,11,0.16)",
+    color: "#FCD34D",
+    border: "1px solid rgba(245,158,11,0.22)",
+  },
+  restoreBtn: {
+    background: "rgba(59,130,246,0.16)",
+    color: "#93C5FD",
+    border: "1px solid rgba(59,130,246,0.22)",
+  },
   statusActive: {
     background: "rgba(34,197,94,0.14)",
     color: "#86EFAC",

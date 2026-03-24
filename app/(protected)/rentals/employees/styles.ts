@@ -6,7 +6,7 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: 18,
-    maxWidth: 1280,
+    maxWidth: 1320,
   },
 
   header: {
@@ -35,47 +35,26 @@ const styles = {
     gap: 10,
   },
 
-  exportWrap: {
-    position: "relative",
-  },
-
-  exportButton: {
+  actionBtn: {
     height: 44,
-    padding: "0 14px",
     borderRadius: 12,
     border: "1px solid var(--glass-10)",
     background: "var(--glass-06)",
     color: "var(--foreground)",
+    padding: "0 14px",
     cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
     fontSize: 14,
     fontWeight: 600,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    textDecoration: "none",
   },
 
-  exportDropdown: {
-    position: "absolute",
-    top: 50,
-    right: 0,
-    width: 180,
-    borderRadius: 12,
-    border: "1px solid var(--glass-10)",
-    background: "rgba(16,18,24,0.98)",
-    boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
-    overflow: "hidden",
-    zIndex: 50,
-  },
-
-  exportItem: {
-    width: "100%",
-    padding: "12px 12px",
-    textAlign: "left",
-    border: "none",
-    background: "transparent",
-    color: "var(--foreground)",
-    cursor: "pointer",
-    fontSize: 13,
+  primaryBtn: {
+    border: "1px solid rgba(34,197,94,0.4)",
+    background: "rgba(34,197,94,0.16)",
+    color: "#86EFAC",
   },
 
   filtersRow: {
@@ -120,7 +99,7 @@ const styles = {
 
   select: {
     height: 44,
-    minWidth: 176,
+    minWidth: 170,
     padding: "0 14px",
     borderRadius: 12,
     border: "1px solid var(--glass-10)",
@@ -135,7 +114,7 @@ const styles = {
 
   table: {
     ...bookingsTableTheme.table,
-    minWidth: 1320,
+    minWidth: 1300,
   },
 
   theadRow: bookingsTableTheme.theadRow,
@@ -153,7 +132,6 @@ const styles = {
   },
 
   tr: bookingsTableTheme.tr,
-  trHover: bookingsTableTheme.trHover,
 
   td: {
     ...bookingsTableTheme.td,
@@ -167,16 +145,16 @@ const styles = {
     borderBottom: "1px solid var(--glass-08)",
   },
 
-  twoLine: bookingsTableTheme.twoLine,
-
-  primary: {
-    fontWeight: 800,
+  roleSelect: {
+    height: 36,
+    minWidth: 170,
+    borderRadius: 10,
+    border: "1px solid var(--glass-10)",
+    background: "var(--glass-06)",
     color: "var(--foreground)",
-  },
-
-  secondary: {
+    padding: "0 10px",
     fontSize: 12,
-    color: "var(--fg-55)",
+    outline: "none",
   },
 
   statusPill: {
@@ -184,49 +162,13 @@ const styles = {
     fontWeight: 700,
   },
 
-  profileIncomplete: {
-    background: "rgba(148,163,184,0.15)",
-    color: "#CBD5E1",
-    border: "1px solid rgba(148,163,184,0.28)",
-  },
-
-  profilePending: {
-    background: "rgba(250,204,21,0.14)",
-    color: "#FDE68A",
-    border: "1px solid rgba(250,204,21,0.24)",
-  },
-
-  profileVerified: {
+  statusActive: {
     background: "rgba(34,197,94,0.14)",
     color: "#86EFAC",
     border: "1px solid rgba(34,197,94,0.22)",
   },
 
-  profileRejected: {
-    background: "rgba(239,68,68,0.14)",
-    color: "#FCA5A5",
-    border: "1px solid rgba(239,68,68,0.22)",
-  },
-
-  kycNone: {
-    background: "rgba(99,102,241,0.16)",
-    color: "#C7D2FE",
-    border: "1px solid rgba(99,102,241,0.28)",
-  },
-
-  kycPending: {
-    background: "rgba(250,204,21,0.14)",
-    color: "#FDE68A",
-    border: "1px solid rgba(250,204,21,0.24)",
-  },
-
-  kycVerified: {
-    background: "rgba(34,197,94,0.14)",
-    color: "#86EFAC",
-    border: "1px solid rgba(34,197,94,0.22)",
-  },
-
-  kycRejected: {
+  statusSuspended: {
     background: "rgba(239,68,68,0.14)",
     color: "#FCA5A5",
     border: "1px solid rgba(239,68,68,0.22)",
@@ -239,7 +181,7 @@ const styles = {
     flexWrap: "wrap",
   },
 
-  actionBtn: {
+  smallActionBtn: {
     borderRadius: 8,
     border: "1px solid var(--glass-10)",
     background: "var(--glass-06)",
@@ -254,149 +196,112 @@ const styles = {
     gap: 6,
   },
 
-  activateBtn: {
-    border: "1px solid rgba(34,197,94,0.4)",
-    background: "rgba(34,197,94,0.16)",
-    color: "#86EFAC",
-  },
-
   suspendBtn: {
     border: "1px solid rgba(239,68,68,0.4)",
     background: "rgba(239,68,68,0.16)",
     color: "#FCA5A5",
   },
 
-  verifyBtn: {
-    border: "1px solid rgba(59,130,246,0.45)",
-    background: "rgba(59,130,246,0.16)",
-    color: "#93C5FD",
-  },
-
-  resetPasswordBtn: {
-    border: "1px solid rgba(245,158,11,0.4)",
-    background: "rgba(245,158,11,0.16)",
-    color: "#FCD34D",
-  },
-
-  modalOverlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(3,8,20,0.64)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-    zIndex: 80,
-  },
-
-  resetModal: {
-    width: "100%",
-    maxWidth: 520,
-    borderRadius: 20,
-    border: "1px solid var(--glass-10)",
-    background: "rgba(10,14,22,0.98)",
-    boxShadow: "0 24px 80px rgba(0,0,0,0.42)",
-    padding: 22,
-    display: "flex",
-    flexDirection: "column",
-    gap: 16,
-  },
-
-  resetModalHeader: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-  },
-
-  resetModalTitle: {
-    margin: 0,
-    fontSize: 20,
-    fontWeight: 700,
-    color: "var(--foreground)",
-  },
-
-  resetModalText: {
-    margin: 0,
-    fontSize: 14,
-    lineHeight: 1.6,
-    color: "var(--fg-70)",
-  },
-
-  resetOptionRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    padding: "14px 16px",
-    borderRadius: 14,
-    border: "1px solid var(--glass-10)",
-    background: "var(--glass-06)",
-    cursor: "pointer",
-  },
-
-  resetCheckbox: {
-    width: 16,
-    height: 16,
-    accentColor: "#F59E0B",
-    cursor: "pointer",
-  },
-
-  resetOptionText: {
-    fontSize: 14,
-    fontWeight: 600,
-    color: "var(--foreground)",
-  },
-
-  resetHint: {
-    margin: 0,
-    fontSize: 13,
-    lineHeight: 1.6,
-    color: "var(--fg-60)",
-  },
-
-  resetModalActions: {
-    display: "flex",
-    justifyContent: "flex-end",
-    gap: 10,
-  },
-
-  resetCancelBtn: {
-    borderRadius: 10,
-    border: "1px solid var(--glass-10)",
-    background: "transparent",
-    color: "var(--foreground)",
-    padding: "10px 14px",
-    fontSize: 13,
-    fontWeight: 600,
-    cursor: "pointer",
-  },
-
-  resetConfirmBtn: {
-    borderRadius: 10,
-    border: "1px solid rgba(245,158,11,0.38)",
-    background: "rgba(245,158,11,0.18)",
-    color: "#FCD34D",
-    padding: "10px 14px",
-    fontSize: 13,
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-
-  kycApproveBtn: {
+  activateBtn: {
     border: "1px solid rgba(34,197,94,0.4)",
     background: "rgba(34,197,94,0.16)",
     color: "#86EFAC",
   },
 
-  kycRejectBtn: {
-    border: "1px solid rgba(239,68,68,0.4)",
-    background: "rgba(239,68,68,0.16)",
-    color: "#FCA5A5",
+  resetBtn: {
+    border: "1px solid rgba(59,130,246,0.45)",
+    background: "rgba(59,130,246,0.16)",
+    color: "#93C5FD",
   },
 
   empty: {
     ...bookingsTableTheme.emptyCell,
     padding: 44,
     borderBottom: "1px solid var(--glass-08)",
+  },
+
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.5)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 110,
+    padding: 16,
+  },
+
+  modalCard: {
+    width: "min(560px, 100%)",
+    borderRadius: 14,
+    border: "1px solid var(--glass-10)",
+    background: "var(--surface-2)",
+    padding: 18,
+    display: "flex",
+    flexDirection: "column",
+    gap: 14,
+    maxHeight: "85vh",
+    overflowY: "auto",
+  },
+
+  modalTitle: {
+    margin: 0,
+    fontSize: 20,
+    fontWeight: 700,
+  },
+
+  modalGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 12,
+  },
+
+  field: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+  },
+
+  label: {
+    fontSize: 12,
+    color: "var(--fg-70)",
+    fontWeight: 600,
+  },
+
+  input: {
+    height: 42,
+    borderRadius: 10,
+    border: "1px solid var(--glass-10)",
+    background: "var(--glass-06)",
+    color: "var(--foreground)",
+    padding: "0 10px",
+    outline: "none",
+    fontSize: 14,
+  },
+
+  checkboxRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    fontSize: 13,
+    color: "var(--fg-75)",
+  },
+
+  modalActions: {
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: 10,
+  },
+
+  ghostBtn: {
+    height: 40,
+    padding: "0 14px",
+    borderRadius: 10,
+    border: "1px solid var(--glass-10)",
+    background: "transparent",
+    color: "var(--foreground)",
+    cursor: "pointer",
+    fontWeight: 600,
   },
 } satisfies Record<string, CSSProperties>;
 

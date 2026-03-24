@@ -8,6 +8,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+const basePath = (path?: string) => path?.split("?")[0] ?? "";
+
 export default function Sidebar({
   module,
   collapsed = false,
@@ -35,14 +37,20 @@ export default function Sidebar({
           pointerEvents: collapsed ? "none" : "auto",
         }}
       >
-        {menu.map((item) => (
-          <SidebarItemView
-            key={item.label}
-            item={item}
-            pathname={pathname}
-            module={module}
-          />
-        ))}
+        {menu.map((item) =>
+          item.kind === "section" ? (
+            <div key={`section-${item.label}`} style={styles.sectionLabel}>
+              {item.label}
+            </div>
+          ) : (
+            <SidebarItemView
+              key={item.label}
+              item={item}
+              pathname={pathname}
+              module={module}
+            />
+          )
+        )}
       </div>
     </aside>
   );
@@ -61,8 +69,10 @@ function SidebarItemView({
 
   const hasActiveChild = useMemo(
     () =>
-      item.children?.some((child) => pathname.startsWith(child.path ?? "")) ??
-      false,
+      item.children?.some((child) => {
+        const childPath = basePath(child.path);
+        return childPath ? pathname.startsWith(childPath) : false;
+      }) ?? false,
     [item.children, pathname]
   );
 
@@ -85,7 +95,7 @@ function SidebarItemView({
     localStorage.setItem(storageKey, open ? "open" : "closed");
   }, [open, storageKey]);
 
-  const isActive = item.path && pathname === item.path;
+  const isActive = Boolean(item.path) && pathname === basePath(item.path);
 
   if (item.children) {
     return (
@@ -119,7 +129,11 @@ function SidebarItemView({
             >
               {item.children.map((child, index) => {
                 const ChildIcon = child.icon;
-                const active = pathname === child.path;
+                const active = pathname === basePath(child.path);
+
+                if (!child.path) {
+                  return null;
+                }
 
                 return (
                   <motion.div
@@ -132,7 +146,7 @@ function SidebarItemView({
                     }}
                   >
                     <Link
-                      href={child.path!}
+                      href={child.path}
                       style={{
                         ...styles.childItem,
                         background: active
@@ -156,9 +170,13 @@ function SidebarItemView({
     );
   }
 
+  if (!item.path) {
+    return null;
+  }
+
   return (
     <Link
-      href={item.path!}
+      href={item.path}
       style={{
         ...styles.item,
         background: isActive ? "var(--sidebar-item-active-bg)" : "transparent",
@@ -176,6 +194,7 @@ function SidebarItemView({
 const styles: {
   sidebar: React.CSSProperties;
   scrollArea: React.CSSProperties;
+  sectionLabel: React.CSSProperties;
   item: React.CSSProperties;
   groupButton: React.CSSProperties;
   childItem: React.CSSProperties;
@@ -202,6 +221,16 @@ const styles: {
     gap: 6,
   },
 
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: 700,
+    letterSpacing: 0.8,
+    color: "var(--sidebar-item-fg-muted)",
+    opacity: 0.85,
+    textTransform: "uppercase",
+    padding: "14px 10px 6px",
+  },
+
   item: {
     display: "flex",
     alignItems: "center",
@@ -210,6 +239,7 @@ const styles: {
     borderRadius: 10,
     fontSize: 14,
     textDecoration: "none",
+    cursor: "pointer",
   },
 
   groupButton: {
@@ -234,5 +264,6 @@ const styles: {
     borderRadius: 8,
     fontSize: 13,
     textDecoration: "none",
+    cursor: "pointer",
   },
 };

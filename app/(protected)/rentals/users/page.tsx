@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Download,
   Eye,
+  KeyRound,
   Search,
   ShieldCheck,
   XCircle,
@@ -17,6 +18,7 @@ import {
   approveAdminUserKyc,
   listAdminUsers,
   rejectAdminUserKyc,
+  resetAdminUserPassword,
   updateAdminUserStatus,
   updateAdminUserVerification,
 } from "@/src/lib/usersApi";
@@ -79,6 +81,8 @@ export default function UsersManagementPage() {
   const [activeFilter, setActiveFilter] = useState<"all" | "active" | "suspended">("all");
 
   const [exportOpen, setExportOpen] = useState(false);
+  const [resetTarget, setResetTarget] = useState<AdminUser | null>(null);
+  const [sendResetEmail, setSendResetEmail] = useState(true);
 
   const loadUsers = useCallback(async () => {
     try {
@@ -241,6 +245,35 @@ export default function UsersManagementPage() {
     }
   };
 
+
+  const handleResetPassword = async () => {
+    if (!resetTarget) return;
+
+    try {
+      setProcessingId(`${resetTarget.id}:reset-password`);
+      const response = await resetAdminUserPassword(resetTarget.id, {
+        sendEmail: sendResetEmail,
+      });
+      const expiry = response.temporaryPasswordExpiresAt
+        ? new Date(response.temporaryPasswordExpiresAt).toLocaleString()
+        : null;
+
+      toast.success(
+        response.emailSent
+          ? `Temporary password sent by email${expiry ? ` and expires ${expiry}` : ""}.`
+          : `Password reset initiated${expiry ? `. Temporary password expires ${expiry}` : "."}`,
+      );
+      setResetTarget(null);
+      setSendResetEmail(true);
+      await loadUsers();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to reset password";
+      toast.error(message);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   return (
     <div style={styles.page}>
       <div style={styles.header}>
@@ -369,6 +402,7 @@ export default function UsersManagementPage() {
                   const kycStatus = getKycStatus(user);
                   const activeBusy = processingId === `${user.id}:active`;
                   const verifyBusy = processingId === `${user.id}:verify`;
+                  const resetBusy = processingId === `${user.id}:reset-password`;
                   const approveKycBusy = processingId === `${user.id}:kyc-approve`;
                   const rejectKycBusy = processingId === `${user.id}:kyc-reject`;
                   const kycBusy = approveKycBusy || rejectKycBusy;
@@ -411,6 +445,23 @@ export default function UsersManagementPage() {
                             <Eye size={14} />
                             <span>View</span>
                           </Link>
+
+                          <button
+                            type="button"
+                            style={{
+                              ...styles.actionBtn,
+                              ...styles.resetPasswordBtn,
+                              opacity: resetBusy ? 0.65 : 1,
+                            }}
+                            onClick={() => {
+                              setResetTarget(user);
+                              setSendResetEmail(true);
+                            }}
+                            disabled={resetBusy}
+                          >
+                            <KeyRound size={14} />
+                            <span>Reset Password</span>
+                          </button>
 
                           {kycStatus === "PENDING_VERIFICATION" && (
                             <>
@@ -481,6 +532,61 @@ export default function UsersManagementPage() {
           </table>
         </div>
       </div>
+
+
+      {resetTarget ? (
+        <div style={styles.modalOverlay}>
+          <div style={styles.resetModal}>
+            <div style={styles.resetModalHeader}>
+              <h3 style={styles.resetModalTitle}>Reset User Password</h3>
+              <p style={styles.resetModalText}>
+                Reset password for <strong>{resetTarget.firstName} {resetTarget.lastName}</strong>.
+                This will invalidate the user&apos;s active sessions and issue a temporary password.
+              </p>
+            </div>
+
+            <label style={styles.resetOptionRow}>
+              <input
+                type="checkbox"
+                checked={sendResetEmail}
+                onChange={(event) => setSendResetEmail(event.target.checked)}
+                style={styles.resetCheckbox}
+              />
+              <span style={styles.resetOptionText}>
+                Email the temporary password to the user immediately
+              </span>
+            </label>
+
+            <p style={styles.resetHint}>
+              {sendResetEmail
+                ? "The backend will attempt to send the temporary password by email."
+                : "The password will be reset without email delivery. Use this only if you have another secure channel."}
+            </p>
+
+            <div style={styles.resetModalActions}>
+              <button
+                type="button"
+                style={styles.resetCancelBtn}
+                onClick={() => {
+                  if (processingId === `${resetTarget.id}:reset-password`) return;
+                  setResetTarget(null);
+                  setSendResetEmail(true);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                style={styles.resetConfirmBtn}
+                onClick={() => void handleResetPassword()}
+                disabled={processingId === `${resetTarget.id}:reset-password`}
+              >
+                {processingId === `${resetTarget.id}:reset-password` ? "Resetting..." : "Reset Password"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

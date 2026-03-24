@@ -59,6 +59,11 @@ html[data-theme="dark"] {
   --input-fg: #e5e7eb;
 
   --module-card-bg: linear-gradient(180deg, #0f172a, #020617);
+  --control-accent: #1275c5;
+  --control-bg: #061b13;
+  --control-border: rgba(229, 231, 235, 0.35);
+  --control-border-hover: rgba(18, 117, 197, 0.65);
+  --control-mark: #ffffff;
 }
 
 html[data-theme="light"] {
@@ -119,6 +124,11 @@ html[data-theme="light"] {
   --input-fg: #0f172a;
 
   --module-card-bg: linear-gradient(180deg, #ffffff, #f8fafc);
+  --control-accent: #1275c5;
+  --control-bg: #ffffff;
+  --control-border: #a3b2c6;
+  --control-border-hover: #1275c5;
+  --control-mark: #ffffff;
 }
 
 @theme inline {
@@ -132,4 +142,102 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-poppins), system-ui, sans-serif;
+}
+
+
+input[type="checkbox"],
+input[type="radio"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border: 1.5px solid var(--control-border);
+  background: var(--control-bg);
+  display: inline-grid;
+  place-content: center;
+  position: relative;
+  flex-shrink: 0;
+  cursor: pointer;
+  vertical-align: middle;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.12s ease;
+}
+
+input[type="checkbox"] {
+  border-radius: 5px;
+}
+
+input[type="radio"] {
+  border-radius: 999px;
+}
+
+input[type="checkbox"]:hover,
+input[type="radio"]:hover {
+  border-color: var(--control-border-hover);
+}
+
+input[type="checkbox"]:active,
+input[type="radio"]:active {
+  transform: scale(0.96);
+}
+
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
+  background: var(--control-accent);
+  border-color: var(--control-accent);
+}
+
+input[type="checkbox"]::after {
+  content: "";
+  width: 6px;
+  height: 10px;
+  border-right: 2px solid var(--control-mark);
+  border-bottom: 2px solid var(--control-mark);
+  transform: rotate(45deg) scale(0);
+  transform-origin: center;
+  transition: transform 0.14s ease;
+}
+
+input[type="checkbox"]:checked::after {
+  transform: rotate(45deg) scale(1);
+}
+
+input[type="checkbox"]:indeterminate::after {
+  width: 9px;
+  height: 0;
+  border-right: 0;
+  border-bottom: 2px solid var(--control-mark);
+  transform: scale(1);
+}
+
+input[type="radio"]::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--control-mark);
+  transform: scale(0);
+  transition: transform 0.14s ease;
+}
+
+input[type="radio"]:checked::after {
+  transform: scale(1);
+}
+
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--control-accent) 38%, transparent),
+    0 0 0 5px color-mix(in srgb, var(--control-accent) 18%, transparent);
+}
+
+input[type="checkbox"]:disabled,
+input[type="radio"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }

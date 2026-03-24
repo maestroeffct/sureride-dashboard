@@ -1,5 +1,12 @@
 export type DashboardCarStatus = "active" | "pending" | "flagged";
 
+export type BackendCarStatus =
+  | "DRAFT"
+  | "PENDING_APPROVAL"
+  | "APPROVED"
+  | "REJECTED"
+  | "FLAGGED";
+
 export type RentalCarRow = {
   id: string;
   brand: string;
@@ -20,6 +27,9 @@ export type RentalCarRow = {
   imageUrl: string;
   createdAt: string;
   dashboardStatus: DashboardCarStatus;
+  backendStatus: BackendCarStatus;
+  moderationNote: string | null;
+  flaggedReason: string | null;
 };
 
 export type RawCarApi = {
@@ -34,6 +44,9 @@ export type RawCarApi = {
   hourlyRate?: number | null;
   isActive?: boolean;
   createdAt?: string;
+  status?: BackendCarStatus;
+  moderationNote?: string | null;
+  flaggedReason?: string | null;
   provider?: {
     id?: string;
     name?: string;

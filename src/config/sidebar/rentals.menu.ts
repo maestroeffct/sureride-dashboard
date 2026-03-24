@@ -3,12 +3,24 @@ import { sidebarIcons } from "./icons";
 
 export const rentalsMenu: SidebarItem[] = [
   {
+    kind: "section",
+    label: "RENTALS CORE",
+  },
+  {
     label: "Overview",
     path: "/rentals",
     icon: sidebarIcons.overview,
   },
+  {
+    label: "Bookings",
+    path: "/rentals/bookings",
+    icon: sidebarIcons.bookings,
+  },
 
-  // PROVIDERS
+  {
+    kind: "section",
+    label: "NETWORK MANAGEMENT",
+  },
   {
     label: "Providers",
     icon: sidebarIcons.providers,
@@ -24,14 +36,12 @@ export const rentalsMenu: SidebarItem[] = [
         icon: sidebarIcons.addProvider,
       },
       {
-        label: "Providers Requests",
+        label: "Provider Requests",
         path: "/rentals/providers/requests",
         icon: sidebarIcons.pendingProviders,
       },
     ],
   },
-
-  // INVENTORY
   {
     label: "Cars Management",
     icon: sidebarIcons.cars,
@@ -58,13 +68,6 @@ export const rentalsMenu: SidebarItem[] = [
       },
     ],
   },
-
-  // OPERATIONS
-  {
-    label: "Bookings",
-    path: "/rentals/bookings",
-    icon: sidebarIcons.bookings,
-  },
   {
     label: "Users",
     icon: sidebarIcons.users,
@@ -81,34 +84,39 @@ export const rentalsMenu: SidebarItem[] = [
       },
     ],
   },
+
   {
-    label: "Issues & Claims",
-    path: "/rentals/issues",
-    icon: sidebarIcons.claims,
+    kind: "section",
+    label: "WORKFLOWS",
+  },
+  {
+    label: "Approval Queue",
+    icon: sidebarIcons.pendingProviders,
+    children: [
+      {
+        label: "Provider Requests",
+        path: "/rentals/providers/requests",
+        icon: sidebarIcons.pendingProviders,
+      },
+      {
+        label: "Pending Cars",
+        path: "/rentals/cars/pending",
+        icon: sidebarIcons.pendingProviders,
+      },
+      {
+        label: "Model Requests",
+        path: "/rentals/configuration/model-requests",
+        icon: sidebarIcons.settings,
+      },
+    ],
   },
 
-  // BUSINESS RULES
   {
-    label: "Pricing & Deposits",
-    path: "/rentals/pricing",
-    icon: sidebarIcons.pricing,
+    kind: "section",
+    label: "SYSTEM SETTINGS",
   },
   {
-    label: "Reviews & Ratings",
-    path: "/rentals/reviews",
-    icon: sidebarIcons.reviews,
-  },
-
-  // REPORTS
-  {
-    label: "Reports",
-    path: "/rentals/reports",
-    icon: sidebarIcons.reports,
-  },
-
-  // CONFIGURATION
-  {
-    label: "CONFIGURATION",
+    label: "Configuration",
     icon: sidebarIcons.settings,
     children: [
       {
@@ -129,6 +137,165 @@ export const rentalsMenu: SidebarItem[] = [
       {
         label: "Model Requests",
         path: "/rentals/configuration/model-requests",
+        icon: sidebarIcons.settings,
+      },
+    ],
+  },
+
+  {
+    kind: "section",
+    label: "ADMIN MODULES",
+  },
+  {
+    label: "Promotions Management",
+    icon: sidebarIcons.reports,
+    children: [
+      {
+        label: "Campaigns",
+        path: "/rentals/promotions/campaigns",
+        icon: sidebarIcons.reports,
+      },
+      {
+        label: "Coupons",
+        path: "/rentals/promotions/coupons",
+        icon: sidebarIcons.pricing,
+      },
+      {
+        label: "Promo Campaigns",
+        path: "/rentals/promotions/promo-campaigns",
+        icon: sidebarIcons.reviews,
+      },
+      {
+        label: "Cashback",
+        path: "/rentals/promotions/cashback",
+        icon: sidebarIcons.pricing,
+      },
+      {
+        label: "Banners",
+        path: "/rentals/promotions/banners",
+        icon: sidebarIcons.settings,
+      },
+      {
+        label: "Promotional Banner",
+        path: "/rentals/promotions/promotional-banner",
+        icon: sidebarIcons.settings,
+      },
+      {
+        label: "Advertisement",
+        path: "/rentals/promotions/advertisement",
+        icon: sidebarIcons.claims,
+      },
+      {
+        label: "Push Notification",
+        path: "/rentals/promotions/push-notification",
+        icon: sidebarIcons.pendingProviders,
+      },
+    ],
+  },
+  {
+    label: "Employee Management",
+    icon: sidebarIcons.users,
+    children: [
+      {
+        label: "Employee Role",
+        path: "/rentals/employees/roles",
+        icon: sidebarIcons.brand,
+      },
+      {
+        label: "Employees",
+        path: "/rentals/employees",
+        icon: sidebarIcons.users,
+      },
+    ],
+  },
+  {
+    label: "Business Settings",
+    icon: sidebarIcons.settings,
+    children: [
+      {
+        label: "Business Setup",
+        path: "/rentals/business/business-setup",
+        icon: sidebarIcons.settings,
+      },
+      {
+        label: "System Tax",
+        path: "/rentals/business/system-tax",
+        icon: sidebarIcons.pricing,
+      },
+      {
+        label: "Email Template",
+        path: "/rentals/business/email-template",
+        icon: sidebarIcons.reports,
+      },
+      {
+        label: "Theme Settings",
+        path: "/rentals/business/theme-settings",
+        icon: sidebarIcons.settings,
+      },
+      {
+        label: "Gallery",
+        path: "/rentals/business/gallery",
+        icon: sidebarIcons.reviews,
+      },
+      {
+        label: "Login Setup",
+        path: "/rentals/business/login-setup",
+        icon: sidebarIcons.users,
+      },
+      {
+        label: "Pages & Social Media",
+        path: "/rentals/business/pages-social-media",
+        icon: sidebarIcons.reports,
+      },
+    ],
+  },
+  {
+    label: "Platform Settings",
+    icon: sidebarIcons.settings,
+    children: [
+      {
+        label: "3rd Party & Configuration",
+        path: "/rentals/platform/third-party-configuration",
+        icon: sidebarIcons.settings,
+      },
+      {
+        label: "App & Web Settings",
+        path: "/rentals/platform/app-web-settings",
+        icon: sidebarIcons.settings,
+      },
+      {
+        label: "Notification Channels",
+        path: "/rentals/platform/notification-channels",
+        icon: sidebarIcons.pendingProviders,
+      },
+      {
+        label: "Notification Messages",
+        path: "/rentals/platform/notification-messages",
+        icon: sidebarIcons.claims,
+      },
+      {
+        label: "Landing Page Settings",
+        path: "/rentals/platform/landing-page-settings",
+        icon: sidebarIcons.settings,
+      },
+      {
+        label: "Page Meta Data",
+        path: "/rentals/platform/page-meta-data",
+        icon: sidebarIcons.reports,
+      },
+      {
+        label: "React Site",
+        path: "/rentals/platform/react-site",
+        icon: sidebarIcons.reports,
+      },
+      {
+        label: "Clean Database",
+        path: "/rentals/platform/clean-database",
+        icon: sidebarIcons.claims,
+      },
+      {
+        label: "Addon Activation",
+        path: "/rentals/platform/addon-activation",
         icon: sidebarIcons.settings,
       },
     ],

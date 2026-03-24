@@ -1,24 +1,94 @@
 import { apiRequest } from "@/src/lib/api";
-import type { RawCarApi, RentalCarRow } from "@/src/types/rentalCar";
+import type {
+  BackendCarStatus,
+  RawCarApi,
+  RentalCarRow,
+} from "@/src/types/rentalCar";
+
+export type ListCarsParams = {
+  q?: string;
+  status?: RentalCarRow["dashboardStatus"] | "";
+  providerId?: string;
+  city?: string;
+  page?: number;
+  limit?: number;
+};
+
+export type AdminCarListResponse = {
+  items: RawCarApi[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+};
+
+export type CreateAdminCarPayload = {
+  providerId: string;
+  locationId: string;
+  brand: string;
+  model: string;
+  category: string;
+  year: number;
+  seats: number;
+  bags: string;
+  hasAC: boolean;
+  transmission: string;
+  mileagePolicy: string;
+  dailyRate: number;
+  hourlyRate?: number | null;
+  autoApprove?: boolean;
+  note?: string;
+};
+
+export type RentalLocationOption = {
+  id: string;
+  name: string;
+  address: string;
+  providerId: string;
+  providerName: string;
+};
+
+function toBackendStatus(
+  status?: ListCarsParams["status"],
+): BackendCarStatus | undefined {
+  if (!status) return undefined;
+  if (status === "active") return "APPROVED";
+  if (status === "flagged") return "FLAGGED";
+  return "PENDING_APPROVAL";
+}
 
 function toDashboardStatus(car: RawCarApi): RentalCarRow["dashboardStatus"] {
-  const isActive = car.isActive !== false;
-  const providerStatus = (car.provider?.status || "").toUpperCase();
+  const backendStatus = (car.status || "DRAFT") as BackendCarStatus;
 
-  if (!isActive) {
+  if (backendStatus === "FLAGGED") {
     return "flagged";
   }
 
-  if (providerStatus && providerStatus !== "ACTIVE") {
-    return "pending";
+  if (backendStatus === "APPROVED" && car.isActive !== false) {
+    return "active";
   }
 
-  return "active";
+  return "pending";
+}
+
+function makeQuery(params: Record<string, string | number | undefined>) {
+  const search = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === "") return;
+    search.set(key, String(value));
+  });
+
+  const query = search.toString();
+  return query ? `?${query}` : "";
 }
 
 export function mapCarToRow(car: RawCarApi): RentalCarRow {
   const locationName = car.location?.name || "-";
   const address = car.location?.address || "";
+  const backendStatus = (car.status || "DRAFT") as BackendCarStatus;
 
   return {
     id: car.id,
@@ -40,13 +110,111 @@ export function mapCarToRow(car: RawCarApi): RentalCarRow {
     imageUrl: car.images?.[0]?.url || "",
     createdAt: car.createdAt || new Date().toISOString(),
     dashboardStatus: toDashboardStatus(car),
+    backendStatus,
+    moderationNote: car.moderationNote ?? null,
+    flaggedReason: car.flaggedReason ?? null,
   };
 }
 
-export async function listCars() {
-  const cars = await apiRequest<RawCarApi[]>("/rental/cars", {
-    method: "GET",
+export async function listCars(params: ListCarsParams = {}) {
+  const query = makeQuery({
+    q: params.q,
+    status: toBackendStatus(params.status),
+    providerId: params.providerId,
+    city: params.city,
+    page: params.page ?? 1,
+    limit: params.limit ?? 100,
   });
 
-  return cars.map(mapCarToRow);
+  const response = await apiRequest<AdminCarListResponse>(`/admin/cars${query}`);
+
+  return {
+    items: response.items.map(mapCarToRow),
+    meta: response.meta,
+  };
+}
+
+export function createAdminCar(payload: CreateAdminCarPayload) {
+  return apiRequest<{ message: string; car: RawCarApi }>("/admin/cars", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function approveAdminCar(carId: string, note?: string) {
+  return apiRequest<{ message: string; car: RawCarApi }>(
+    `/admin/cars/${carId}/approve`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ note }),
+    },
+  );
+}
+
+export function rejectAdminCar(carId: string, reason: string) {
+  return apiRequest<{ message: string; car: RawCarApi }>(
+    `/admin/cars/${carId}/reject`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ reason }),
+    },
+  );
+}
+
+export function flagAdminCar(carId: string, reason: string) {
+  return apiRequest<{ message: string; car: RawCarApi }>(
+    `/admin/cars/${carId}/flag`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ reason }),
+    },
+  );
+}
+
+export function unflagAdminCar(carId: string, note?: string) {
+  return apiRequest<{ message: string; car: RawCarApi }>(
+    `/admin/cars/${carId}/unflag`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ note }),
+    },
+  );
+}
+
+export function activateAdminCar(carId: string) {
+  return apiRequest<{ message: string; car: RawCarApi }>(
+    `/admin/cars/${carId}/activate`,
+    {
+      method: "PATCH",
+    },
+  );
+}
+
+export function deactivateAdminCar(carId: string, reason?: string) {
+  return apiRequest<{ message: string; car: RawCarApi }>(
+    `/admin/cars/${carId}/deactivate`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ reason }),
+    },
+  );
+}
+
+export async function listRentalLocations() {
+  const rows = await apiRequest<
+    Array<{
+      id: string;
+      name?: string;
+      address?: string;
+      provider?: { id?: string; name?: string };
+    }>
+  >("/rental/locations");
+
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name || "Unnamed location",
+    address: row.address || "",
+    providerId: row.provider?.id || "",
+    providerName: row.provider?.name || "Unknown Provider",
+  })) as RentalLocationOption[];
 }

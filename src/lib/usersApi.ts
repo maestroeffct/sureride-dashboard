@@ -126,3 +126,18 @@ export async function rejectAdminUserKyc(userId: string, reason: string) {
     },
   );
 }
+
+
+export async function resetAdminUserPassword(
+  userId: string,
+  payload: { sendEmail?: boolean } = {},
+) {
+  return apiRequest<{
+    message: string;
+    emailSent: boolean;
+    temporaryPasswordExpiresAt: string;
+  }>(`/admin/users/${userId}/reset-password`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
