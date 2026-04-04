@@ -66,6 +66,13 @@ export type ProviderLoginResponse = {
   tempPasswordExpiresAt?: string | null;
 };
 
+export type ProviderRegisterPayload = {
+  businessName: string;
+  email: string;
+  phone?: string;
+  password: string;
+};
+
 export type ProviderProfile = {
   id: string;
   name: string;
@@ -182,6 +189,29 @@ export type ProviderLocation = {
   countryCode: string;
   latitude?: number | null;
   longitude?: number | null;
+};
+
+export type ProviderInsurancePackage = {
+  id: string;
+  name: string;
+  description: string;
+  dailyPrice: number;
+  isActive: boolean;
+  providerId?: string | null;
+  carId?: string | null;
+  car?: {
+    id: string;
+    label: string;
+  } | null;
+  createdAt: string;
+};
+
+export type UpsertProviderInsurancePayload = {
+  name: string;
+  description: string;
+  dailyPrice: number;
+  isActive?: boolean;
+  carId?: string | null;
 };
 
 export type UpsertProviderLocationPayload = {
@@ -313,19 +343,35 @@ function mapBookingToRow(booking: ProviderRawBooking): ProviderBookingRow {
   };
 }
 
-export function loginProvider(email: string, password: string) {
+export function loginProvider(
+  email: string,
+  password: string,
+  recaptchaToken?: string,
+) {
   return providerApiRequest<ProviderLoginResponse>("/provider/auth/login", {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, recaptchaToken }),
   });
 }
 
-export function requestProviderPasswordReset(email: string) {
+export function registerProvider(
+  payload: ProviderRegisterPayload & { recaptchaToken?: string },
+) {
+  return providerApiRequest<{ message: string }>("/provider/auth/register", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function requestProviderPasswordReset(
+  email: string,
+  recaptchaToken?: string,
+) {
   return providerApiRequest<{ message: string }>(
     "/provider/auth/forgot-password",
     {
       method: "POST",
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, recaptchaToken }),
     },
   );
 }
@@ -378,6 +424,46 @@ export async function listProviderLocations() {
 
 export function listProviderCountries() {
   return providerApiRequest<ProviderCountryOption[]>("/provider/countries");
+}
+
+export function listProviderInsurancePackages() {
+  return providerApiRequest<{ items: ProviderInsurancePackage[] }>(
+    "/provider/insurance",
+  );
+}
+
+export function createProviderInsurancePackage(
+  payload: UpsertProviderInsurancePayload,
+) {
+  return providerApiRequest<{
+    message: string;
+    insurance: ProviderInsurancePackage;
+  }>("/provider/insurance", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateProviderInsurancePackage(
+  insuranceId: string,
+  payload: Partial<UpsertProviderInsurancePayload>,
+) {
+  return providerApiRequest<{
+    message: string;
+    insurance: ProviderInsurancePackage;
+  }>(`/provider/insurance/${insuranceId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteProviderInsurancePackage(insuranceId: string) {
+  return providerApiRequest<{ message: string }>(
+    `/provider/insurance/${insuranceId}`,
+    {
+      method: "DELETE",
+    },
+  );
 }
 
 export function createProviderLocation(payload: UpsertProviderLocationPayload) {

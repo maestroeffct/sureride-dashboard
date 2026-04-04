@@ -10,6 +10,7 @@ import {
   fetchPublicPlatformConfig,
   type PublicPlatformConfig,
 } from "@/src/lib/publicPlatformConfig";
+import { getRecaptchaToken } from "@/src/lib/recaptcha";
 import logoIcon from "@/src/assets/logo_icon.png";
 import logoNameWhite from "@/src/assets/logo_name_white.png";
 import { useIsMobile } from "@/src/hooks/useIsMobile";
@@ -162,6 +163,9 @@ export default function AdminLoginScreen() {
   const allowMagicLink = platformConfig?.loginSetup?.allowMagicLink === true;
   const showRememberMe = platformConfig?.loginSetup?.showRememberMe !== false;
   const requiresMfa = platformConfig?.loginSetup?.requireMfaForAdmins === true;
+  const recaptchaSiteKey = platformConfig?.recaptcha?.enabled
+    ? platformConfig.recaptcha.siteKey?.trim() || ""
+    : "";
 
   const primaryButtonStyle = useMemo(
     () => ({
@@ -195,10 +199,14 @@ export default function AdminLoginScreen() {
 
     try {
       setLoading(true);
+      const recaptchaToken = await getRecaptchaToken(
+        recaptchaSiteKey,
+        "admin_login",
+      );
 
       const response = await apiRequest<AdminLoginResponse>("/admin/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email, password, rememberMe }),
+        body: JSON.stringify({ email, password, rememberMe, recaptchaToken }),
       });
 
       if (response.requiresMfa) {
@@ -246,9 +254,13 @@ export default function AdminLoginScreen() {
 
     try {
       setMagicLoading(true);
+      const recaptchaToken = await getRecaptchaToken(
+        recaptchaSiteKey,
+        "admin_magic_link",
+      );
       await apiRequest("/admin/auth/magic-link/request", {
         method: "POST",
-        body: JSON.stringify({ email, rememberMe }),
+        body: JSON.stringify({ email, rememberMe, recaptchaToken }),
       });
       toast.success("If the account exists, a sign-in link has been sent.");
     } catch (error) {

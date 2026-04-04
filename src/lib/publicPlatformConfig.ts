@@ -1,4 +1,8 @@
 export type PublicPlatformConfig = {
+  recaptcha?: {
+    enabled?: boolean;
+    siteKey?: string;
+  };
   maps?: {
     enabled?: boolean;
     apiKey?: string;

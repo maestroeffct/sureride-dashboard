@@ -3,8 +3,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import type { ChangeEvent, CSSProperties } from "react";
+import AdminCountryScopeBar from "@/src/components/rentals/common/AdminCountryScopeBar";
 import type { BusinessFeature } from "@/src/types/businessSettings";
 import { apiRequest } from "@/src/lib/api";
+import {
+  createAdminCountry,
+  listAdminCountries,
+  updateAdminCountry,
+  type AdminCountry,
+} from "@/src/lib/adminCountriesApi";
+import {
+  GLOBAL_COUNTRY_SCOPE,
+  readAdminCountryScope,
+  toCountryId,
+  writeAdminCountryScope,
+} from "@/src/lib/adminCountryScope";
 import {
   listPlatformSettingsDraft,
   savePlatformSettingsDraft,
@@ -65,8 +78,10 @@ const FEATURE_STORAGE_PREFIX = "sureride_business_feature";
 const BUSINESS_DEFAULT_CENTER = { lat: 6.6018, lng: 3.3515 };
 let googleMapsScriptPromise: Promise<void> | null = null;
 
-function storageKey(feature: BusinessFeature) {
-  return `${FEATURE_STORAGE_PREFIX}:${feature}`;
+function storageKey(feature: BusinessFeature, countryId?: string) {
+  return countryId
+    ? `${FEATURE_STORAGE_PREFIX}:${feature}:${countryId}`
+    : `${FEATURE_STORAGE_PREFIX}:${feature}`;
 }
 
 function randomId() {
@@ -243,14 +258,14 @@ function createInitialState(feature: BusinessFeature) {
   }
 }
 
-function loadFeatureState(feature: BusinessFeature) {
+function loadFeatureState(feature: BusinessFeature, countryId?: string) {
   const initial = createInitialState(feature);
 
   if (typeof window === "undefined") {
     return initial;
   }
 
-  const raw = window.localStorage.getItem(storageKey(feature));
+  const raw = window.localStorage.getItem(storageKey(feature, countryId));
   if (!raw) {
     return initial;
   }
@@ -383,8 +398,11 @@ export default function BusinessSettingsFeaturePage({
   title,
   description,
 }: FeatureProps) {
+  const [countryScope, setCountryScope] = useState(() => readAdminCountryScope());
+  const [countries, setCountries] = useState<AdminCountry[]>([]);
+  const [isCountriesLoading, setIsCountriesLoading] = useState(false);
   const [state, setState] = useState<Record<string, unknown>>(() =>
-    loadFeatureState(feature),
+    loadFeatureState(feature, toCountryId(readAdminCountryScope())),
   );
   const [isGuidelineOpen, setIsGuidelineOpen] = useState(false);
   const [mapApiKey, setMapApiKey] = useState("");
@@ -399,6 +417,32 @@ export default function BusinessSettingsFeaturePage({
   const mapMarkerRef = useRef<any>(null);
   const mapAutocompleteRef = useRef<any>(null);
   const suppressMapSyncRef = useRef(false);
+  const selectedCountryId = toCountryId(countryScope);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadCountries = async () => {
+      try {
+        setIsCountriesLoading(true);
+        const items = await listAdminCountries();
+        if (!mounted) return;
+        setCountries(items);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        if (mounted) {
+          setIsCountriesLoading(false);
+        }
+      }
+    };
+
+    void loadCountries();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -407,7 +451,9 @@ export default function BusinessSettingsFeaturePage({
       setIsFeatureLoading(true);
 
       try {
-        const result = await listPlatformSettingsDraft();
+        const result = await listPlatformSettingsDraft({
+          countryId: selectedCountryId,
+        });
         if (!mounted) return;
 
         const payload = result.items[toPlatformSection(feature)] as
@@ -417,11 +463,11 @@ export default function BusinessSettingsFeaturePage({
         if (payload) {
           setState(parseFeatureState(feature, payload));
         } else {
-          setState(loadFeatureState(feature));
+          setState(loadFeatureState(feature, selectedCountryId));
         }
       } catch {
         if (mounted) {
-          setState(loadFeatureState(feature));
+          setState(loadFeatureState(feature, selectedCountryId));
         }
       } finally {
         if (mounted) {
@@ -436,7 +482,7 @@ export default function BusinessSettingsFeaturePage({
     return () => {
       mounted = false;
     };
-  }, [feature]);
+  }, [feature, selectedCountryId]);
 
   useEffect(() => {
     let mounted = true;
@@ -453,7 +499,11 @@ export default function BusinessSettingsFeaturePage({
       setIsMapConfigLoading(true);
 
       try {
-        const data = await apiRequest<ClientPlatformConfig>("/platform/client-config", {
+        const endpoint = selectedCountryId
+          ? `/platform/client-config?countryId=${encodeURIComponent(selectedCountryId)}`
+          : "/platform/client-config";
+
+        const data = await apiRequest<ClientPlatformConfig>(endpoint, {
           headers: {
             Authorization: "",
           },
@@ -462,9 +512,7 @@ export default function BusinessSettingsFeaturePage({
         if (!mounted) return;
 
         const nextKey =
-          data.maps?.enabled && typeof data.maps.apiKey === "string"
-            ? data.maps.apiKey.trim()
-            : "";
+          typeof data.maps?.apiKey === "string" ? data.maps.apiKey.trim() : "";
 
         setMapApiKey(nextKey);
       } catch {
@@ -483,7 +531,7 @@ export default function BusinessSettingsFeaturePage({
     return () => {
       mounted = false;
     };
-  }, [feature]);
+  }, [feature, selectedCountryId]);
 
   const save = async () => {
     setIsSaving(true);
@@ -492,9 +540,15 @@ export default function BusinessSettingsFeaturePage({
       const result = await savePlatformSettingsDraft(
         toPlatformSection(feature),
         state,
+        {
+          countryId: selectedCountryId,
+        },
       );
 
-      window.localStorage.setItem(storageKey(feature), JSON.stringify(state));
+      window.localStorage.setItem(
+        storageKey(feature, selectedCountryId),
+        JSON.stringify(state),
+      );
 
       toast.success(
         result.source === "server"
@@ -512,6 +566,35 @@ export default function BusinessSettingsFeaturePage({
 
   const setField = (key: string, value: unknown) => {
     setState((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleCountryScopeChange = (scope: string) => {
+    setCountryScope(scope);
+    writeAdminCountryScope(scope);
+  };
+
+  const handleCreateCountry = async (payload: { name: string; code: string }) => {
+    const item = await createAdminCountry(payload);
+    setCountries((prev) => [...prev, item].sort((a, b) => a.name.localeCompare(b.name)));
+    toast.success(`${item.name} added`);
+  };
+
+  const handleToggleCountry = async (country: AdminCountry) => {
+    const updated = await updateAdminCountry(country.id, {
+      isActive: !country.isActive,
+    });
+
+    setCountries((prev) =>
+      prev.map((item) => (item.id === updated.id ? updated : item)),
+    );
+
+    if (!updated.isActive && countryScope === updated.id) {
+      handleCountryScopeChange(GLOBAL_COUNTRY_SCOPE);
+    }
+
+    toast.success(
+      updated.isActive ? `${updated.name} activated` : `${updated.name} deactivated`,
+    );
   };
 
   const handleImageUpload = async (
@@ -1634,6 +1717,16 @@ export default function BusinessSettingsFeaturePage({
         <h1 style={styles.title}>{title}</h1>
         <p style={styles.subtitle}>{description}</p>
       </div>
+
+      <AdminCountryScopeBar
+        scope={countryScope}
+        countries={countries}
+        loading={isCountriesLoading}
+        allowManage
+        onScopeChange={handleCountryScopeChange}
+        onCreateCountry={handleCreateCountry}
+        onToggleCountry={handleToggleCountry}
+      />
 
       <section style={styles.card}>{content}</section>
 

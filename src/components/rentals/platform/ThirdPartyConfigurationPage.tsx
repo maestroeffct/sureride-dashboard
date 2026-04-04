@@ -4,6 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { Copy, Info, MailCheck, MapPinned, MessageSquareText, PlugZap, ShieldCheck } from "lucide-react";
 import toast from "react-hot-toast";
+import AdminCountryScopeBar from "@/src/components/rentals/common/AdminCountryScopeBar";
+import { listAdminCountries, type AdminCountry } from "@/src/lib/adminCountriesApi";
+import {
+  readAdminCountryScope,
+  toCountryId,
+  writeAdminCountryScope,
+} from "@/src/lib/adminCountryScope";
 import {
   archiveAdminPaymentGateway,
   createAdminPaymentGateway,
@@ -456,6 +463,9 @@ function ProviderCard({
 
 export default function ThirdPartyConfigurationPage() {
   const [activeTab, setActiveTab] = useState<ThirdPartyTab>("payment-methods");
+  const [countryScope, setCountryScope] = useState(() => readAdminCountryScope());
+  const [countries, setCountries] = useState<AdminCountry[]>([]);
+  const [isCountriesLoading, setIsCountriesLoading] = useState(false);
   const [form, setForm] = useState<FormState>(INITIAL_STATE);
   const [paymentGateways, setPaymentGateways] = useState<PaymentGateway[]>([]);
   const [paymentMeta, setPaymentMeta] = useState<AdminPaymentGatewayMeta | null>(null);
@@ -499,6 +509,32 @@ export default function ThirdPartyConfigurationPage() {
   const defaultAppleCallbackUrl = apiBaseUrl
     ? `${apiBaseUrl}/auth/social/apple/callback`
     : "";
+  const selectedCountryId = toCountryId(countryScope);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadCountries = async () => {
+      try {
+        setIsCountriesLoading(true);
+        const items = await listAdminCountries();
+        if (!mounted) return;
+        setCountries(items);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        if (mounted) {
+          setIsCountriesLoading(false);
+        }
+      }
+    };
+
+    void loadCountries();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const loadPaymentGateways = useCallback(async (withSpinner = true) => {
     if (withSpinner) {
@@ -540,7 +576,9 @@ export default function ThirdPartyConfigurationPage() {
     let mounted = true;
 
     const hydratePlatformSettings = async () => {
-      const result = await listPlatformSettingsDraft();
+      const result = await listPlatformSettingsDraft({
+        countryId: selectedCountryId,
+      });
       if (!mounted) return;
 
       const sections = result.items;
@@ -577,7 +615,12 @@ export default function ThirdPartyConfigurationPage() {
     return () => {
       mounted = false;
     };
-  }, [defaultAppleCallbackUrl, defaultFacebookCallbackUrl, defaultGoogleCallbackUrl]);
+  }, [
+    defaultAppleCallbackUrl,
+    defaultFacebookCallbackUrl,
+    defaultGoogleCallbackUrl,
+    selectedCountryId,
+  ]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -590,7 +633,13 @@ export default function ThirdPartyConfigurationPage() {
   ) => {
     setSavingSection(section);
     try {
-      const result = await savePlatformSettingsDraft(section, payload as Record<string, unknown>);
+      const result = await savePlatformSettingsDraft(
+        section,
+        payload as Record<string, unknown>,
+        {
+          countryId: selectedCountryId,
+        },
+      );
       toast.success(
         result.source === "server"
           ? `${label} saved`
@@ -615,6 +664,11 @@ export default function ThirdPartyConfigurationPage() {
   const openGatewayDrawer = () => {
     resetGatewayDraft();
     setIsGatewayDrawerOpen(true);
+  };
+
+  const handleCountryScopeChange = (scope: string) => {
+    setCountryScope(scope);
+    writeAdminCountryScope(scope);
   };
 
   const setGatewayMode = (gatewayId: string, mode: GatewayMode) => {
@@ -2535,6 +2589,13 @@ export default function ThirdPartyConfigurationPage() {
           })}
         </div>
       </div>
+
+      <AdminCountryScopeBar
+        scope={countryScope}
+        countries={countries}
+        loading={isCountriesLoading}
+        onScopeChange={handleCountryScopeChange}
+      />
 
       <section style={styles.panel}>{panel}</section>
     </div>

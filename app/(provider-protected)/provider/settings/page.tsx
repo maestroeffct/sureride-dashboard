@@ -39,6 +39,17 @@ const BUSINESS_DAY_OPTIONS = [
   "Sunday",
 ];
 
+const TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
+  const hours = Math.floor(index / 2);
+  const minutes = index % 2 === 0 ? 0 : 30;
+  const value = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+
+  return {
+    value,
+    label: formatTimeLabel(value),
+  };
+});
+
 const emptyForm: ProfileForm = {
   name: "",
   phone: "",
@@ -50,6 +61,25 @@ const emptyForm: ProfileForm = {
   businessClosingTime: "",
   businessOperatingDays: [],
 };
+
+function formatTimeLabel(value: string) {
+  if (!value) {
+    return "";
+  }
+
+  const [hoursText, minutesText] = value.split(":");
+  const hours = Number.parseInt(hoursText ?? "", 10);
+  const minutes = Number.parseInt(minutesText ?? "", 10);
+
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return value;
+  }
+
+  const meridiem = hours >= 12 ? "PM" : "AM";
+  const normalizedHour = hours % 12 || 12;
+
+  return `${normalizedHour}:${String(minutes).padStart(2, "0")} ${meridiem}`;
+}
 
 function mapProfileToForm(profile: ProviderProfile): ProfileForm {
   return {
@@ -63,6 +93,22 @@ function mapProfileToForm(profile: ProviderProfile): ProfileForm {
     businessClosingTime: profile.businessClosingTime || "",
     businessOperatingDays: profile.businessOperatingDays ?? [],
   };
+}
+
+function getBusinessHoursSummary(form: ProfileForm) {
+  if (
+    !form.businessOperatingDays.length ||
+    !form.businessOpeningTime ||
+    !form.businessClosingTime
+  ) {
+    return "Set active days and service hours";
+  }
+
+  return `${formatTimeLabel(form.businessOpeningTime)} to ${formatTimeLabel(
+    form.businessClosingTime,
+  )} on ${form.businessOperatingDays.length} selected day${
+    form.businessOperatingDays.length === 1 ? "" : "s"
+  }`;
 }
 
 function ProviderSettingsContent() {
@@ -314,25 +360,37 @@ function ProviderSettingsContent() {
 
           <div style={styles.hoursRow}>
             <Field label="Opening Time">
-              <input
-                style={styles.input}
-                type="time"
+              <select
+                style={styles.select}
                 value={form.businessOpeningTime}
                 onChange={(event) =>
                   handleProfileChange("businessOpeningTime", event.target.value)
                 }
-              />
+              >
+                <option value="">Select opening time</option>
+                {TIME_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </Field>
 
             <Field label="Closing Time">
-              <input
-                style={styles.input}
-                type="time"
+              <select
+                style={styles.select}
                 value={form.businessClosingTime}
                 onChange={(event) =>
                   handleProfileChange("businessClosingTime", event.target.value)
                 }
-              />
+              >
+                <option value="">Select closing time</option>
+                {TIME_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </Field>
           </div>
 
@@ -363,6 +421,7 @@ function ProviderSettingsContent() {
                   } active`
                 : "No active days selected"}
             </span>
+            <span style={styles.summaryText}>{getBusinessHoursSummary(form)}</span>
           </div>
         </section>
       </div>
@@ -599,6 +658,17 @@ const styles: Record<string, CSSProperties> = {
     color: "var(--foreground)",
     outline: "none",
   },
+  select: {
+    height: 44,
+    borderRadius: 12,
+    border: "1px solid var(--input-border)",
+    padding: "0 14px",
+    fontSize: 14,
+    background: "var(--surface-2)",
+    color: "var(--foreground)",
+    outline: "none",
+    appearance: "none",
+  },
   inputReadOnly: {
     height: 44,
     borderRadius: 12,
@@ -626,7 +696,10 @@ const styles: Record<string, CSSProperties> = {
   },
   hoursSummary: {
     display: "flex",
-    justifyContent: "flex-start",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    flexWrap: "wrap",
   },
   summaryPill: {
     borderRadius: 999,
@@ -636,6 +709,11 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 12,
     color: "var(--fg-70)",
     fontWeight: 700,
+  },
+  summaryText: {
+    color: "var(--fg-60)",
+    fontSize: 13,
+    lineHeight: 1.5,
   },
   actionsRow: {
     display: "flex",

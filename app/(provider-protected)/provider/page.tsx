@@ -62,6 +62,9 @@ export default function ProviderOverviewPage() {
           <Link href="/provider/cars/new" style={styles.primaryButton}>
             Add Car
           </Link>
+          <Link href="/provider/insurance" style={styles.secondaryButton}>
+            Insurance
+          </Link>
           <Link href="/provider/rents" style={styles.secondaryButton}>
             View Rents
           </Link>
@@ -114,6 +117,9 @@ export default function ProviderOverviewPage() {
             </Link>
             <Link href="/provider/cars/new" style={styles.actionLink}>
               Upload a new car listing
+            </Link>
+            <Link href="/provider/insurance" style={styles.actionLink}>
+              Configure insurance packages
             </Link>
             <Link href="/provider/rents" style={styles.actionLink}>
               Monitor booking and rent activity

@@ -23,6 +23,7 @@ type PlatformSettingsListResponse = {
     section: PlatformSettingsSection;
     payload: PlatformSettingsPayload;
     updatedAt?: string;
+    countryId?: string | null;
   }>;
 };
 
@@ -30,14 +31,45 @@ type PlatformSettingsSaveResponse = {
   section: PlatformSettingsSection;
   payload: PlatformSettingsPayload;
   updatedAt?: string;
+  countryId?: string | null;
 };
 
 const DRAFT_STORAGE_KEY = "sureride_admin_platform_settings_draft_v1";
 
-function readLocalDraft() {
+type ScopeOptions = {
+  countryId?: string | null;
+};
+
+function buildDraftStorageKey(options?: ScopeOptions) {
+  const countryId = options?.countryId?.trim();
+  return countryId ? `${DRAFT_STORAGE_KEY}:${countryId}` : DRAFT_STORAGE_KEY;
+}
+
+function buildSettingsEndpoint(options?: ScopeOptions) {
+  const countryId = options?.countryId?.trim();
+  if (!countryId) {
+    return "/admin/platform/settings";
+  }
+
+  return `/admin/platform/settings?countryId=${encodeURIComponent(countryId)}`;
+}
+
+function buildSettingsSectionEndpoint(
+  section: PlatformSettingsSection,
+  options?: ScopeOptions,
+) {
+  const countryId = options?.countryId?.trim();
+  if (!countryId) {
+    return `/admin/platform/settings/${section}`;
+  }
+
+  return `/admin/platform/settings/${section}?countryId=${encodeURIComponent(countryId)}`;
+}
+
+function readLocalDraft(options?: ScopeOptions) {
   if (typeof window === "undefined") return {} as Record<string, PlatformSettingsPayload>;
 
-  const raw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+  const raw = window.localStorage.getItem(buildDraftStorageKey(options));
   if (!raw) return {} as Record<string, PlatformSettingsPayload>;
 
   try {
@@ -48,15 +80,18 @@ function readLocalDraft() {
   }
 }
 
-function writeLocalDraft(next: Record<string, PlatformSettingsPayload>) {
+function writeLocalDraft(
+  next: Record<string, PlatformSettingsPayload>,
+  options?: ScopeOptions,
+) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(next));
+  window.localStorage.setItem(buildDraftStorageKey(options), JSON.stringify(next));
 }
 
-export async function listPlatformSettingsDraft() {
+export async function listPlatformSettingsDraft(options?: ScopeOptions) {
   try {
     const data = await apiRequest<PlatformSettingsListResponse>(
-      "/admin/platform/settings",
+      buildSettingsEndpoint(options),
     );
 
     const mapped: Partial<Record<PlatformSettingsSection, PlatformSettingsPayload>> = {};
@@ -65,14 +100,14 @@ export async function listPlatformSettingsDraft() {
       mapped[item.section] = item.payload ?? {};
     }
 
-    writeLocalDraft(mapped as Record<string, PlatformSettingsPayload>);
+    writeLocalDraft(mapped as Record<string, PlatformSettingsPayload>, options);
 
     return {
       items: mapped,
       source: "server" as const,
     };
   } catch {
-    const local = readLocalDraft() as Partial<
+    const local = readLocalDraft(options) as Partial<
       Record<PlatformSettingsSection, PlatformSettingsPayload>
     >;
 
@@ -86,28 +121,29 @@ export async function listPlatformSettingsDraft() {
 export async function savePlatformSettingsDraft(
   section: PlatformSettingsSection,
   payload: PlatformSettingsPayload,
+  options?: ScopeOptions,
 ) {
   try {
     const data = await apiRequest<PlatformSettingsSaveResponse>(
-      `/admin/platform/settings/${section}`,
+      buildSettingsSectionEndpoint(section, options),
       {
         method: "PATCH",
         body: JSON.stringify({ payload }),
       },
     );
 
-    const local = readLocalDraft();
+    const local = readLocalDraft(options);
     local[section] = data.payload ?? payload;
-    writeLocalDraft(local);
+    writeLocalDraft(local, options);
 
     return {
       source: "server" as const,
       payload: data.payload ?? payload,
     };
   } catch {
-    const local = readLocalDraft();
+    const local = readLocalDraft(options);
     local[section] = payload;
-    writeLocalDraft(local);
+    writeLocalDraft(local, options);
 
     return {
       source: "local" as const,

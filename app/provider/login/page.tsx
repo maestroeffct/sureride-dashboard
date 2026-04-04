@@ -10,9 +10,14 @@ import {
   useState,
 } from "react";
 import toast from "react-hot-toast";
-import { fetchPublicPlatformConfig } from "@/src/lib/publicPlatformConfig";
+import {
+  fetchPublicPlatformConfig,
+  type PublicPlatformConfig,
+} from "@/src/lib/publicPlatformConfig";
+import { getRecaptchaToken } from "@/src/lib/recaptcha";
 import {
   loginProvider,
+  registerProvider,
   requestProviderPasswordReset,
   resetProviderPassword,
 } from "@/src/lib/providerApi";
@@ -24,10 +29,10 @@ const initialBrand = {
   backgroundImage: "/images/login-bg.jpg",
 };
 
-type AuthMode = "login" | "forgot" | "reset";
+type AuthMode = "login" | "register" | "forgot" | "reset";
 
 function getMode(value: string | null): AuthMode {
-  if (value === "forgot" || value === "reset") {
+  if (value === "register" || value === "forgot" || value === "reset") {
     return value;
   }
   return "login";
@@ -38,12 +43,17 @@ function ProviderLoginContent() {
   const searchParams = useSearchParams();
   const isMobile = useIsMobile(960);
   const [email, setEmail] = useState("");
+  const [businessName, setBusinessName] = useState("");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [platformConfig, setPlatformConfig] = useState<PublicPlatformConfig | null>(
+    null,
+  );
   const [brand, setBrand] = useState(initialBrand);
 
   const mode = useMemo<AuthMode>(
@@ -54,6 +64,7 @@ function ProviderLoginContent() {
 
   useEffect(() => {
     void fetchPublicPlatformConfig().then((config) => {
+      setPlatformConfig(config);
       setBrand({
         companyName: config?.businessSetup?.companyName?.trim() || "Sureride",
         brandColor: config?.themeSettings?.brandColor?.trim() || "#0f766e",
@@ -62,6 +73,14 @@ function ProviderLoginContent() {
       });
     });
   }, []);
+
+  const recaptchaSiteKey = useMemo(
+    () =>
+      platformConfig?.recaptcha?.enabled
+        ? platformConfig.recaptcha.siteKey?.trim() || ""
+        : "",
+    [platformConfig],
+  );
 
   const setMode = (nextMode: AuthMode) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -86,7 +105,11 @@ function ProviderLoginContent() {
 
     try {
       setLoading(true);
-      const response = await loginProvider(email, password);
+      const recaptchaToken = await getRecaptchaToken(
+        recaptchaSiteKey,
+        "provider_login",
+      );
+      const response = await loginProvider(email, password, recaptchaToken);
 
       localStorage.setItem("sureride_provider_token", response.token);
       localStorage.setItem(
@@ -110,6 +133,39 @@ function ProviderLoginContent() {
     }
   };
 
+  const handleRegister = async () => {
+    if (!businessName || !email || !password) {
+      toast.error("Business name, email, and password are required");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const recaptchaToken = await getRecaptchaToken(
+        recaptchaSiteKey,
+        "provider_register",
+      );
+      const response = await registerProvider({
+        businessName,
+        email,
+        phone,
+        password,
+        recaptchaToken,
+      });
+      toast.success(response.message);
+      setBusinessName("");
+      setPassword("");
+      setPhone("");
+      setMode("login");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to register provider",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleForgotPassword = async () => {
     if (!email) {
       toast.error("Enter your provider email");
@@ -118,7 +174,11 @@ function ProviderLoginContent() {
 
     try {
       setLoading(true);
-      const response = await requestProviderPasswordReset(email);
+      const recaptchaToken = await getRecaptchaToken(
+        recaptchaSiteKey,
+        "provider_forgot_password",
+      );
+      const response = await requestProviderPasswordReset(email, recaptchaToken);
       toast.success(response.message);
       setMode("login");
     } catch (error) {
@@ -167,6 +227,8 @@ function ProviderLoginContent() {
       ? "Recover Provider Access"
       : mode === "reset"
         ? "Set a New Password"
+        : mode === "register"
+          ? "Join as a Fleet Provider"
         : `${brand.companyName} Fleet Console`;
 
   const heroSubtitle =
@@ -174,6 +236,8 @@ function ProviderLoginContent() {
       ? "Request a reset link for your provider account."
       : mode === "reset"
         ? "Choose a new password for your provider portal."
+        : mode === "register"
+          ? "Create your provider account and submit it for admin approval."
         : "Sign in to manage your fleet, upload cars, and monitor live rentals.";
 
   return (
@@ -231,10 +295,12 @@ function ProviderLoginContent() {
               ? "Forgot Password"
               : mode === "reset"
                 ? "Reset Password"
+                : mode === "register"
+                  ? "Provider Registration"
                 : "Provider Login"}
           </h2>
 
-          {(mode === "login" || mode === "forgot") && (
+          {(mode === "login" || mode === "forgot" || mode === "register") && (
             <label style={styles.field}>
               <span style={styles.label}>Business Email</span>
               <input
@@ -246,7 +312,28 @@ function ProviderLoginContent() {
             </label>
           )}
 
-          {mode === "login" && (
+          {mode === "register" && (
+            <>
+              <label style={styles.field}>
+                <span style={styles.label}>Business Name</span>
+                <input
+                  style={styles.input}
+                  value={businessName}
+                  onChange={(event) => setBusinessName(event.target.value)}
+                />
+              </label>
+              <label style={styles.field}>
+                <span style={styles.label}>Phone</span>
+                <input
+                  style={styles.input}
+                  value={phone}
+                  onChange={(event) => setPhone(event.target.value)}
+                />
+              </label>
+            </>
+          )}
+
+          {(mode === "login" || mode === "register") && (
             <label style={styles.field}>
               <span style={styles.label}>Password</span>
               <div style={styles.passwordWrap}>
@@ -304,7 +391,9 @@ function ProviderLoginContent() {
             type="button"
             style={{ ...styles.button, background: brand.brandColor }}
             onClick={
-              mode === "forgot"
+              mode === "register"
+                ? handleRegister
+                : mode === "forgot"
                 ? handleForgotPassword
                 : mode === "reset"
                   ? handleResetPassword
@@ -313,12 +402,16 @@ function ProviderLoginContent() {
             disabled={loading}
           >
             {loading
-              ? mode === "forgot"
+              ? mode === "register"
+                ? "Submitting..."
+                : mode === "forgot"
                 ? "Sending..."
                 : mode === "reset"
                   ? "Resetting..."
                   : "Signing In..."
-              : mode === "forgot"
+              : mode === "register"
+                ? "Create Provider Account"
+                : mode === "forgot"
                 ? "Send Reset Link"
                 : mode === "reset"
                   ? "Reset Password"
@@ -327,16 +420,25 @@ function ProviderLoginContent() {
 
           <div style={styles.footerLinks}>
             {mode === "login" && (
-              <button
-                type="button"
-                style={styles.linkButton}
-                onClick={() => setMode("forgot")}
-              >
-                Forgot password?
-              </button>
+              <>
+                <button
+                  type="button"
+                  style={styles.linkButton}
+                  onClick={() => setMode("forgot")}
+                >
+                  Forgot password?
+                </button>
+                <button
+                  type="button"
+                  style={styles.linkButton}
+                  onClick={() => setMode("register")}
+                >
+                  Register as provider
+                </button>
+              </>
             )}
 
-            {(mode === "forgot" || mode === "reset") && (
+            {(mode === "forgot" || mode === "reset" || mode === "register") && (
               <button
                 type="button"
                 style={styles.linkButton}
