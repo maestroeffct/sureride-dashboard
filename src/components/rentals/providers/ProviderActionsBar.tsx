@@ -4,6 +4,7 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import {
   approveProvider,
+  resetProviderPassword,
   submitProvider,
   suspendProvider,
 } from "@/src/lib/providersApi";
@@ -55,39 +56,78 @@ export default function ProviderActionsBar({
       )}
 
       {provider.status === "pending" && (
-        <button
-          disabled={busy}
-          style={btnApprove}
-          onClick={() =>
-            runAction("Provider approved", () => approveProvider(provider.id))
-          }
-        >
-          Approve Provider
-        </button>
+        <>
+          <button
+            disabled={busy}
+            style={btnApprove}
+            onClick={() =>
+              runAction("Provider approved", () => approveProvider(provider.id))
+            }
+          >
+            Approve Provider
+          </button>
+          <button
+            disabled={busy}
+            style={btnMuted}
+            onClick={() =>
+              runAction("Temporary password sent", () =>
+                resetProviderPassword(provider.id),
+              )
+            }
+          >
+            Reset Password
+          </button>
+        </>
       )}
 
       {provider.status === "active" && (
-        <button
-          disabled={busy}
-          style={btnDanger}
-          onClick={() =>
-            runAction("Provider suspended", () => suspendProvider(provider.id))
-          }
-        >
-          Suspend
-        </button>
+        <>
+          <button
+            disabled={busy}
+            style={btnMuted}
+            onClick={() =>
+              runAction("Temporary password sent", () =>
+                resetProviderPassword(provider.id),
+              )
+            }
+          >
+            Reset Password
+          </button>
+          <button
+            disabled={busy}
+            style={btnDanger}
+            onClick={() =>
+              runAction("Provider suspended", () => suspendProvider(provider.id))
+            }
+          >
+            Suspend
+          </button>
+        </>
       )}
 
       {provider.status === "suspended" && (
-        <button
-          disabled={busy}
-          style={btnApprove}
-          onClick={() =>
-            runAction("Provider reactivated", () => approveProvider(provider.id))
-          }
-        >
-          Reactivate
-        </button>
+        <>
+          <button
+            disabled={busy}
+            style={btnMuted}
+            onClick={() =>
+              runAction("Temporary password sent", () =>
+                resetProviderPassword(provider.id),
+              )
+            }
+          >
+            Reset Password
+          </button>
+          <button
+            disabled={busy}
+            style={btnApprove}
+            onClick={() =>
+              runAction("Provider reactivated", () => approveProvider(provider.id))
+            }
+          >
+            Reactivate
+          </button>
+        </>
       )}
     </div>
   );
@@ -105,6 +145,15 @@ const btnApprove = {
 const btnDanger = {
   background: "#EF4444",
   color: "#450A0A",
+  padding: "10px 14px",
+  borderRadius: 8,
+  border: "none",
+  cursor: "pointer",
+};
+
+const btnMuted = {
+  background: "#CBD5E1",
+  color: "#0F172A",
   padding: "10px 14px",
   borderRadius: 8,
   border: "none",

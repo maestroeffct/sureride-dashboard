@@ -139,6 +139,15 @@ export async function suspendProvider(providerId: string, reason?: string) {
   });
 }
 
+export async function resetProviderPassword(providerId: string) {
+  return apiRequest<{ message: string }>(
+    `/admin/providers/${providerId}/reset-password`,
+    {
+      method: "PATCH",
+    },
+  );
+}
+
 export async function listProviderRequests(
   params: ListProviderRequestsParams = {},
 ) {

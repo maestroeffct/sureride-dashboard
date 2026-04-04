@@ -42,6 +42,15 @@ export type CreateAdminCarPayload = {
   note?: string;
 };
 
+export type AdminCarFeatureOption = {
+  id: string;
+  name: string;
+  category: string;
+  icon?: string | null;
+  providerId?: string | null;
+  isActive?: boolean;
+};
+
 export type RentalLocationOption = {
   id: string;
   name: string;
@@ -138,6 +147,38 @@ export function createAdminCar(payload: CreateAdminCarPayload) {
   return apiRequest<{ message: string; car: RawCarApi }>("/admin/cars", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function listAdminCarFeatureOptions(providerId?: string) {
+  const query = makeQuery({
+    providerId,
+  });
+
+  return apiRequest<{ items: AdminCarFeatureOption[] }>(
+    `/admin/cars/meta/features${query}`,
+  );
+}
+
+export function attachAdminCarFeatures(carId: string, featureIds: string[]) {
+  return apiRequest<{ message: string; car: RawCarApi }>(
+    `/admin/cars/${carId}/features`,
+    {
+      method: "POST",
+      body: JSON.stringify({ featureIds }),
+    },
+  );
+}
+
+export function uploadAdminCarImages(carId: string, files: File[]) {
+  const formData = new FormData();
+  for (const file of files) {
+    formData.append("images", file);
+  }
+
+  return apiRequest<{ message: string }>(`/admin/cars/${carId}/images`, {
+    method: "POST",
+    body: formData,
   });
 }
 

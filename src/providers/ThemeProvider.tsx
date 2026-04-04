@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { darkColors, lightColors } from "@/src/theme";
+import { fetchPublicPlatformConfig } from "@/src/lib/publicPlatformConfig";
 
 type Theme = "light" | "dark";
 
@@ -45,6 +46,37 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.setAttribute("data-theme", theme);
     window.localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadBrandTheme = async () => {
+      const config = await fetchPublicPlatformConfig();
+      if (!mounted || !config?.themeSettings) {
+        return;
+      }
+
+      const brandColor = config.themeSettings.brandColor?.trim();
+      const secondaryColor = config.themeSettings.secondaryColor?.trim();
+      const root = document.documentElement;
+
+      if (brandColor) {
+        root.style.setProperty("--brand-primary", brandColor);
+        root.style.setProperty("--control-accent", brandColor);
+        root.style.setProperty("--control-border-hover", brandColor);
+      }
+
+      if (secondaryColor) {
+        root.style.setProperty("--brand-secondary", secondaryColor);
+      }
+    };
+
+    void loadBrandTheme();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const colors = theme === "dark" ? darkColors : lightColors;
 

@@ -59,6 +59,8 @@ html[data-theme="dark"] {
   --input-fg: #e5e7eb;
 
   --module-card-bg: linear-gradient(180deg, #0f172a, #020617);
+  --brand-primary: #1275c5;
+  --brand-secondary: #22c55e;
   --control-accent: #1275c5;
   --control-bg: #061b13;
   --control-border: rgba(229, 231, 235, 0.35);
@@ -124,6 +126,8 @@ html[data-theme="light"] {
   --input-fg: #0f172a;
 
   --module-card-bg: linear-gradient(180deg, #ffffff, #f8fafc);
+  --brand-primary: #1275c5;
+  --brand-secondary: #22c55e;
   --control-accent: #1275c5;
   --control-bg: #ffffff;
   --control-border: #a3b2c6;

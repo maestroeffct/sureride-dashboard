@@ -7,7 +7,14 @@ export type PlatformSettingsSection =
   | "social-logins"
   | "firebase-otp"
   | "recaptcha"
-  | "storage-connection";
+  | "storage-connection"
+  | "business-setup"
+  | "system-tax"
+  | "email-template"
+  | "theme-settings"
+  | "gallery"
+  | "login-setup"
+  | "pages-social-media";
 
 export type PlatformSettingsPayload = Record<string, unknown>;
 

@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import type { ChangeEvent, CSSProperties } from "react";
 import type { BusinessFeature } from "@/src/types/businessSettings";
+import { apiRequest } from "@/src/lib/api";
+import {
+  listPlatformSettingsDraft,
+  savePlatformSettingsDraft,
+  type PlatformSettingsSection,
+} from "@/src/lib/platformSettingsDraftApi";
 
 type TaxRow = {
   id: string;
@@ -26,7 +32,16 @@ type FeatureProps = {
   description: string;
 };
 
+type ClientPlatformConfig = {
+  maps?: {
+    enabled?: boolean;
+    apiKey?: string;
+  };
+};
+
 const FEATURE_STORAGE_PREFIX = "sureride_business_feature";
+const BUSINESS_DEFAULT_CENTER = { lat: 6.6018, lng: 3.3515 };
+let googleMapsScriptPromise: Promise<void> | null = null;
 
 function storageKey(feature: BusinessFeature) {
   return `${FEATURE_STORAGE_PREFIX}:${feature}`;
@@ -167,6 +182,75 @@ function loadFeatureState(feature: BusinessFeature) {
   }
 }
 
+function parseFeatureState(
+  feature: BusinessFeature,
+  payload?: Record<string, unknown>,
+) {
+  const initial = createInitialState(feature);
+  const parsed = payload ?? {};
+
+  if (feature === "business-setup") {
+    const legacy = parsed as Record<string, string | undefined>;
+    const migrated = {
+      ...parsed,
+      companyName: parsed.companyName ?? legacy.legalName,
+      email: parsed.email ?? legacy.supportEmail,
+      phone: parsed.phone ?? legacy.supportPhone,
+      businessDescription: parsed.businessDescription ?? legacy.address,
+    };
+
+    return { ...initial, ...migrated };
+  }
+
+  return { ...initial, ...parsed };
+}
+
+function toPlatformSection(feature: BusinessFeature): PlatformSettingsSection {
+  return feature;
+}
+
+function loadGoogleMapsScript(apiKey: string) {
+  if (
+    typeof window !== "undefined" &&
+    (window as Window & { google?: unknown }).google
+  ) {
+    return Promise.resolve();
+  }
+
+  if (googleMapsScriptPromise) {
+    return googleMapsScriptPromise;
+  }
+
+  googleMapsScriptPromise = new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>(
+      'script[data-google-maps-loader="true"]',
+    );
+
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener(
+        "error",
+        () => reject(new Error("Failed to load Google Maps")),
+        { once: true },
+      );
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(
+      apiKey,
+    )}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    script.dataset.googleMapsLoader = "true";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load Google Maps"));
+    document.head.appendChild(script);
+  });
+
+  return googleMapsScriptPromise;
+}
+
 function readFileAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -194,19 +278,127 @@ export default function BusinessSettingsFeaturePage({
     loadFeatureState(feature),
   );
   const [isGuidelineOpen, setIsGuidelineOpen] = useState(false);
+  const [mapApiKey, setMapApiKey] = useState("");
+  const [isMapConfigLoading, setIsMapConfigLoading] = useState(false);
+  const [isFeatureLoading, setIsFeatureLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [mapLoadError, setMapLoadError] = useState<string | null>(null);
+  const [isMapReady, setIsMapReady] = useState(false);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const mapRef = useRef<any>(null);
+  const mapMarkerRef = useRef<any>(null);
+  const mapAutocompleteRef = useRef<any>(null);
+  const suppressMapSyncRef = useRef(false);
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      setState(loadFeatureState(feature));
-      setIsGuidelineOpen(false);
-    });
+    let mounted = true;
 
-    return () => window.cancelAnimationFrame(frame);
+    const hydrateFeature = async () => {
+      setIsFeatureLoading(true);
+
+      try {
+        const result = await listPlatformSettingsDraft();
+        if (!mounted) return;
+
+        const payload = result.items[toPlatformSection(feature)] as
+          | Record<string, unknown>
+          | undefined;
+
+        if (payload) {
+          setState(parseFeatureState(feature, payload));
+        } else {
+          setState(loadFeatureState(feature));
+        }
+      } catch {
+        if (mounted) {
+          setState(loadFeatureState(feature));
+        }
+      } finally {
+        if (mounted) {
+          setIsGuidelineOpen(false);
+          setIsFeatureLoading(false);
+        }
+      }
+    };
+
+    void hydrateFeature();
+
+    return () => {
+      mounted = false;
+    };
   }, [feature]);
 
-  const save = () => {
-    window.localStorage.setItem(storageKey(feature), JSON.stringify(state));
-    toast.success(`${title} updated`);
+  useEffect(() => {
+    let mounted = true;
+
+    const loadMapConfig = async () => {
+      if (feature !== "business-setup") {
+        if (mounted) {
+          setMapApiKey("");
+          setIsMapConfigLoading(false);
+        }
+        return;
+      }
+
+      setIsMapConfigLoading(true);
+
+      try {
+        const data = await apiRequest<ClientPlatformConfig>("/platform/client-config", {
+          headers: {
+            Authorization: "",
+          },
+        });
+
+        if (!mounted) return;
+
+        const nextKey =
+          data.maps?.enabled && typeof data.maps.apiKey === "string"
+            ? data.maps.apiKey.trim()
+            : "";
+
+        setMapApiKey(nextKey);
+      } catch {
+        if (mounted) {
+          setMapApiKey("");
+        }
+      } finally {
+        if (mounted) {
+          setIsMapConfigLoading(false);
+        }
+      }
+    };
+
+    void loadMapConfig();
+
+    return () => {
+      mounted = false;
+    };
+  }, [feature]);
+
+  const save = async () => {
+    setIsSaving(true);
+
+    try {
+      const result = await savePlatformSettingsDraft(
+        toPlatformSection(feature),
+        state,
+      );
+
+      window.localStorage.setItem(storageKey(feature), JSON.stringify(state));
+
+      toast.success(
+        result.source === "server"
+          ? `${title} updated`
+          : `${title} saved as draft`,
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : `Failed to save ${title}`,
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const setField = (key: string, value: unknown) => {
@@ -236,6 +428,151 @@ export default function BusinessSettingsFeaturePage({
     }
   };
 
+  useEffect(() => {
+    if (feature !== "business-setup" || !mapApiKey) {
+      setIsMapReady(false);
+      setMapLoadError(null);
+      mapRef.current = null;
+      mapMarkerRef.current = null;
+      mapAutocompleteRef.current = null;
+      return;
+    }
+
+    const container = mapContainerRef.current;
+    const searchInput = mapSearchInputRef.current;
+
+    if (!container || !searchInput) {
+      return;
+    }
+
+    let mounted = true;
+
+    const initMap = async () => {
+      try {
+        await loadGoogleMapsScript(mapApiKey);
+        if (!mounted) return;
+
+        const googleMaps = (window as Window & { google?: any }).google;
+        if (!googleMaps?.maps) {
+          throw new Error("Google Maps is unavailable");
+        }
+
+        const latitude = Number.parseFloat(String(state.latitude ?? ""));
+        const longitude = Number.parseFloat(String(state.longitude ?? ""));
+        const center =
+          Number.isFinite(latitude) && Number.isFinite(longitude)
+            ? { lat: latitude, lng: longitude }
+            : BUSINESS_DEFAULT_CENTER;
+
+        if (!mapRef.current) {
+          mapRef.current = new googleMaps.maps.Map(container, {
+            center,
+            zoom:
+              Number.isFinite(latitude) && Number.isFinite(longitude) ? 14 : 6,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: false,
+          });
+
+          mapMarkerRef.current = new googleMaps.maps.Marker({
+            map: mapRef.current,
+            position: center,
+            draggable: true,
+          });
+
+          mapRef.current.addListener("click", (event: any) => {
+            if (!event.latLng) return;
+            suppressMapSyncRef.current = true;
+            const nextLat = event.latLng.lat();
+            const nextLng = event.latLng.lng();
+            mapMarkerRef.current?.setPosition(event.latLng);
+            setState((prev) => ({
+              ...prev,
+              latitude: nextLat.toFixed(6),
+              longitude: nextLng.toFixed(6),
+            }));
+            window.setTimeout(() => {
+              suppressMapSyncRef.current = false;
+            }, 0);
+          });
+
+          mapMarkerRef.current.addListener("dragend", (event: any) => {
+            if (!event.latLng) return;
+            suppressMapSyncRef.current = true;
+            const nextLat = event.latLng.lat();
+            const nextLng = event.latLng.lng();
+            setState((prev) => ({
+              ...prev,
+              latitude: nextLat.toFixed(6),
+              longitude: nextLng.toFixed(6),
+            }));
+            window.setTimeout(() => {
+              suppressMapSyncRef.current = false;
+            }, 0);
+          });
+
+          mapAutocompleteRef.current =
+            new googleMaps.maps.places.Autocomplete(searchInput, {
+              fields: ["geometry", "formatted_address", "name"],
+            });
+
+          mapAutocompleteRef.current.addListener("place_changed", () => {
+            const place = mapAutocompleteRef.current?.getPlace();
+            const location = place?.geometry?.location;
+            if (!location) return;
+
+            suppressMapSyncRef.current = true;
+            const nextLat = location.lat();
+            const nextLng = location.lng();
+            mapRef.current?.panTo(location);
+            mapRef.current?.setZoom(15);
+            mapMarkerRef.current?.setPosition(location);
+            setState((prev) => ({
+              ...prev,
+              latitude: nextLat.toFixed(6),
+              longitude: nextLng.toFixed(6),
+            }));
+            window.setTimeout(() => {
+              suppressMapSyncRef.current = false;
+            }, 0);
+          });
+        }
+
+        setMapLoadError(null);
+        setIsMapReady(true);
+      } catch (error) {
+        if (!mounted) return;
+        setMapLoadError(
+          error instanceof Error ? error.message : "Failed to load map",
+        );
+        setIsMapReady(false);
+      }
+    };
+
+    void initMap();
+
+    return () => {
+      mounted = false;
+    };
+  }, [feature, mapApiKey, state.latitude, state.longitude]);
+
+  useEffect(() => {
+    if (feature !== "business-setup") return;
+    if (!isMapReady || suppressMapSyncRef.current) return;
+    if (!mapRef.current || !mapMarkerRef.current) return;
+
+    const latitude = Number.parseFloat(String(state.latitude ?? ""));
+    const longitude = Number.parseFloat(String(state.longitude ?? ""));
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return;
+    }
+
+    const nextPosition = { lat: latitude, lng: longitude };
+    mapRef.current.panTo(nextPosition);
+    mapMarkerRef.current.setPosition(nextPosition);
+  }, [feature, isMapReady, state.latitude, state.longitude]);
+
   const content = useMemo(() => {
     if (feature === "business-setup") {
       const descriptionText = String(state.businessDescription ?? "");
@@ -245,6 +582,9 @@ export default function BusinessSettingsFeaturePage({
       const logoFileName = String(state.logoFileName ?? "").trim();
       const faviconUrl = String(state.faviconUrl ?? "").trim();
       const faviconFileName = String(state.faviconFileName ?? "").trim();
+      const latitude = String(state.latitude ?? "").trim();
+      const longitude = String(state.longitude ?? "").trim();
+      const hasCoordinates = Boolean(latitude) && Boolean(longitude);
 
       const guidelineItems = [
         { id: "basic-information", label: "Basic Information" },
@@ -361,11 +701,27 @@ export default function BusinessSettingsFeaturePage({
               </div>
 
               <div style={styles.mapPreview}>
-                <div style={styles.mapSearch}>Search location</div>
-                <div style={styles.mapPin} />
-                <span style={styles.mapCaption}>
-                  Map preview (interactive map to be wired)
-                </span>
+                <input
+                  ref={mapSearchInputRef}
+                  style={styles.mapSearchInput}
+                  placeholder="Search location"
+                  disabled={!mapApiKey || isMapConfigLoading}
+                />
+                <div ref={mapContainerRef} style={styles.mapCanvas} />
+                {!mapApiKey || isMapConfigLoading || mapLoadError ? (
+                  <div style={styles.mapOverlay}>
+                    <div style={styles.mapPin} />
+                    <span style={styles.mapCaption}>
+                      {isMapConfigLoading
+                        ? "Loading map configuration..."
+                        : mapLoadError
+                        ? mapLoadError
+                        : hasCoordinates
+                        ? "Add a Google Maps API key in Platform Settings to enable the map search and picker."
+                        : "Add a Google Maps API key in Platform Settings, then search or click the map to set coordinates."}
+                    </span>
+                  </div>
+                ) : null}
               </div>
             </section>
 
@@ -1046,7 +1402,7 @@ export default function BusinessSettingsFeaturePage({
         )}
       </div>
     );
-  }, [feature, state, isGuidelineOpen]);
+  }, [feature, state, isGuidelineOpen, isMapConfigLoading, mapApiKey]);
 
   return (
     <div style={styles.page}>
@@ -1059,8 +1415,12 @@ export default function BusinessSettingsFeaturePage({
       <section style={styles.card}>{content}</section>
 
       <div style={styles.actions}>
-        <button style={styles.primaryBtn} onClick={save}>
-          Save Changes
+        <button
+          style={styles.primaryBtn}
+          onClick={() => void save()}
+          disabled={isSaving || isFeatureLoading}
+        >
+          {isSaving ? "Saving..." : isFeatureLoading ? "Loading..." : "Save Changes"}
         </button>
       </div>
     </div>
@@ -1327,12 +1687,8 @@ const styles: Record<string, CSSProperties> = {
       "radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.16), transparent 45%), radial-gradient(circle at 70% 75%, rgba(34, 197, 94, 0.12), transparent 40%), var(--glass-04)",
     position: "relative",
     overflow: "hidden",
-    display: "flex",
-    alignItems: "flex-end",
-    justifyContent: "center",
-    padding: 12,
   },
-  mapSearch: {
+  mapSearchInput: {
     position: "absolute",
     top: 10,
     left: 10,
@@ -1341,11 +1697,25 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: 9,
     border: "1px solid var(--glass-10)",
     background: "var(--surface-1)",
-    color: "var(--fg-60)",
-    display: "flex",
-    alignItems: "center",
+    color: "var(--foreground)",
     padding: "0 12px",
     fontSize: 13,
+    zIndex: 3,
+  },
+  mapCanvas: {
+    position: "absolute",
+    inset: 0,
+  },
+  mapOverlay: {
+    position: "absolute",
+    inset: 0,
+    display: "flex",
+    alignItems: "flex-end",
+    justifyContent: "center",
+    padding: 12,
+    background:
+      "linear-gradient(180deg, rgba(15, 23, 42, 0.08) 0%, rgba(15, 23, 42, 0.16) 100%)",
+    zIndex: 2,
   },
   mapPin: {
     width: 22,

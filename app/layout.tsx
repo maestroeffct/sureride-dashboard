@@ -3,6 +3,7 @@ import { Poppins, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/src/providers/ThemeProvider";
 import { Toaster } from "react-hot-toast";
+import { fetchPublicPlatformConfig } from "@/src/lib/publicPlatformConfig";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -16,10 +17,45 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
 });
 
-export const metadata: Metadata = {
-  title: "Sureride Admin",
-  description: "Sureride Administration Dashboard",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const config = await fetchPublicPlatformConfig({ cache: "no-store" });
+  const companyName = config?.businessSetup?.companyName?.trim() || "Sureride";
+  const title =
+    config?.pagesSocialMedia?.metaTitle?.trim() || `${companyName} Admin`;
+  const description =
+    config?.pagesSocialMedia?.metaDescription?.trim() ||
+    "Sureride Administration Dashboard";
+  const ogImage =
+    config?.pagesSocialMedia?.ogImageUrl?.trim() ||
+    config?.gallery?.items?.find(Boolean) ||
+    undefined;
+  const favicon = config?.businessSetup?.faviconUrl?.trim() || undefined;
+  const twitterHandle = config?.pagesSocialMedia?.twitterHandle?.trim() || undefined;
+
+  return {
+    title,
+    description,
+    icons: favicon
+      ? {
+          icon: favicon,
+          shortcut: favicon,
+          apple: favicon,
+        }
+      : undefined,
+    openGraph: {
+      title,
+      description,
+      images: ogImage ? [{ url: ogImage }] : undefined,
+    },
+    twitter: {
+      card: ogImage ? "summary_large_image" : "summary",
+      title,
+      description,
+      images: ogImage ? [ogImage] : undefined,
+      creator: twitterHandle,
+    },
+  };
+}
 
 export default function RootLayout({
   children,

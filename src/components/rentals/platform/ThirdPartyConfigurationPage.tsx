@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { Copy, Info, MailCheck, MapPinned, MessageSquareText, PlugZap, ShieldCheck } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   archiveAdminPaymentGateway,
   createAdminPaymentGateway,
+  getAdminPaymentGatewayMeta,
   listAdminPaymentGateways,
   replaceAdminPaymentGatewayFields,
   replaceAdminPaymentGatewayValues,
@@ -17,6 +18,7 @@ import {
   type AdminPaymentFieldType,
   type AdminPaymentGateway,
   type AdminPaymentGatewayField,
+  type AdminPaymentGatewayMeta,
   type AdminPaymentGatewayRuntimeAdapter,
 } from "@/src/lib/adminPaymentsApi";
 import {
@@ -64,6 +66,9 @@ type PaymentGateway = {
   runtimeAdapter: AdminPaymentGatewayRuntimeAdapter;
   isDefault: boolean;
   isRuntimeSupported: boolean;
+  missingRequiredFieldKeys: string[];
+  missingRuntimeFieldKeys: string[];
+  readinessIssues: string[];
   isReadyForCheckout: boolean;
 };
 
@@ -72,6 +77,7 @@ type ParameterLibraryItem = {
   label: string;
   type: AdminPaymentFieldType;
   secret?: boolean;
+  required?: boolean;
   defaultValue?: string;
 };
 
@@ -93,7 +99,7 @@ const TABS: Array<{ id: ThirdPartyTab; label: string }> = [
   { id: "storage-connection", label: "Storage Connection" },
 ];
 
-const GATEWAY_PARAMETER_LIBRARY: ParameterLibraryItem[] = [
+const DEFAULT_GATEWAY_PARAMETER_LIBRARY: ParameterLibraryItem[] = [
   { id: "public_key", label: "Public Key", type: "TEXT" },
   { id: "secret_key", label: "Secret Key", type: "SECRET", secret: true },
   { id: "merchant_email", label: "Merchant Email", type: "EMAIL" },
@@ -111,8 +117,8 @@ const GATEWAY_PARAMETER_LIBRARY: ParameterLibraryItem[] = [
   { id: "webhook_secret", label: "Webhook Secret", type: "SECRET", secret: true },
 ];
 
-function getLibraryById(id: string) {
-  return GATEWAY_PARAMETER_LIBRARY.find((item) => item.id === id);
+function getLibraryById(library: ParameterLibraryItem[], id: string) {
+  return library.find((item) => item.id === id);
 }
 
 function toUiMode(mode: "TEST" | "LIVE"): GatewayMode {
@@ -142,7 +148,7 @@ function mapApiFieldToUi(field: AdminPaymentGatewayField): PaymentGatewayField {
     id: field.key,
     label: field.label,
     type: field.type,
-    value: "",
+    value: field.currentValue ?? "",
     required: field.isRequired,
     secret: field.isSecret,
     hasStoredValue: Boolean(field.credentialState?.hasValue),
@@ -166,6 +172,9 @@ function mapApiGatewayToUi(gateway: AdminPaymentGateway): PaymentGateway {
     runtimeAdapter: gateway.runtimeAdapter,
     isDefault: gateway.isDefault,
     isRuntimeSupported: gateway.isRuntimeSupported,
+    missingRequiredFieldKeys: gateway.missingRequiredFieldKeys ?? [],
+    missingRuntimeFieldKeys: gateway.missingRuntimeFieldKeys ?? [],
+    readinessIssues: gateway.readinessIssues ?? [],
     isReadyForCheckout: gateway.isReadyForCheckout,
     fields: [...gateway.fields]
       .sort((a, b) => a.sortOrder - b.sortOrder)
@@ -174,11 +183,12 @@ function mapApiGatewayToUi(gateway: AdminPaymentGateway): PaymentGateway {
 }
 
 function buildGatewayField(
+  library: ParameterLibraryItem[],
   paramId: string,
   required: boolean,
   sortOrder: number,
 ): PaymentGatewayField | null {
-  const item = getLibraryById(paramId);
+  const item = getLibraryById(library, paramId);
   if (!item) return null;
   return {
     id: item.id,
@@ -193,14 +203,52 @@ function buildGatewayField(
   };
 }
 
-function createDefaultDraftParameters(): DraftParameterMap {
-  return GATEWAY_PARAMETER_LIBRARY.reduce<DraftParameterMap>((acc, item) => {
+function createDefaultDraftParameters(library: ParameterLibraryItem[]): DraftParameterMap {
+  return library.reduce<DraftParameterMap>((acc, item) => {
     acc[item.id] = {
       include: ["public_key", "secret_key", "merchant_email"].includes(item.id),
       required: ["public_key", "secret_key", "merchant_email"].includes(item.id),
     };
     return acc;
   }, {});
+}
+
+function parameterLibraryFromMeta(
+  meta: AdminPaymentGatewayMeta | null,
+): ParameterLibraryItem[] {
+  if (!meta?.templates?.length) return DEFAULT_GATEWAY_PARAMETER_LIBRARY;
+
+  const byKey = new Map<string, ParameterLibraryItem>();
+
+  for (const template of meta.templates) {
+    for (const field of template.fields) {
+      if (!byKey.has(field.key)) {
+        byKey.set(field.key, {
+          id: field.key,
+          label: field.label,
+          type: field.type,
+          secret: field.isSecret,
+          defaultValue: field.defaultValue ?? undefined,
+        });
+      }
+    }
+  }
+
+  return Array.from(byKey.values());
+}
+
+function formatReadinessIssue(issue: string) {
+  if (issue === "GATEWAY_DISABLED") return "Gateway is disabled";
+  if (issue === "GATEWAY_RUNTIME_NOT_IMPLEMENTED") {
+    return "Runtime adapter is not implemented";
+  }
+  if (issue.startsWith("MISSING_REQUIRED:")) {
+    return `Missing required value: ${issue.replace("MISSING_REQUIRED:", "")}`;
+  }
+  if (issue.startsWith("MISSING_RUNTIME:")) {
+    return `Missing runtime value: ${issue.replace("MISSING_RUNTIME:", "")}`;
+  }
+  return issue;
 }
 
 type FormState = {
@@ -226,9 +274,6 @@ type FormState = {
 
   mapEnabled: boolean;
   mapApiKey: string;
-  mapGeocodingApiKey: string;
-  mapPlacesApiKey: string;
-  mapDirectionsApiKey: string;
 
   firebaseEnabled: boolean;
   firebaseApiKey: string;
@@ -260,6 +305,7 @@ type FormState = {
   socialFacebookClientSecret: string;
 
   socialAppleEnabled: boolean;
+  socialAppleCallbackUrl: string;
   socialAppleClientId: string;
   socialAppleClientSecret: string;
 };
@@ -287,9 +333,6 @@ const INITIAL_STATE: FormState = {
 
   mapEnabled: true,
   mapApiKey: "",
-  mapGeocodingApiKey: "",
-  mapPlacesApiKey: "",
-  mapDirectionsApiKey: "",
 
   firebaseEnabled: true,
   firebaseApiKey: "",
@@ -321,6 +364,7 @@ const INITIAL_STATE: FormState = {
   socialFacebookClientSecret: "",
 
   socialAppleEnabled: false,
+  socialAppleCallbackUrl: "",
   socialAppleClientId: "",
   socialAppleClientSecret: "",
 };
@@ -404,14 +448,16 @@ export default function ThirdPartyConfigurationPage() {
   const [activeTab, setActiveTab] = useState<ThirdPartyTab>("payment-methods");
   const [form, setForm] = useState<FormState>(INITIAL_STATE);
   const [paymentGateways, setPaymentGateways] = useState<PaymentGateway[]>([]);
+  const [paymentMeta, setPaymentMeta] = useState<AdminPaymentGatewayMeta | null>(null);
 
   const [isGatewayDrawerOpen, setIsGatewayDrawerOpen] = useState(false);
   const [draftGatewayName, setDraftGatewayName] = useState("");
   const [draftGatewayBrand, setDraftGatewayBrand] = useState("");
+  const [draftGatewayTemplateKey, setDraftGatewayTemplateKey] = useState("custom");
   const [draftGatewayLogo, setDraftGatewayLogo] = useState("");
   const [draftGatewayLogoFile, setDraftGatewayLogoFile] = useState<File | null>(null);
   const [draftParameters, setDraftParameters] = useState<DraftParameterMap>(
-    createDefaultDraftParameters,
+    createDefaultDraftParameters(DEFAULT_GATEWAY_PARAMETER_LIBRARY),
   );
   const [paramToAddByGateway, setParamToAddByGateway] = useState<
     Record<string, string>
@@ -425,6 +471,24 @@ export default function ThirdPartyConfigurationPage() {
   const [defaultingGatewayId, setDefaultingGatewayId] = useState<string | null>(null);
   const [archivingGatewayId, setArchivingGatewayId] = useState<string | null>(null);
   const [savingSection, setSavingSection] = useState<PlatformSettingsSection | null>(null);
+  const parameterLibrary = useMemo(
+    () => parameterLibraryFromMeta(paymentMeta),
+    [paymentMeta],
+  );
+  const gatewayTemplates = paymentMeta?.templates ?? [];
+  const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "");
+  const googleSocialLoginEndpoint = apiBaseUrl
+    ? `${apiBaseUrl}/auth/social/google`
+    : "";
+  const defaultGoogleCallbackUrl = apiBaseUrl
+    ? `${apiBaseUrl}/auth/social/google/callback`
+    : "";
+  const defaultFacebookCallbackUrl = apiBaseUrl
+    ? `${apiBaseUrl}/auth/social/facebook/callback`
+    : "";
+  const defaultAppleCallbackUrl = apiBaseUrl
+    ? `${apiBaseUrl}/auth/social/apple/callback`
+    : "";
 
   const loadPaymentGateways = useCallback(async (withSpinner = true) => {
     if (withSpinner) {
@@ -449,6 +513,20 @@ export default function ThirdPartyConfigurationPage() {
   }, [loadPaymentGateways]);
 
   useEffect(() => {
+    const loadPaymentMeta = async () => {
+      try {
+        const meta = await getAdminPaymentGatewayMeta();
+        setPaymentMeta(meta);
+        setDraftParameters(createDefaultDraftParameters(parameterLibraryFromMeta(meta)));
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    void loadPaymentMeta();
+  }, []);
+
+  useEffect(() => {
     let mounted = true;
 
     const hydratePlatformSettings = async () => {
@@ -466,6 +544,21 @@ export default function ThirdPartyConfigurationPage() {
         ...(sections["firebase-otp"] as Partial<FormState> | undefined),
         ...(sections["recaptcha"] as Partial<FormState> | undefined),
         ...(sections["storage-connection"] as Partial<FormState> | undefined),
+        socialGoogleCallbackUrl:
+          String(
+            (sections["social-logins"] as Partial<FormState> | undefined)
+              ?.socialGoogleCallbackUrl ?? "",
+          ) || defaultGoogleCallbackUrl,
+        socialFacebookCallbackUrl:
+          String(
+            (sections["social-logins"] as Partial<FormState> | undefined)
+              ?.socialFacebookCallbackUrl ?? "",
+          ) || defaultFacebookCallbackUrl,
+        socialAppleCallbackUrl:
+          String(
+            (sections["social-logins"] as Partial<FormState> | undefined)
+              ?.socialAppleCallbackUrl ?? "",
+          ) || defaultAppleCallbackUrl,
       }));
     };
 
@@ -474,7 +567,7 @@ export default function ThirdPartyConfigurationPage() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [defaultAppleCallbackUrl, defaultFacebookCallbackUrl, defaultGoogleCallbackUrl]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -490,8 +583,8 @@ export default function ThirdPartyConfigurationPage() {
       const result = await savePlatformSettingsDraft(section, payload as Record<string, unknown>);
       toast.success(
         result.source === "server"
-          ? ` saved`
-          : ` saved as draft (backend endpoint pending)`,
+          ? `${label} saved`
+          : `${label} saved as draft (backend endpoint pending)`,
       );
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -503,9 +596,10 @@ export default function ThirdPartyConfigurationPage() {
   const resetGatewayDraft = () => {
     setDraftGatewayName("");
     setDraftGatewayBrand("");
+    setDraftGatewayTemplateKey(gatewayTemplates[0]?.key ?? "custom");
     setDraftGatewayLogo("");
     setDraftGatewayLogoFile(null);
-    setDraftParameters(createDefaultDraftParameters());
+    setDraftParameters(createDefaultDraftParameters(parameterLibrary));
   };
 
   const openGatewayDrawer = () => {
@@ -582,6 +676,7 @@ export default function ThirdPartyConfigurationPage() {
         }
 
         const field = buildGatewayField(
+          parameterLibrary,
           parameterId,
           true,
           gateway.fields.length + 1,
@@ -745,20 +840,40 @@ export default function ThirdPartyConfigurationPage() {
       return;
     }
 
-    const selectedFields = GATEWAY_PARAMETER_LIBRARY.filter(
-      (item) => draftParameters[item.id]?.include,
-    ).map((item, index) => ({
-      key: item.id,
-      label: item.label,
-      type: item.type,
-      isRequired: Boolean(draftParameters[item.id]?.required),
-      isSecret: Boolean(item.secret),
-      sortOrder: index + 1,
-      defaultValue: item.defaultValue,
-    }));
+    const selectedTemplate =
+      gatewayTemplates.find((template) => template.key === draftGatewayTemplateKey) ?? null;
+    const selectedFields = selectedTemplate
+      ? selectedTemplate.fields.map((field, index) => ({
+          key: field.key,
+          label: field.label,
+          type: field.type,
+          isRequired: field.isRequired,
+          isSecret: field.isSecret,
+          sortOrder: field.sortOrder ?? index + 1,
+          placeholder: field.placeholder ?? undefined,
+          helpText: field.helpText ?? undefined,
+          defaultValue: field.defaultValue ?? undefined,
+          validationRegex: field.validationRegex ?? undefined,
+          options: field.options ?? undefined,
+        }))
+      : parameterLibrary
+          .filter((item) => draftParameters[item.id]?.include)
+          .map((item, index) => ({
+            key: item.id,
+            label: item.label,
+            type: item.type,
+            isRequired: Boolean(draftParameters[item.id]?.required),
+            isSecret: Boolean(item.secret),
+            sortOrder: index + 1,
+            defaultValue: item.defaultValue,
+          }));
 
     if (!selectedFields.length) {
-      toast.error("Select at least one parameter");
+      toast.error(
+        selectedTemplate
+          ? "Selected template has no fields configured"
+          : "Select at least one parameter",
+      );
       return;
     }
 
@@ -767,11 +882,12 @@ export default function ThirdPartyConfigurationPage() {
       await createAdminPaymentGateway({
         key: gatewayKey,
         displayName: draftGatewayBrand.trim() || name,
-        runtimeAdapter: "CUSTOM",
-        mode: "TEST",
+        runtimeAdapter: selectedTemplate?.runtimeAdapter ?? "CUSTOM",
+        mode: selectedTemplate?.mode ?? "TEST",
         isEnabled: false,
         isDefault: false,
-        supportedCurrencies: ["ngn"],
+        merchantDisplayName: selectedTemplate?.merchantDisplayName ?? undefined,
+        supportedCurrencies: selectedTemplate?.supportedCurrencies ?? ["ngn"],
         fields: selectedFields,
       });
 
@@ -912,7 +1028,7 @@ export default function ThirdPartyConfigurationPage() {
         ) : (
           <div style={styles.grid2Large}>
             {paymentGateways.map((gateway) => {
-              const availableParams = GATEWAY_PARAMETER_LIBRARY.filter(
+              const availableParams = parameterLibrary.filter(
                 (item) => !gateway.fields.some((field) => field.id === item.id),
               );
               const pendingParam =
@@ -971,6 +1087,16 @@ export default function ThirdPartyConfigurationPage() {
                         : "Missing Required Values"}
                     </span>
                   </div>
+
+                  {!gateway.isReadyForCheckout && gateway.readinessIssues.length ? (
+                    <div style={styles.readinessList}>
+                      {gateway.readinessIssues.map((issue) => (
+                        <span key={`${gateway.id}:${issue}`} style={styles.readinessItem}>
+                          {formatReadinessIssue(issue)}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
 
                   <div style={styles.brandArea}>
                     {gateway.logoUrl ? (
@@ -1145,7 +1271,7 @@ export default function ThirdPartyConfigurationPage() {
                     <Field key={field.id} label={`${field.label}${field.required ? " *" : ""}`}>
                       <input
                         style={styles.input}
-                        type={field.secret ? "password" : "text"}
+                        type="text"
                         value={field.value}
                         placeholder={
                           field.hasStoredValue && !field.value
@@ -1223,6 +1349,21 @@ export default function ThirdPartyConfigurationPage() {
                   placeholder="Optional text shown when logo is absent"
                 />
               </Field>
+              <Field label="Gateway Template">
+                <select
+                  style={styles.input}
+                  value={draftGatewayTemplateKey}
+                  onChange={(event) => setDraftGatewayTemplateKey(event.target.value)}
+                  disabled={isSubmittingGateway}
+                >
+                  {gatewayTemplates.map((template) => (
+                    <option key={template.key} value={template.key}>
+                      {template.displayName} Template
+                    </option>
+                  ))}
+                  <option value="custom">Custom</option>
+                </select>
+              </Field>
 
               <div style={styles.drawerLogoCard}>
                 <div style={styles.drawerLogoPreview}>
@@ -1274,12 +1415,23 @@ export default function ThirdPartyConfigurationPage() {
             <div style={styles.drawerBlock}>
               <h4 style={styles.drawerBlockTitle}>Select Gateway Parameters</h4>
               <p style={styles.drawerHint}>
-                Pick the fields you want in this gateway and mark which ones are
-                required.
+                {draftGatewayTemplateKey === "custom"
+                  ? "Pick the fields you want in this gateway and mark which ones are required."
+                  : "Template gateways come with preconfigured required fields from the backend."}
               </p>
 
               <div style={styles.drawerParameterList}>
-                {GATEWAY_PARAMETER_LIBRARY.map((item) => {
+                {(draftGatewayTemplateKey === "custom"
+                  ? parameterLibrary
+                  : gatewayTemplates.find((template) => template.key === draftGatewayTemplateKey)
+                      ?.fields.map((field) => ({
+                        id: field.key,
+                        label: field.label,
+                        type: field.type,
+                        required: field.isRequired,
+                        secret: field.isSecret,
+                        defaultValue: field.defaultValue ?? undefined,
+                      })) ?? []).map((item) => {
                   const state = draftParameters[item.id] ?? {
                     include: false,
                     required: false,
@@ -1290,9 +1442,11 @@ export default function ThirdPartyConfigurationPage() {
                       <label style={styles.drawerCheckLabel}>
                         <input
                           type="checkbox"
-                          checked={state.include}
+                          checked={
+                            draftGatewayTemplateKey === "custom" ? state.include : true
+                          }
                           style={styles.accentControl}
-                          disabled={isSubmittingGateway}
+                          disabled={isSubmittingGateway || draftGatewayTemplateKey !== "custom"}
                           onChange={(event) =>
                             toggleDraftParameterInclude(
                               item.id,
@@ -1309,9 +1463,17 @@ export default function ThirdPartyConfigurationPage() {
                       <label style={styles.drawerCheckLabelMuted}>
                         <input
                           type="checkbox"
-                          checked={state.required}
+                          checked={
+                            draftGatewayTemplateKey === "custom"
+                              ? state.required
+                              : Boolean(item.required)
+                          }
                           style={styles.accentControl}
-                          disabled={!state.include || isSubmittingGateway}
+                          disabled={
+                            draftGatewayTemplateKey !== "custom" ||
+                            !state.include ||
+                            isSubmittingGateway
+                          }
                           onChange={(event) =>
                             toggleDraftParameterRequired(
                               item.id,
@@ -1523,6 +1685,9 @@ export default function ThirdPartyConfigurationPage() {
             *By turning OFF mail configuration all your mailing services will be
             off.
           </p>
+          <p style={styles.helperText}>
+            These settings are now used by the backend mailer for OTP and system emails.
+          </p>
 
           <Field label="Mailer name">
             <input
@@ -1654,6 +1819,11 @@ export default function ThirdPartyConfigurationPage() {
         callbackUrl: form.socialGoogleCallbackUrl,
         clientId: form.socialGoogleClientId,
         clientSecret: form.socialGoogleClientSecret,
+        referenceLabel: googleSocialLoginEndpoint ? "Login Endpoint" : "Callback URL",
+        referenceValue: googleSocialLoginEndpoint || form.socialGoogleCallbackUrl,
+        helperText:
+          "Use the Google Client ID in your app and send the returned Google ID token to the backend login endpoint.",
+        implementationStatus: "Live in backend",
       },
       {
         key: "facebook",
@@ -1662,14 +1832,24 @@ export default function ThirdPartyConfigurationPage() {
         callbackUrl: form.socialFacebookCallbackUrl,
         clientId: form.socialFacebookClientId,
         clientSecret: form.socialFacebookClientSecret,
+        referenceLabel: "Callback URL",
+        referenceValue: form.socialFacebookCallbackUrl,
+        helperText:
+          "Credentials are saved here, but the backend Facebook login flow is not implemented yet.",
+        implementationStatus: "Config only",
       },
       {
         key: "apple",
         label: "Apple",
         enabled: form.socialAppleEnabled,
-        callbackUrl: "",
+        callbackUrl: form.socialAppleCallbackUrl,
         clientId: form.socialAppleClientId,
         clientSecret: form.socialAppleClientSecret,
+        referenceLabel: "Callback URL",
+        referenceValue: form.socialAppleCallbackUrl,
+        helperText:
+          "Credentials are saved here, but the backend Apple login flow is not implemented yet.",
+        implementationStatus: "Config only",
       },
     ] as const;
 
@@ -1678,7 +1858,7 @@ export default function ThirdPartyConfigurationPage() {
         <div style={styles.integrationHeaderRow}>
           <h3 style={styles.sectionTitle}>Social Login Setup</h3>
           <p style={styles.sectionSubtext}>
-            Configure OAuth credentials for each provider and control availability.
+            Configure provider credentials here. Google login is wired in the backend; Facebook and Apple are stored for rollout later.
           </p>
         </div>
 
@@ -1707,24 +1887,23 @@ export default function ThirdPartyConfigurationPage() {
 
               <div style={styles.integrationCardBody}>
                 <div style={styles.integrationHintRow}>
-                  <button type="button" style={styles.linkBtn}>
-                    Credential Setup
-                  </button>
+                  <span style={styles.sectionSubtext}>{provider.implementationStatus}</span>
                   <Info size={16} style={styles.mutedIcon} />
                 </div>
+                <p style={styles.helperText}>{provider.helperText}</p>
 
-                {provider.callbackUrl ? (
-                  <Field label="Callback URL">
+                {provider.referenceValue ? (
+                  <Field label={provider.referenceLabel}>
                     <div style={styles.copyFieldWrap}>
                       <input
                         style={{ ...styles.input, ...styles.copyInput }}
-                        value={provider.callbackUrl}
+                        value={provider.referenceValue}
                         readOnly
                       />
                       <button
                         type="button"
                         style={styles.copyBtn}
-                        onClick={() => void copyText(provider.callbackUrl)}
+                        onClick={() => void copyText(provider.referenceValue)}
                       >
                         <Copy size={15} />
                       </button>
@@ -1777,7 +1956,7 @@ export default function ThirdPartyConfigurationPage() {
                         setForm((prev) => ({
                           ...prev,
                           socialGoogleEnabled: INITIAL_STATE.socialGoogleEnabled,
-                          socialGoogleCallbackUrl: INITIAL_STATE.socialGoogleCallbackUrl,
+                          socialGoogleCallbackUrl: defaultGoogleCallbackUrl,
                           socialGoogleClientId: INITIAL_STATE.socialGoogleClientId,
                           socialGoogleClientSecret: INITIAL_STATE.socialGoogleClientSecret,
                         }));
@@ -1786,7 +1965,7 @@ export default function ThirdPartyConfigurationPage() {
                         setForm((prev) => ({
                           ...prev,
                           socialFacebookEnabled: INITIAL_STATE.socialFacebookEnabled,
-                          socialFacebookCallbackUrl: INITIAL_STATE.socialFacebookCallbackUrl,
+                          socialFacebookCallbackUrl: defaultFacebookCallbackUrl,
                           socialFacebookClientId: INITIAL_STATE.socialFacebookClientId,
                           socialFacebookClientSecret: INITIAL_STATE.socialFacebookClientSecret,
                         }));
@@ -1795,6 +1974,7 @@ export default function ThirdPartyConfigurationPage() {
                         setForm((prev) => ({
                           ...prev,
                           socialAppleEnabled: INITIAL_STATE.socialAppleEnabled,
+                          socialAppleCallbackUrl: defaultAppleCallbackUrl,
                           socialAppleClientId: INITIAL_STATE.socialAppleClientId,
                           socialAppleClientSecret: INITIAL_STATE.socialAppleClientSecret,
                         }));
@@ -1817,6 +1997,7 @@ export default function ThirdPartyConfigurationPage() {
                         socialFacebookClientId: form.socialFacebookClientId,
                         socialFacebookClientSecret: form.socialFacebookClientSecret,
                         socialAppleEnabled: form.socialAppleEnabled,
+                        socialAppleCallbackUrl: form.socialAppleCallbackUrl,
                         socialAppleClientId: form.socialAppleClientId,
                         socialAppleClientSecret: form.socialAppleClientSecret,
                       })
@@ -1845,6 +2026,9 @@ export default function ThirdPartyConfigurationPage() {
         </header>
 
         <div style={styles.integrationCardBodyLarge}>
+          <p style={styles.helperText}>
+            When enabled, the backend expects a `recaptchaToken` on public auth actions. Client apps should read the site key from `/platform/client-config`.
+          </p>
           <div style={styles.noticeBanner}>
             <div>
               <strong style={styles.noticeTitle}>V3 Version is available now. Must setup for ReCAPTCHA V3</strong>
@@ -1924,6 +2108,9 @@ export default function ThirdPartyConfigurationPage() {
         </header>
 
         <div style={styles.integrationCardBodyLarge}>
+          <p style={styles.helperText}>
+            Upload flows now use this setting at runtime. Local storage writes to `/uploads`; third-party storage switches uploads to your configured S3-compatible bucket.
+          </p>
           <div style={styles.grid2Compact}>
             <label style={styles.toggleTile}>
               <span>
@@ -2064,39 +2251,16 @@ export default function ThirdPartyConfigurationPage() {
         </header>
 
         <div style={styles.integrationCardBodyLarge}>
-          <div style={styles.grid2Compact}>
-            <Field label="Google Maps API Key">
-              <input
-                style={styles.input}
-                value={form.mapApiKey}
-                onChange={(event) => set("mapApiKey", event.target.value)}
-              />
-            </Field>
-            <Field label="Geocoding API Key">
-              <input
-                style={styles.input}
-                value={form.mapGeocodingApiKey}
-                onChange={(event) => set("mapGeocodingApiKey", event.target.value)}
-              />
-            </Field>
-          </div>
-
-          <div style={styles.grid2Compact}>
-            <Field label="Places API Key">
-              <input
-                style={styles.input}
-                value={form.mapPlacesApiKey}
-                onChange={(event) => set("mapPlacesApiKey", event.target.value)}
-              />
-            </Field>
-            <Field label="Directions API Key">
-              <input
-                style={styles.input}
-                value={form.mapDirectionsApiKey}
-                onChange={(event) => set("mapDirectionsApiKey", event.target.value)}
-              />
-            </Field>
-          </div>
+          <p style={styles.helperText}>
+            A single Google Maps key is used across maps, places, and geocoding integrations.
+          </p>
+          <Field label="Google Maps API Key">
+            <input
+              style={styles.input}
+              value={form.mapApiKey}
+              onChange={(event) => set("mapApiKey", event.target.value)}
+            />
+          </Field>
 
           <div style={styles.actionsInlineEnd}>
             <button
@@ -2107,9 +2271,6 @@ export default function ThirdPartyConfigurationPage() {
                   ...prev,
                   mapEnabled: INITIAL_STATE.mapEnabled,
                   mapApiKey: INITIAL_STATE.mapApiKey,
-                  mapGeocodingApiKey: INITIAL_STATE.mapGeocodingApiKey,
-                  mapPlacesApiKey: INITIAL_STATE.mapPlacesApiKey,
-                  mapDirectionsApiKey: INITIAL_STATE.mapDirectionsApiKey,
                 }))
               }
             >
@@ -2122,9 +2283,6 @@ export default function ThirdPartyConfigurationPage() {
                 void saveSection("map-apis", "Map APIs", {
                   mapEnabled: form.mapEnabled,
                   mapApiKey: form.mapApiKey,
-                  mapGeocodingApiKey: form.mapGeocodingApiKey,
-                  mapPlacesApiKey: form.mapPlacesApiKey,
-                  mapDirectionsApiKey: form.mapDirectionsApiKey,
                 })
               }
               disabled={savingSection === "map-apis"}
@@ -2159,6 +2317,9 @@ export default function ThirdPartyConfigurationPage() {
         </header>
 
         <div style={styles.integrationCardBodyLarge}>
+          <p style={styles.helperText}>
+            Client apps should fetch `/platform/client-config` and use this Firebase config for phone verification when this section is enabled.
+          </p>
           <div style={styles.grid2Compact}>
             <Field label="Firebase API Key">
               <input
@@ -2620,6 +2781,19 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
     gap: 8,
     flexWrap: "wrap",
+  },
+  readinessList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+  },
+  readinessItem: {
+    borderRadius: 8,
+    background: "rgba(251,191,36,0.12)",
+    color: "#FBBF24",
+    fontSize: 12,
+    lineHeight: 1.4,
+    padding: "7px 10px",
   },
   gatewayStatusBadge: {
     borderRadius: 999,

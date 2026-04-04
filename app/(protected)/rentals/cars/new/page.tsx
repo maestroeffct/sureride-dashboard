@@ -3,7 +3,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { createAdminCar, listRentalLocations } from "@/src/lib/carsApi";
+import {
+  attachAdminCarFeatures,
+  createAdminCar,
+  listAdminCarFeatureOptions,
+  listRentalLocations,
+  uploadAdminCarImages,
+  type AdminCarFeatureOption,
+} from "@/src/lib/carsApi";
+import {
+  listCarMetadataDraft,
+  type CarBrandConfig,
+  type CarModelConfig,
+} from "@/src/lib/carMetadataDraftApi";
 import { listProviders, type ProviderSummaryApi } from "@/src/lib/providersApi";
 
 type FormState = {
@@ -55,22 +67,33 @@ export default function AddCarPage() {
   const [form, setForm] = useState<FormState>(initialForm);
   const [providers, setProviders] = useState<ProviderSummaryApi[]>([]);
   const [locations, setLocations] = useState<RentalLocationOption[]>([]);
+  const [brands, setBrands] = useState<CarBrandConfig[]>([]);
+  const [models, setModels] = useState<CarModelConfig[]>([]);
+  const [featureOptions, setFeatureOptions] = useState<AdminCarFeatureOption[]>([]);
+  const [selectedFeatureIds, setSelectedFeatureIds] = useState<string[]>([]);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingFeatures, setLoadingFeatures] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [createdCarId, setCreatedCarId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadOptions = async () => {
       try {
         setLoading(true);
-        const [providersResponse, locationRows] = await Promise.all([
+        const [providersResponse, locationRows, metadata] = await Promise.all([
           listProviders({ page: 1, limit: 100 }),
           listRentalLocations(),
+          listCarMetadataDraft(),
         ]);
 
         setProviders(providersResponse.items);
         setLocations(locationRows);
+        setBrands(metadata.brands.filter((item) => item.isActive));
+        setModels(metadata.models.filter((item) => item.isActive));
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to load form options";
+        const message =
+          err instanceof Error ? err.message : "Failed to load form options";
         toast.error(message);
       } finally {
         setLoading(false);
@@ -80,10 +103,66 @@ export default function AddCarPage() {
     void loadOptions();
   }, []);
 
+  useEffect(() => {
+    const loadFeatures = async () => {
+      try {
+        setLoadingFeatures(true);
+        const response = await listAdminCarFeatureOptions(
+          form.providerId || undefined,
+        );
+        setFeatureOptions(response.items ?? []);
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to load features";
+        toast.error(message);
+      } finally {
+        setLoadingFeatures(false);
+      }
+    };
+
+    void loadFeatures();
+  }, [form.providerId]);
+
   const availableLocations = useMemo(() => {
     if (!form.providerId) return [];
     return locations.filter((location) => location.providerId === form.providerId);
   }, [form.providerId, locations]);
+
+  const matchingBrand = useMemo(() => {
+    const brandName = form.brand.trim().toLowerCase();
+    if (!brandName) return null;
+    return (
+      brands.find((brand) => brand.name.trim().toLowerCase() === brandName) ?? null
+    );
+  }, [brands, form.brand]);
+
+  const modelOptions = useMemo(() => {
+    if (!matchingBrand) return models;
+    return models.filter((model) => model.brandId === matchingBrand.id);
+  }, [matchingBrand, models]);
+
+  const groupedFeatures = useMemo(() => {
+    const groups = new Map<string, AdminCarFeatureOption[]>();
+
+    for (const feature of featureOptions) {
+      const key = feature.category || "OTHER";
+      const current = groups.get(key) ?? [];
+      current.push(feature);
+      groups.set(key, current);
+    }
+
+    return Array.from(groups.entries()).map(([category, items]) => ({
+      category,
+      items: items.sort((a, b) => a.name.localeCompare(b.name)),
+    }));
+  }, [featureOptions]);
+
+  const selectedLocation = useMemo(
+    () => availableLocations.find((location) => location.id === form.locationId) ?? null,
+    [availableLocations, form.locationId],
+  );
+
+  const isBaseLocked = Boolean(createdCarId);
 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => {
@@ -97,6 +176,19 @@ export default function AddCarPage() {
 
       return { ...prev, [key]: value };
     });
+  };
+
+  const toggleFeature = (featureId: string) => {
+    setSelectedFeatureIds((prev) =>
+      prev.includes(featureId)
+        ? prev.filter((id) => id !== featureId)
+        : [...prev, featureId],
+    );
+  };
+
+  const handleImageSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const nextFiles = Array.from(event.target.files ?? []);
+    setImageFiles(nextFiles);
   };
 
   const validate = () => {
@@ -139,25 +231,54 @@ export default function AddCarPage() {
 
     try {
       setSaving(true);
-      const response = await createAdminCar({
-        providerId: form.providerId,
-        locationId: form.locationId,
-        brand: form.brand.trim(),
-        model: form.model.trim(),
-        category: form.category,
-        year: Number(form.year),
-        seats: Number(form.seats),
-        bags: form.bags.trim(),
-        hasAC: form.hasAC,
-        transmission: form.transmission,
-        mileagePolicy: form.mileagePolicy,
-        dailyRate: Number(form.dailyRate),
-        hourlyRate: form.hourlyRate.trim() ? Number(form.hourlyRate) : null,
-        autoApprove: form.autoApprove,
-        note: form.note.trim() || undefined,
-      });
 
-      toast.success(response.message || "Car created");
+      let carId = createdCarId;
+      let createMessage = "Car created";
+
+      if (!carId) {
+        const response = await createAdminCar({
+          providerId: form.providerId,
+          locationId: form.locationId,
+          brand: form.brand.trim(),
+          model: form.model.trim(),
+          category: form.category,
+          year: Number(form.year),
+          seats: Number(form.seats),
+          bags: form.bags.trim(),
+          hasAC: form.hasAC,
+          transmission: form.transmission,
+          mileagePolicy: form.mileagePolicy,
+          dailyRate: Number(form.dailyRate),
+          hourlyRate: form.hourlyRate.trim() ? Number(form.hourlyRate) : null,
+          autoApprove: form.autoApprove,
+          note: form.note.trim() || undefined,
+        });
+
+        carId = response.car.id;
+        createMessage = response.message || createMessage;
+        setCreatedCarId(carId);
+      }
+
+      try {
+        if (selectedFeatureIds.length) {
+          await attachAdminCarFeatures(carId, selectedFeatureIds);
+        }
+
+        if (imageFiles.length) {
+          await uploadAdminCarImages(carId, imageFiles);
+        }
+      } catch (extraError) {
+        const message =
+          extraError instanceof Error
+            ? extraError.message
+            : "Failed to finish car setup";
+        toast.error(
+          `Base car saved. ${message}. You can retry now without creating a duplicate.`,
+        );
+        return;
+      }
+
+      toast.success(createMessage);
       router.push("/rentals/cars");
       router.refresh();
     } catch (err) {
@@ -174,185 +295,329 @@ export default function AddCarPage() {
         <div>
           <h1 style={styles.title}>Add Car</h1>
           <p style={styles.subtitle}>
-            Create a new rental car listing for a provider and location.
+            Create a new rental car listing, then attach features and images in
+            the same flow.
           </p>
         </div>
       </div>
+
+      {createdCarId ? (
+        <div style={styles.infoBanner}>
+          Base car record created. If images or features failed, update your
+          selections and click {saving ? "Saving..." : "Finish Setup"} to retry
+          the remaining steps.
+        </div>
+      ) : null}
 
       <div style={styles.card}>
         {loading ? (
           <div style={styles.loadingState}>Loading providers and locations...</div>
         ) : (
           <>
-            <div style={styles.grid}>
-              <Field label="Provider">
-                <select
-                  value={form.providerId}
-                  onChange={(e) => setField("providerId", e.target.value)}
-                  style={styles.input}
-                >
-                  <option value="">Select provider</option>
-                  {providers.map((provider) => (
-                    <option key={provider.id} value={provider.id}>
-                      {provider.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+            <div style={styles.section}>
+              <div style={styles.sectionHeader}>
+                <h2 style={styles.sectionTitle}>Core Details</h2>
+                <p style={styles.sectionHint}>
+                  Provider, location, pricing, and listing status.
+                </p>
+              </div>
 
-              <Field label="Location">
-                <select
-                  value={form.locationId}
-                  onChange={(e) => setField("locationId", e.target.value)}
-                  style={styles.input}
-                  disabled={!form.providerId}
-                >
-                  <option value="">Select location</option>
-                  {availableLocations.map((location) => (
-                    <option key={location.id} value={location.id}>
-                      {location.name}
-                      {location.address ? ` - ${location.address}` : ""}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+              <div style={styles.grid}>
+                <Field label="Provider">
+                  <select
+                    value={form.providerId}
+                    onChange={(e) => setField("providerId", e.target.value)}
+                    style={styles.input}
+                    disabled={isBaseLocked}
+                  >
+                    <option value="">Select provider</option>
+                    {providers.map((provider) => (
+                      <option key={provider.id} value={provider.id}>
+                        {provider.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
 
-              <Field label="Brand">
-                <input
-                  value={form.brand}
-                  onChange={(e) => setField("brand", e.target.value)}
-                  placeholder="Toyota"
-                  style={styles.input}
-                />
-              </Field>
+                <Field label="Location">
+                  <select
+                    value={form.locationId}
+                    onChange={(e) => setField("locationId", e.target.value)}
+                    style={styles.input}
+                    disabled={!form.providerId || isBaseLocked}
+                  >
+                    <option value="">Select location</option>
+                    {availableLocations.map((location) => (
+                      <option key={location.id} value={location.id}>
+                        {location.name}
+                        {location.address ? ` - ${location.address}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
 
-              <Field label="Model">
-                <input
-                  value={form.model}
-                  onChange={(e) => setField("model", e.target.value)}
-                  placeholder="Corolla"
-                  style={styles.input}
-                />
-              </Field>
+                <Field label="Brand">
+                  <div style={styles.inputStack}>
+                    <input
+                      list="car-brand-options"
+                      value={form.brand}
+                      onChange={(e) => setField("brand", e.target.value)}
+                      placeholder="Toyota"
+                      style={styles.input}
+                      disabled={isBaseLocked}
+                    />
+                    <datalist id="car-brand-options">
+                      {brands.map((brand) => (
+                        <option key={brand.id} value={brand.name} />
+                      ))}
+                    </datalist>
+                  </div>
+                </Field>
 
-              <Field label="Category">
-                <select
-                  value={form.category}
-                  onChange={(e) => setField("category", e.target.value as FormState["category"])}
-                  style={styles.input}
-                >
-                  <option value="COMPACT">Compact</option>
-                  <option value="ECONOMY">Economy</option>
-                  <option value="LUXURY">Luxury</option>
-                </select>
-              </Field>
+                <Field label="Model">
+                  <div style={styles.inputStack}>
+                    <input
+                      list="car-model-options"
+                      value={form.model}
+                      onChange={(e) => setField("model", e.target.value)}
+                      placeholder="Corolla"
+                      style={styles.input}
+                      disabled={isBaseLocked}
+                    />
+                    <datalist id="car-model-options">
+                      {modelOptions.map((model) => (
+                        <option key={model.id} value={model.name} />
+                      ))}
+                    </datalist>
+                  </div>
+                </Field>
 
-              <Field label="Year">
-                <input
-                  value={form.year}
-                  onChange={(e) => setField("year", e.target.value)}
-                  placeholder="2024"
-                  style={styles.input}
-                  inputMode="numeric"
-                />
-              </Field>
+                <Field label="Category">
+                  <select
+                    value={form.category}
+                    onChange={(e) =>
+                      setField("category", e.target.value as FormState["category"])
+                    }
+                    style={styles.input}
+                    disabled={isBaseLocked}
+                  >
+                    <option value="COMPACT">Compact</option>
+                    <option value="ECONOMY">Economy</option>
+                    <option value="LUXURY">Luxury</option>
+                  </select>
+                </Field>
 
-              <Field label="Seats">
-                <input
-                  value={form.seats}
-                  onChange={(e) => setField("seats", e.target.value)}
-                  placeholder="4"
-                  style={styles.input}
-                  inputMode="numeric"
-                />
-              </Field>
+                <Field label="Year">
+                  <input
+                    value={form.year}
+                    onChange={(e) => setField("year", e.target.value)}
+                    placeholder="2024"
+                    style={styles.input}
+                    inputMode="numeric"
+                    disabled={isBaseLocked}
+                  />
+                </Field>
 
-              <Field label="Bags">
-                <input
-                  value={form.bags}
-                  onChange={(e) => setField("bags", e.target.value)}
-                  placeholder="2 medium bags"
-                  style={styles.input}
-                />
-              </Field>
+                <Field label="Seats">
+                  <input
+                    value={form.seats}
+                    onChange={(e) => setField("seats", e.target.value)}
+                    placeholder="4"
+                    style={styles.input}
+                    inputMode="numeric"
+                    disabled={isBaseLocked}
+                  />
+                </Field>
 
-              <Field label="Transmission">
-                <select
-                  value={form.transmission}
-                  onChange={(e) =>
-                    setField("transmission", e.target.value as FormState["transmission"])
-                  }
-                  style={styles.input}
-                >
-                  <option value="AUTOMATIC">Automatic</option>
-                  <option value="MANUAL">Manual</option>
-                </select>
-              </Field>
+                <Field label="Bags">
+                  <input
+                    value={form.bags}
+                    onChange={(e) => setField("bags", e.target.value)}
+                    placeholder="2 medium bags"
+                    style={styles.input}
+                    disabled={isBaseLocked}
+                  />
+                </Field>
 
-              <Field label="Mileage Policy">
-                <select
-                  value={form.mileagePolicy}
-                  onChange={(e) =>
-                    setField("mileagePolicy", e.target.value as FormState["mileagePolicy"])
-                  }
-                  style={styles.input}
-                >
-                  <option value="UNLIMITED">Unlimited</option>
-                  <option value="LIMITED">Limited</option>
-                </select>
-              </Field>
+                <Field label="Transmission">
+                  <select
+                    value={form.transmission}
+                    onChange={(e) =>
+                      setField(
+                        "transmission",
+                        e.target.value as FormState["transmission"],
+                      )
+                    }
+                    style={styles.input}
+                    disabled={isBaseLocked}
+                  >
+                    <option value="AUTOMATIC">Automatic</option>
+                    <option value="MANUAL">Manual</option>
+                  </select>
+                </Field>
 
-              <Field label="Daily Rate (NGN)">
-                <input
-                  value={form.dailyRate}
-                  onChange={(e) => setField("dailyRate", e.target.value)}
-                  placeholder="25000"
-                  style={styles.input}
-                  inputMode="decimal"
-                />
-              </Field>
+                <Field label="Mileage Policy">
+                  <select
+                    value={form.mileagePolicy}
+                    onChange={(e) =>
+                      setField(
+                        "mileagePolicy",
+                        e.target.value as FormState["mileagePolicy"],
+                      )
+                    }
+                    style={styles.input}
+                    disabled={isBaseLocked}
+                  >
+                    <option value="UNLIMITED">Unlimited</option>
+                    <option value="LIMITED">Limited</option>
+                  </select>
+                </Field>
 
-              <Field label="Hourly Rate (NGN)">
-                <input
-                  value={form.hourlyRate}
-                  onChange={(e) => setField("hourlyRate", e.target.value)}
-                  placeholder="4000"
-                  style={styles.input}
-                  inputMode="decimal"
+                <Field label="Daily Rate (NGN)">
+                  <input
+                    value={form.dailyRate}
+                    onChange={(e) => setField("dailyRate", e.target.value)}
+                    placeholder="25000"
+                    style={styles.input}
+                    inputMode="decimal"
+                    disabled={isBaseLocked}
+                  />
+                </Field>
+
+                <Field label="Hourly Rate (NGN)">
+                  <input
+                    value={form.hourlyRate}
+                    onChange={(e) => setField("hourlyRate", e.target.value)}
+                    placeholder="4000"
+                    style={styles.input}
+                    inputMode="decimal"
+                    disabled={isBaseLocked}
+                  />
+                </Field>
+              </div>
+
+              <div style={styles.stack}>
+                <label style={styles.checkboxWrap}>
+                  <input
+                    type="checkbox"
+                    checked={form.hasAC}
+                    onChange={(e) => setField("hasAC", e.target.checked)}
+                    style={styles.checkbox}
+                    disabled={isBaseLocked}
+                  />
+                  <span>Air Conditioning (AC)</span>
+                </label>
+
+                <label style={styles.checkboxWrap}>
+                  <input
+                    type="checkbox"
+                    checked={form.autoApprove}
+                    onChange={(e) => setField("autoApprove", e.target.checked)}
+                    style={styles.checkbox}
+                    disabled={isBaseLocked}
+                  />
+                  <span>Auto-approve and activate immediately</span>
+                </label>
+              </div>
+
+              <Field label="Admin Note">
+                <textarea
+                  value={form.note}
+                  onChange={(e) => setField("note", e.target.value)}
+                  placeholder="Optional moderation note"
+                  style={styles.textarea}
+                  disabled={isBaseLocked}
                 />
               </Field>
             </div>
 
-            <div style={styles.stack}>
-              <label style={styles.checkboxWrap}>
-                <input
-                  type="checkbox"
-                  checked={form.hasAC}
-                  onChange={(e) => setField("hasAC", e.target.checked)}
-                  style={styles.checkbox}
-                />
-                <span>Air Conditioning (AC)</span>
-              </label>
+            <div style={styles.section}>
+              <div style={styles.sectionHeader}>
+                <h2 style={styles.sectionTitle}>Features</h2>
+                <p style={styles.sectionHint}>
+                  Attach global features and provider-owned features after the
+                  base record is created.
+                </p>
+              </div>
 
-              <label style={styles.checkboxWrap}>
-                <input
-                  type="checkbox"
-                  checked={form.autoApprove}
-                  onChange={(e) => setField("autoApprove", e.target.checked)}
-                  style={styles.checkbox}
-                />
-                <span>Auto-approve and activate immediately</span>
-              </label>
+              {loadingFeatures ? (
+                <div style={styles.inlineNote}>Loading feature options...</div>
+              ) : groupedFeatures.length === 0 ? (
+                <div style={styles.inlineNote}>
+                  No feature options available for this provider yet.
+                </div>
+              ) : (
+                <div style={styles.featureGroups}>
+                  {groupedFeatures.map((group) => (
+                    <div key={group.category} style={styles.featureGroupCard}>
+                      <h3 style={styles.featureGroupTitle}>
+                        {formatEnumLabel(group.category)}
+                      </h3>
+                      <div style={styles.featureGrid}>
+                        {group.items.map((feature) => (
+                          <label key={feature.id} style={styles.featureOption}>
+                            <input
+                              type="checkbox"
+                              checked={selectedFeatureIds.includes(feature.id)}
+                              onChange={() => toggleFeature(feature.id)}
+                              style={styles.checkbox}
+                            />
+                            <span>{feature.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <Field label="Admin Note">
-              <textarea
-                value={form.note}
-                onChange={(e) => setField("note", e.target.value)}
-                placeholder="Optional moderation note"
-                style={styles.textarea}
+            <div style={styles.section}>
+              <div style={styles.sectionHeader}>
+                <h2 style={styles.sectionTitle}>Images</h2>
+                <p style={styles.sectionHint}>
+                  Upload up to 10 images. The first image becomes primary if the
+                  car has none yet.
+                </p>
+              </div>
+
+              <label style={styles.uploadLabel}>
+                <span style={styles.uploadButton}>Choose Images</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  style={styles.fileInput}
+                  onChange={handleImageSelection}
+                />
+              </label>
+
+              {imageFiles.length ? (
+                <div style={styles.fileList}>
+                  {imageFiles.map((file) => (
+                    <div key={`${file.name}-${file.lastModified}`} style={styles.fileItem}>
+                      <span>{file.name}</span>
+                      <small>{Math.round(file.size / 1024)} KB</small>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={styles.inlineNote}>No images selected yet.</div>
+              )}
+            </div>
+
+            <div style={styles.summaryRow}>
+              <SummaryItem label="Provider" value={providerName(form.providerId, providers)} />
+              <SummaryItem
+                label="Location"
+                value={selectedLocation?.name || "Not selected"}
               />
-            </Field>
+              <SummaryItem
+                label="Features"
+                value={`${selectedFeatureIds.length} selected`}
+              />
+              <SummaryItem label="Images" value={`${imageFiles.length} files`} />
+            </div>
 
             <div style={styles.actions}>
               <button
@@ -369,7 +634,13 @@ export default function AddCarPage() {
                 onClick={onSave}
                 disabled={saving || loading}
               >
-                {saving ? "Creating..." : "Create Car"}
+                {saving
+                  ? createdCarId
+                    ? "Finishing..."
+                    : "Creating..."
+                  : createdCarId
+                    ? "Finish Setup"
+                    : "Create Car"}
               </button>
             </div>
           </>
@@ -392,6 +663,30 @@ function Field({
       {children}
     </div>
   );
+}
+
+function SummaryItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={styles.summaryCard}>
+      <span style={styles.summaryLabel}>{label}</span>
+      <span style={styles.summaryValue}>{value}</span>
+    </div>
+  );
+}
+
+function providerName(
+  providerId: string,
+  providers: ProviderSummaryApi[],
+) {
+  return providers.find((provider) => provider.id === providerId)?.name || "Not selected";
+}
+
+function formatEnumLabel(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 const styles: Record<string, React.CSSProperties> = {
@@ -424,7 +719,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 18,
     display: "flex",
     flexDirection: "column",
-    gap: 16,
+    gap: 20,
   },
   loadingState: {
     minHeight: 220,
@@ -433,6 +728,36 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "center",
     color: "var(--fg-60)",
     fontSize: 14,
+  },
+  infoBanner: {
+    borderRadius: 12,
+    border: "1px solid rgba(37,99,235,0.25)",
+    background: "rgba(37,99,235,0.08)",
+    padding: "12px 14px",
+    color: "var(--foreground)",
+    fontSize: 13,
+    lineHeight: 1.5,
+  },
+  section: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 14,
+  },
+  sectionHeader: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+  },
+  sectionTitle: {
+    margin: 0,
+    fontSize: 16,
+    fontWeight: 700,
+    color: "var(--foreground)",
+  },
+  sectionHint: {
+    margin: 0,
+    fontSize: 12,
+    color: "var(--fg-60)",
   },
   grid: {
     display: "grid",
@@ -458,6 +783,12 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "0 12px",
     outline: "none",
     fontSize: 14,
+    width: "100%",
+  },
+  inputStack: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
   },
   textarea: {
     minHeight: 110,
@@ -486,6 +817,108 @@ const styles: Record<string, React.CSSProperties> = {
     width: 16,
     height: 16,
     accentColor: "#2563EB",
+  },
+  inlineNote: {
+    borderRadius: 10,
+    border: "1px dashed var(--input-border)",
+    padding: "12px 14px",
+    color: "var(--fg-60)",
+    fontSize: 13,
+    background: "var(--glass-04)",
+  },
+  featureGroups: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 12,
+  },
+  featureGroupCard: {
+    borderRadius: 12,
+    border: "1px solid var(--input-border)",
+    background: "var(--glass-04)",
+    padding: 14,
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+  },
+  featureGroupTitle: {
+    margin: 0,
+    fontSize: 14,
+    fontWeight: 700,
+    color: "var(--foreground)",
+  },
+  featureGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 10,
+  },
+  featureOption: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    fontSize: 13,
+    color: "var(--fg-80)",
+  },
+  uploadLabel: {
+    display: "inline-flex",
+    alignItems: "center",
+    width: "fit-content",
+    cursor: "pointer",
+  },
+  uploadButton: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 42,
+    padding: "0 14px",
+    borderRadius: 10,
+    background: "#2563EB",
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: 700,
+  },
+  fileInput: {
+    display: "none",
+  },
+  fileList: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 10,
+  },
+  fileItem: {
+    borderRadius: 10,
+    border: "1px solid var(--input-border)",
+    background: "var(--glass-04)",
+    padding: "10px 12px",
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    fontSize: 13,
+    color: "var(--fg-80)",
+  },
+  summaryRow: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    gap: 10,
+  },
+  summaryCard: {
+    borderRadius: 12,
+    border: "1px solid var(--input-border)",
+    background: "var(--glass-04)",
+    padding: 12,
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+  },
+  summaryLabel: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    color: "var(--fg-60)",
+  },
+  summaryValue: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: "var(--foreground)",
   },
   actions: {
     display: "flex",

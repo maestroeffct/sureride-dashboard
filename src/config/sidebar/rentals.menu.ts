@@ -87,32 +87,6 @@ export const rentalsMenu: SidebarItem[] = [
 
   {
     kind: "section",
-    label: "WORKFLOWS",
-  },
-  {
-    label: "Approval Queue",
-    icon: sidebarIcons.pendingProviders,
-    children: [
-      {
-        label: "Provider Requests",
-        path: "/rentals/providers/requests",
-        icon: sidebarIcons.pendingProviders,
-      },
-      {
-        label: "Pending Cars",
-        path: "/rentals/cars/pending",
-        icon: sidebarIcons.pendingProviders,
-      },
-      {
-        label: "Model Requests",
-        path: "/rentals/configuration/model-requests",
-        icon: sidebarIcons.settings,
-      },
-    ],
-  },
-
-  {
-    kind: "section",
     label: "SYSTEM SETTINGS",
   },
   {
@@ -135,6 +109,11 @@ export const rentalsMenu: SidebarItem[] = [
         icon: sidebarIcons.settings,
       },
       {
+        label: "Car Features",
+        path: "/rentals/configuration/car-features",
+        icon: sidebarIcons.settings,
+      },
+      {
         label: "Model Requests",
         path: "/rentals/configuration/model-requests",
         icon: sidebarIcons.settings,
@@ -145,68 +124,6 @@ export const rentalsMenu: SidebarItem[] = [
   {
     kind: "section",
     label: "ADMIN MODULES",
-  },
-  {
-    label: "Promotions Management",
-    icon: sidebarIcons.reports,
-    children: [
-      {
-        label: "Campaigns",
-        path: "/rentals/promotions/campaigns",
-        icon: sidebarIcons.reports,
-      },
-      {
-        label: "Coupons",
-        path: "/rentals/promotions/coupons",
-        icon: sidebarIcons.pricing,
-      },
-      {
-        label: "Promo Campaigns",
-        path: "/rentals/promotions/promo-campaigns",
-        icon: sidebarIcons.reviews,
-      },
-      {
-        label: "Cashback",
-        path: "/rentals/promotions/cashback",
-        icon: sidebarIcons.pricing,
-      },
-      {
-        label: "Banners",
-        path: "/rentals/promotions/banners",
-        icon: sidebarIcons.settings,
-      },
-      {
-        label: "Promotional Banner",
-        path: "/rentals/promotions/promotional-banner",
-        icon: sidebarIcons.settings,
-      },
-      {
-        label: "Advertisement",
-        path: "/rentals/promotions/advertisement",
-        icon: sidebarIcons.claims,
-      },
-      {
-        label: "Push Notification",
-        path: "/rentals/promotions/push-notification",
-        icon: sidebarIcons.pendingProviders,
-      },
-    ],
-  },
-  {
-    label: "Employee Management",
-    icon: sidebarIcons.users,
-    children: [
-      {
-        label: "Employee Role",
-        path: "/rentals/employees/roles",
-        icon: sidebarIcons.brand,
-      },
-      {
-        label: "Employees",
-        path: "/rentals/employees",
-        icon: sidebarIcons.users,
-      },
-    ],
   },
   {
     label: "Business Settings",
@@ -225,7 +142,7 @@ export const rentalsMenu: SidebarItem[] = [
       {
         label: "Email Template",
         path: "/rentals/business/email-template",
-        icon: sidebarIcons.reports,
+        icon: sidebarIcons.reviews,
       },
       {
         label: "Theme Settings",
@@ -297,6 +214,68 @@ export const rentalsMenu: SidebarItem[] = [
         label: "Addon Activation",
         path: "/rentals/platform/addon-activation",
         icon: sidebarIcons.settings,
+      },
+    ],
+  },
+  {
+    label: "Employee Management",
+    icon: sidebarIcons.users,
+    children: [
+      {
+        label: "Employee Role",
+        path: "/rentals/employees/roles",
+        icon: sidebarIcons.brand,
+      },
+      {
+        label: "Employees",
+        path: "/rentals/employees",
+        icon: sidebarIcons.users,
+      },
+    ],
+  },
+  {
+    label: "Promotions Management",
+    icon: sidebarIcons.reports,
+    children: [
+      {
+        label: "Campaigns",
+        path: "/rentals/promotions/campaigns",
+        icon: sidebarIcons.reports,
+      },
+      {
+        label: "Coupons",
+        path: "/rentals/promotions/coupons",
+        icon: sidebarIcons.pricing,
+      },
+      {
+        label: "Promo Campaigns",
+        path: "/rentals/promotions/promo-campaigns",
+        icon: sidebarIcons.reviews,
+      },
+      {
+        label: "Cashback",
+        path: "/rentals/promotions/cashback",
+        icon: sidebarIcons.pricing,
+      },
+      {
+        label: "Banners",
+        path: "/rentals/promotions/banners",
+        icon: sidebarIcons.settings,
+      },
+      {
+        label: "Promotional Banner",
+        path: "/rentals/promotions/promotional-banner",
+        icon: sidebarIcons.settings,
+      },
+      {
+        label: "Advertisement",
+        path: "/rentals/promotions/advertisement",
+        icon: sidebarIcons.claims,
+      },
+      {
+        label: "Push Notification",
+        path: "/rentals/promotions/push-notification",
+        icon: sidebarIcons.pendingProviders,
       },
     ],
   },

@@ -8,4 +8,8 @@ export interface SidebarItem {
   kind?: "section";
 }
 
-export type SidebarModule = "rentals" | "rideshare" | "insurance";
+export type SidebarModule =
+  | "rentals"
+  | "rideshare"
+  | "insurance"
+  | "providerRentals";

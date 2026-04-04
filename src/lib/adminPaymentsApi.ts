@@ -32,7 +32,33 @@ export type AdminPaymentGatewayField = {
   defaultValue?: string | null;
   validationRegex?: string | null;
   options?: Record<string, unknown> | null;
+  currentValue?: string | null;
   credentialState: AdminGatewayFieldCredentialState;
+};
+
+export type AdminPaymentGatewayTemplateField = {
+  key: string;
+  label: string;
+  type: AdminPaymentFieldType;
+  isRequired: boolean;
+  isSecret: boolean;
+  sortOrder: number;
+  placeholder?: string | null;
+  helpText?: string | null;
+  defaultValue?: string | null;
+  validationRegex?: string | null;
+  options?: Record<string, unknown> | null;
+};
+
+export type AdminPaymentGatewayTemplate = {
+  key: string;
+  displayName: string;
+  runtimeAdapter: AdminPaymentGatewayRuntimeAdapter;
+  mode: AdminPaymentMode;
+  supportedCurrencies: string[];
+  merchantDisplayName?: string | null;
+  fields: AdminPaymentGatewayTemplateField[];
+  isRuntimeSupported: boolean;
 };
 
 export type AdminPaymentGateway = {
@@ -48,7 +74,20 @@ export type AdminPaymentGateway = {
   metadata?: Record<string, unknown> | null;
   fields: AdminPaymentGatewayField[];
   isRuntimeSupported: boolean;
+  missingRequiredFieldKeys?: string[];
+  missingRuntimeFieldKeys?: string[];
+  readinessIssues?: string[];
   isReadyForCheckout: boolean;
+};
+
+export type AdminPaymentGatewayMeta = {
+  runtimeAdapters: AdminPaymentGatewayRuntimeAdapter[];
+  supportedRuntimeAdapters: AdminPaymentGatewayRuntimeAdapter[];
+  paymentModes: AdminPaymentMode[];
+  paymentProviders: string[];
+  paymentStatuses: string[];
+  fieldTypes: AdminPaymentFieldType[];
+  templates: AdminPaymentGatewayTemplate[];
 };
 
 export type CreateAdminPaymentGatewayPayload = {
@@ -123,6 +162,14 @@ export async function listAdminPaymentGateways() {
     "/admin/payments/gateways",
   );
   return data.items ?? [];
+}
+
+export function getAdminPaymentGatewayMeta() {
+  return apiRequest<AdminPaymentGatewayMeta>("/admin/payments/meta");
+}
+
+export function getAdminPaymentGateway(key: string) {
+  return apiRequest<AdminPaymentGateway>(`/admin/payments/gateways/${key}`);
 }
 
 export function createAdminPaymentGateway(payload: CreateAdminPaymentGatewayPayload) {

@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import styles from "./styles";
 import {
   Bell,
@@ -34,12 +34,15 @@ export type DashboardModule =
 
 export default function Topbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { theme, setTheme } = useTheme();
   const { sidebarCollapsed, toggleSidebar } = useLayoutUI();
   const [open, setOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  const canToggleSidebar = pathname.startsWith("/rentals");
+  const isProviderRoute = pathname.startsWith("/provider");
+  const canToggleSidebar =
+    pathname.startsWith("/rentals") || pathname.startsWith("/provider");
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -56,26 +59,37 @@ export default function Topbar() {
   }, []);
 
   const handleLogout = async () => {
+    const tokenKey = isProviderRoute
+      ? "sureride_provider_token"
+      : "sureride_admin_token";
+    const userKey = isProviderRoute
+      ? "sureride_provider_user"
+      : "sureride_admin_user";
+    const cookieKey = isProviderRoute
+      ? "sureride_provider_token"
+      : "sureride_admin_token";
+    const logoutPath = isProviderRoute
+      ? "/provider/auth/logout"
+      : "/admin/auth/logout";
+    const redirectPath = isProviderRoute ? "/provider/login" : "/login";
+
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/admin/auth/logout`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}${logoutPath}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem(
-            "sureride_admin_token"
-          )}`,
+          Authorization: `Bearer ${localStorage.getItem(tokenKey)}`,
         },
       });
     } catch {
       console.warn("Logout API failed, proceeding with local logout");
     } finally {
-      localStorage.removeItem("sureride_admin_token");
-      localStorage.removeItem("sureride_admin_user");
-      document.cookie =
-        "sureride_admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+      localStorage.removeItem(tokenKey);
+      localStorage.removeItem(userKey);
+      document.cookie = `${cookieKey}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;`;
 
       toast.success("Logged out successfully");
-      window.location.href = "/login";
+      window.location.href = redirectPath;
     }
   };
 
@@ -158,8 +172,26 @@ export default function Topbar() {
 
           {open && (
             <div style={styles.dropdown}>
-              <button style={styles.dropdownItem}>My Profile</button>
-              <button style={styles.dropdownItem}>Account Settings</button>
+              <button
+                style={styles.dropdownItem}
+                onClick={() =>
+                  router.push(
+                    isProviderRoute ? "/provider/settings" : "/rentals/business/business-setup",
+                  )
+                }
+              >
+                My Profile
+              </button>
+              <button
+                style={styles.dropdownItem}
+                onClick={() =>
+                  router.push(
+                    isProviderRoute ? "/provider/settings" : "/rentals/platform/third-party-configuration",
+                  )
+                }
+              >
+                Account Settings
+              </button>
 
               <div style={styles.dropdownDivider} />
 

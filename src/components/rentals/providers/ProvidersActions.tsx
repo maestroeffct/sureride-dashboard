@@ -5,6 +5,7 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import {
   approveProvider,
+  resetProviderPassword,
   submitProvider,
   suspendProvider,
 } from "@/src/lib/providersApi";
@@ -71,24 +72,58 @@ export default function ProvidersActions({
       )}
 
       {provider.status === "active" && (
-        <button
-          disabled={busy}
-          style={{ ...buttonStyle, ...styles.danger }}
-          onClick={() => runAction("Suspend", () => suspendProvider(provider.id))}
-        >
-          Suspend
-        </button>
+        <>
+          <button
+            disabled={busy}
+            style={buttonStyle}
+            onClick={() =>
+              runAction("Reset Password", () => resetProviderPassword(provider.id))
+            }
+          >
+            Reset Password
+          </button>
+          <button
+            disabled={busy}
+            style={{ ...buttonStyle, ...styles.danger }}
+            onClick={() => runAction("Suspend", () => suspendProvider(provider.id))}
+          >
+            Suspend
+          </button>
+        </>
       )}
 
       {provider.status === "suspended" && (
+        <>
+          <button
+            disabled={busy}
+            style={buttonStyle}
+            onClick={() =>
+              runAction("Reset Password", () => resetProviderPassword(provider.id))
+            }
+          >
+            Reset Password
+          </button>
+          <button
+            disabled={busy}
+            style={buttonStyle}
+            onClick={() =>
+              runAction("Reactivate", () => approveProvider(provider.id))
+            }
+          >
+            Reactivate
+          </button>
+        </>
+      )}
+
+      {provider.status === "pending" && (
         <button
           disabled={busy}
           style={buttonStyle}
           onClick={() =>
-            runAction("Reactivate", () => approveProvider(provider.id))
+            runAction("Reset Password", () => resetProviderPassword(provider.id))
           }
         >
-          Reactivate
+          Reset Password
         </button>
       )}
     </div>
