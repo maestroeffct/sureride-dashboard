@@ -11,4 +11,4 @@ export const ADMIN_ROUTES = {
   SUPPORT: ["/dashboard/support", "/dashboard/tickets"],
 };
 
-export const DEFAULT_REDIRECT = "/login";
+export const DEFAULT_REDIRECT = "/admin/login";

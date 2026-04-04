@@ -127,7 +127,11 @@ export async function submitProvider(providerId: string) {
 }
 
 export async function approveProvider(providerId: string) {
-  return apiRequest<{ message: string }>(`/admin/providers/${providerId}/approve`, {
+  return apiRequest<{
+    message: string;
+    temporaryPassword?: string | null;
+    tempPasswordExpiresAt?: string | null;
+  }>(`/admin/providers/${providerId}/approve`, {
     method: "PATCH",
   });
 }
@@ -140,7 +144,11 @@ export async function suspendProvider(providerId: string, reason?: string) {
 }
 
 export async function resetProviderPassword(providerId: string) {
-  return apiRequest<{ message: string }>(
+  return apiRequest<{
+    message: string;
+    temporaryPassword?: string | null;
+    tempPasswordExpiresAt?: string | null;
+  }>(
     `/admin/providers/${providerId}/reset-password`,
     {
       method: "PATCH",

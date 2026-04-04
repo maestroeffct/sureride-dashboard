@@ -17,7 +17,7 @@ export function RequireAdmin({ children }: { children: React.ReactNode }) {
     const token = localStorage.getItem("sureride_admin_token");
 
     if (!token) {
-      router.replace("/login"); // 🔥 blocks back button
+      router.replace("/admin/login");
     }
   }, [router]);
 

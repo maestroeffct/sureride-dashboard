@@ -71,7 +71,7 @@ export default function Topbar() {
     const logoutPath = isProviderRoute
       ? "/provider/auth/logout"
       : "/admin/auth/logout";
-    const redirectPath = isProviderRoute ? "/provider/login" : "/login";
+    const redirectPath = isProviderRoute ? "/provider/login" : "/admin/login";
 
     try {
       await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}${logoutPath}`, {
