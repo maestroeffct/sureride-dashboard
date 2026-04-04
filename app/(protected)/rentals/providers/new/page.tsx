@@ -146,6 +146,7 @@ export default function AddRentalProviderPage() {
       businessAddress: [form.city, form.state, form.country]
         .filter(Boolean)
         .join(", "),
+      countryName: form.country.trim() || undefined,
       bankName: form.bankName.trim() || undefined,
       bankAccountName: form.accountName.trim() || undefined,
       bankAccountNumber: form.accountNumber.trim() || undefined,

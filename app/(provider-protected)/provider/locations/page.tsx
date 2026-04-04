@@ -122,11 +122,7 @@ export default function ProviderLocationsPage() {
         ]);
         setCountries(countryRows);
         setLocations(locationRows);
-        setMapApiKey(
-          platformConfig?.maps?.enabled && platformConfig.maps.apiKey
-            ? platformConfig.maps.apiKey.trim()
-            : "",
-        );
+        setMapApiKey(platformConfig?.maps?.apiKey?.trim() || "");
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : "Failed to load locations",
