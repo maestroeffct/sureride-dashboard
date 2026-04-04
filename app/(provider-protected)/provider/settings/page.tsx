@@ -2,10 +2,11 @@
 
 import {
   Suspense,
-  type CSSProperties,
   useEffect,
   useMemo,
   useState,
+  type CSSProperties,
+  type ReactNode,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
@@ -23,7 +24,20 @@ type ProfileForm = {
   contactPersonRole: string;
   contactPersonPhone: string;
   businessAddress: string;
+  businessOpeningTime: string;
+  businessClosingTime: string;
+  businessOperatingDays: string[];
 };
+
+const BUSINESS_DAY_OPTIONS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
 
 const emptyForm: ProfileForm = {
   name: "",
@@ -32,6 +46,9 @@ const emptyForm: ProfileForm = {
   contactPersonRole: "",
   contactPersonPhone: "",
   businessAddress: "",
+  businessOpeningTime: "",
+  businessClosingTime: "",
+  businessOperatingDays: [],
 };
 
 function mapProfileToForm(profile: ProviderProfile): ProfileForm {
@@ -42,6 +59,9 @@ function mapProfileToForm(profile: ProviderProfile): ProfileForm {
     contactPersonRole: profile.contactPersonRole || "",
     contactPersonPhone: profile.contactPersonPhone || "",
     businessAddress: profile.businessAddress || "",
+    businessOpeningTime: profile.businessOpeningTime || "",
+    businessClosingTime: profile.businessClosingTime || "",
+    businessOperatingDays: profile.businessOperatingDays ?? [],
   };
 }
 
@@ -88,10 +108,31 @@ function ProviderSettingsContent() {
     }));
   };
 
+  const toggleOperatingDay = (day: string) => {
+    setForm((current) => ({
+      ...current,
+      businessOperatingDays: current.businessOperatingDays.includes(day)
+        ? current.businessOperatingDays.filter((item) => item !== day)
+        : [...current.businessOperatingDays, day],
+    }));
+  };
+
   const handleSaveProfile = async () => {
+    if (
+      form.businessOpeningTime &&
+      form.businessClosingTime &&
+      form.businessOpeningTime >= form.businessClosingTime
+    ) {
+      toast.error("Closing time must be later than opening time");
+      return;
+    }
+
     try {
       setSavingProfile(true);
-      const response = await updateProviderProfile(form);
+      const response = await updateProviderProfile({
+        ...form,
+        businessOperatingDays: form.businessOperatingDays,
+      });
       setProfile(response.provider);
       setForm(mapProfileToForm(response.provider));
 
@@ -155,51 +196,70 @@ function ProviderSettingsContent() {
 
   return (
     <div style={styles.page}>
-      <div style={styles.header}>
+      <div style={styles.hero}>
         <div>
           <p style={styles.eyebrow}>Provider Portal</p>
           <h1 style={styles.title}>Settings</h1>
           <p style={styles.subtitle}>
-            Update your business profile and keep provider login credentials current.
+            Keep your business identity, operating schedule, and account security
+            aligned with how your fleet runs.
           </p>
         </div>
-        {(forcePasswordChange || profile?.mustChangePassword) && (
-          <div style={styles.alert}>
-            Your account is using a temporary password. Change it before continuing.
+
+        <div style={styles.heroAside}>
+          <div style={styles.heroStat}>
+            <span style={styles.heroStatLabel}>Status</span>
+            <strong style={styles.heroStatValue}>{profile?.status || "-"}</strong>
           </div>
-        )}
+          <div style={styles.heroStat}>
+            <span style={styles.heroStatLabel}>Verification</span>
+            <strong style={styles.heroStatValue}>
+              {profile?.isVerified ? "Verified" : "Pending"}
+            </strong>
+          </div>
+        </div>
       </div>
+
+      {(forcePasswordChange || profile?.mustChangePassword) && (
+        <div style={styles.alert}>
+          Your account is using a temporary password. Change it before continuing.
+        </div>
+      )}
 
       <div style={styles.grid}>
         <section style={styles.card}>
-          <h2 style={styles.cardTitle}>Business Profile</h2>
+          <div style={styles.cardHeader}>
+            <div>
+              <h2 style={styles.cardTitle}>Business Profile</h2>
+              <p style={styles.sectionText}>
+                The details here are used across provider operations and internal
+                account records.
+              </p>
+            </div>
+          </div>
 
           <div style={styles.formGrid}>
-            <label style={styles.field}>
-              <span style={styles.label}>Business Name</span>
+            <Field label="Business Name">
               <input
                 style={styles.input}
                 value={form.name}
                 onChange={(event) => handleProfileChange("name", event.target.value)}
               />
-            </label>
+            </Field>
 
-            <label style={styles.field}>
-              <span style={styles.label}>Business Email</span>
+            <Field label="Business Email">
               <input style={styles.inputReadOnly} value={profile?.email || ""} readOnly />
-            </label>
+            </Field>
 
-            <label style={styles.field}>
-              <span style={styles.label}>Phone</span>
+            <Field label="Phone">
               <input
                 style={styles.input}
                 value={form.phone}
                 onChange={(event) => handleProfileChange("phone", event.target.value)}
               />
-            </label>
+            </Field>
 
-            <label style={styles.field}>
-              <span style={styles.label}>Business Address</span>
+            <Field label="Business Address">
               <input
                 style={styles.input}
                 value={form.businessAddress}
@@ -207,10 +267,9 @@ function ProviderSettingsContent() {
                   handleProfileChange("businessAddress", event.target.value)
                 }
               />
-            </label>
+            </Field>
 
-            <label style={styles.field}>
-              <span style={styles.label}>Contact Person</span>
+            <Field label="Contact Person">
               <input
                 style={styles.input}
                 value={form.contactPersonName}
@@ -218,10 +277,9 @@ function ProviderSettingsContent() {
                   handleProfileChange("contactPersonName", event.target.value)
                 }
               />
-            </label>
+            </Field>
 
-            <label style={styles.field}>
-              <span style={styles.label}>Contact Role</span>
+            <Field label="Contact Role">
               <input
                 style={styles.input}
                 value={form.contactPersonRole}
@@ -229,10 +287,9 @@ function ProviderSettingsContent() {
                   handleProfileChange("contactPersonRole", event.target.value)
                 }
               />
-            </label>
+            </Field>
 
-            <label style={styles.field}>
-              <span style={styles.label}>Contact Phone</span>
+            <Field label="Contact Phone">
               <input
                 style={styles.input}
                 value={form.contactPersonPhone}
@@ -240,66 +297,151 @@ function ProviderSettingsContent() {
                   handleProfileChange("contactPersonPhone", event.target.value)
                 }
               />
-            </label>
+            </Field>
           </div>
-
-          <button
-            type="button"
-            style={styles.primaryButton}
-            disabled={savingProfile}
-            onClick={handleSaveProfile}
-          >
-            {savingProfile ? "Saving..." : "Save Profile"}
-          </button>
         </section>
 
         <section style={styles.card}>
-          <h2 style={styles.cardTitle}>Security</h2>
-          <p style={styles.sectionText}>
-            Use this form to replace a temporary password or rotate your current one.
-          </p>
+          <div style={styles.cardHeader}>
+            <div>
+              <h2 style={styles.cardTitle}>Business Hours</h2>
+              <p style={styles.sectionText}>
+                Define when your rental desk is open so your team operates with a
+                consistent schedule.
+              </p>
+            </div>
+          </div>
 
-          <label style={styles.field}>
-            <span style={styles.label}>Current Password</span>
+          <div style={styles.hoursRow}>
+            <Field label="Opening Time">
+              <input
+                style={styles.input}
+                type="time"
+                value={form.businessOpeningTime}
+                onChange={(event) =>
+                  handleProfileChange("businessOpeningTime", event.target.value)
+                }
+              />
+            </Field>
+
+            <Field label="Closing Time">
+              <input
+                style={styles.input}
+                type="time"
+                value={form.businessClosingTime}
+                onChange={(event) =>
+                  handleProfileChange("businessClosingTime", event.target.value)
+                }
+              />
+            </Field>
+          </div>
+
+          <div style={styles.dayGrid}>
+            {BUSINESS_DAY_OPTIONS.map((day) => {
+              const active = form.businessOperatingDays.includes(day);
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  style={{
+                    ...styles.dayChip,
+                    ...(active ? styles.dayChipActive : {}),
+                  }}
+                  onClick={() => toggleOperatingDay(day)}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={styles.hoursSummary}>
+            <span style={styles.summaryPill}>
+              {form.businessOperatingDays.length
+                ? `${form.businessOperatingDays.length} day${
+                    form.businessOperatingDays.length === 1 ? "" : "s"
+                  } active`
+                : "No active days selected"}
+            </span>
+          </div>
+        </section>
+      </div>
+
+      <section style={styles.card}>
+        <div style={styles.cardHeader}>
+          <div>
+            <h2 style={styles.cardTitle}>Security</h2>
+            <p style={styles.sectionText}>
+              Replace a temporary password or rotate your current one at any time.
+            </p>
+          </div>
+        </div>
+
+        <div style={styles.securityGrid}>
+          <Field label="Current Password">
             <input
               style={styles.input}
               type="password"
               value={currentPassword}
               onChange={(event) => setCurrentPassword(event.target.value)}
             />
-          </label>
+          </Field>
 
-          <label style={styles.field}>
-            <span style={styles.label}>New Password</span>
+          <Field label="New Password">
             <input
               style={styles.input}
               type="password"
               value={newPassword}
               onChange={(event) => setNewPassword(event.target.value)}
             />
-          </label>
+          </Field>
 
-          <label style={styles.field}>
-            <span style={styles.label}>Confirm New Password</span>
+          <Field label="Confirm New Password">
             <input
               style={styles.input}
               type="password"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
             />
-          </label>
+          </Field>
+        </div>
 
+        <div style={styles.actionsRow}>
           <button
             type="button"
             style={styles.primaryButton}
+            disabled={savingProfile}
+            onClick={handleSaveProfile}
+          >
+            {savingProfile ? "Saving..." : "Save Business Settings"}
+          </button>
+
+          <button
+            type="button"
+            style={styles.secondaryButton}
             disabled={savingPassword}
             onClick={handleChangePassword}
           >
             {savingPassword ? "Updating..." : "Change Password"}
           </button>
-        </section>
-      </div>
+        </div>
+      </section>
     </div>
+  );
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <label style={styles.field}>
+      <span style={styles.label}>{label}</span>
+      {children}
+    </label>
   );
 }
 
@@ -315,38 +457,69 @@ const styles: Record<string, CSSProperties> = {
   page: {
     display: "flex",
     flexDirection: "column",
-    gap: 24,
+    gap: 22,
+    maxWidth: 1380,
   },
   loading: {
     padding: 24,
   },
-  header: {
+  hero: {
+    borderRadius: 28,
+    padding: 28,
+    background:
+      "linear-gradient(135deg, rgba(15,23,42,0.96), rgba(13,148,136,0.22))",
+    border: "1px solid rgba(255,255,255,0.08)",
     display: "flex",
     justifyContent: "space-between",
-    gap: 16,
-    alignItems: "flex-start",
+    alignItems: "flex-end",
+    gap: 18,
     flexWrap: "wrap",
   },
   eyebrow: {
     margin: 0,
-    color: "#0f766e",
     fontSize: 12,
-    fontWeight: 700,
+    letterSpacing: 0.5,
     textTransform: "uppercase",
-    letterSpacing: 0.6,
+    color: "var(--fg-60)",
   },
   title: {
-    margin: "6px 0 8px",
-    fontSize: 30,
+    margin: "8px 0 10px",
+    fontSize: 34,
     fontWeight: 700,
   },
   subtitle: {
     margin: 0,
-    color: "#64748b",
     maxWidth: 720,
+    color: "var(--fg-75)",
+    lineHeight: 1.6,
+  },
+  heroAside: {
+    display: "flex",
+    gap: 12,
+    flexWrap: "wrap",
+  },
+  heroStat: {
+    minWidth: 150,
+    borderRadius: 16,
+    padding: "14px 16px",
+    background: "rgba(15,23,42,0.34)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+  },
+  heroStatLabel: {
+    fontSize: 12,
+    color: "var(--fg-60)",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  heroStatValue: {
+    fontSize: 18,
+    color: "#fff",
   },
   alert: {
-    maxWidth: 360,
+    maxWidth: 420,
     padding: "12px 14px",
     borderRadius: 14,
     background: "#fef3c7",
@@ -356,17 +529,23 @@ const styles: Record<string, CSSProperties> = {
   },
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-    gap: 20,
+    gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+    gap: 18,
   },
   card: {
-    background: "var(--card, #ffffff)",
-    border: "1px solid rgba(148, 163, 184, 0.2)",
-    borderRadius: 20,
-    padding: 24,
+    borderRadius: 18,
+    border: "1px solid var(--input-border)",
+    background: "var(--surface-1)",
+    padding: 22,
     display: "flex",
     flexDirection: "column",
     gap: 16,
+  },
+  cardHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    flexWrap: "wrap",
   },
   cardTitle: {
     margin: 0,
@@ -374,14 +553,30 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 700,
   },
   sectionText: {
-    margin: 0,
-    color: "#64748b",
+    margin: "6px 0 0",
+    color: "var(--fg-60)",
     fontSize: 14,
+    lineHeight: 1.5,
   },
   formGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
     gap: 14,
+  },
+  securityGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: 14,
+  },
+  hoursRow: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: 14,
+  },
+  dayGrid: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 10,
   },
   field: {
     display: "flex",
@@ -389,34 +584,81 @@ const styles: Record<string, CSSProperties> = {
     gap: 8,
   },
   label: {
-    fontSize: 13,
-    fontWeight: 600,
+    fontSize: 12,
+    fontWeight: 700,
+    color: "var(--fg-70)",
+    letterSpacing: 0.2,
   },
   input: {
     height: 44,
     borderRadius: 12,
-    border: "1px solid rgba(148, 163, 184, 0.35)",
-    padding: "0 12px",
+    border: "1px solid var(--input-border)",
+    padding: "0 14px",
     fontSize: 14,
-    background: "#ffffff",
+    background: "var(--surface-2)",
+    color: "var(--foreground)",
+    outline: "none",
   },
   inputReadOnly: {
     height: 44,
     borderRadius: 12,
-    border: "1px solid rgba(148, 163, 184, 0.2)",
-    padding: "0 12px",
+    border: "1px solid var(--input-border)",
+    padding: "0 14px",
     fontSize: 14,
-    background: "#f8fafc",
-    color: "#475569",
+    background: "rgba(148,163,184,0.08)",
+    color: "var(--fg-70)",
+    outline: "none",
+  },
+  dayChip: {
+    height: 40,
+    borderRadius: 999,
+    border: "1px solid var(--input-border)",
+    background: "var(--surface-2)",
+    color: "var(--foreground)",
+    padding: "0 14px",
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  dayChipActive: {
+    background: "rgba(13,148,136,0.16)",
+    borderColor: "rgba(13,148,136,0.36)",
+    color: "#99f6e4",
+  },
+  hoursSummary: {
+    display: "flex",
+    justifyContent: "flex-start",
+  },
+  summaryPill: {
+    borderRadius: 999,
+    border: "1px solid var(--input-border)",
+    background: "var(--surface-2)",
+    padding: "8px 12px",
+    fontSize: 12,
+    color: "var(--fg-70)",
+    fontWeight: 700,
+  },
+  actionsRow: {
+    display: "flex",
+    gap: 12,
+    flexWrap: "wrap",
   },
   primaryButton: {
-    alignSelf: "flex-start",
     height: 44,
     padding: "0 18px",
     borderRadius: 12,
     border: "none",
-    background: "#0f766e",
-    color: "#f8fafc",
+    background: "var(--brand-primary)",
+    color: "#fff",
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  secondaryButton: {
+    height: 44,
+    padding: "0 18px",
+    borderRadius: 12,
+    border: "1px solid var(--input-border)",
+    background: "var(--surface-2)",
+    color: "var(--foreground)",
     fontWeight: 700,
     cursor: "pointer",
   },

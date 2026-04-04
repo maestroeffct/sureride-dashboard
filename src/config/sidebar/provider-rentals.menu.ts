@@ -21,6 +21,11 @@ export const providerRentalsMenu: SidebarItem[] = [
     icon: sidebarIcons.cars,
   },
   {
+    label: "Locations",
+    path: "/provider/locations",
+    icon: sidebarIcons.providers,
+  },
+  {
     label: "Add Car",
     path: "/provider/cars/new",
     icon: sidebarIcons.addProvider,

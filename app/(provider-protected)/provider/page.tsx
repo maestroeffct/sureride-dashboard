@@ -109,6 +109,9 @@ export default function ProviderOverviewPage() {
             <Link href="/provider/cars" style={styles.actionLink}>
               Manage fleet inventory
             </Link>
+            <Link href="/provider/locations" style={styles.actionLink}>
+              Maintain pickup locations
+            </Link>
             <Link href="/provider/cars/new" style={styles.actionLink}>
               Upload a new car listing
             </Link>

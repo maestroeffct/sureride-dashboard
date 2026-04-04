@@ -288,11 +288,16 @@ type FormState = {
 
   storageLocalEnabled: boolean;
   storageThirdPartyEnabled: boolean;
+  storageThirdPartyProvider: string;
   storageS3Key: string;
   storageS3Secret: string;
   storageS3Region: string;
   storageS3Bucket: string;
   storageS3Endpoint: string;
+  storageCloudinaryCloudName: string;
+  storageCloudinaryApiKey: string;
+  storageCloudinaryApiSecret: string;
+  storageCloudinaryFolder: string;
 
   socialGoogleEnabled: boolean;
   socialGoogleCallbackUrl: string;
@@ -347,11 +352,16 @@ const INITIAL_STATE: FormState = {
 
   storageLocalEnabled: true,
   storageThirdPartyEnabled: false,
+  storageThirdPartyProvider: "s3",
   storageS3Key: "",
   storageS3Secret: "",
   storageS3Region: "",
   storageS3Bucket: "",
   storageS3Endpoint: "",
+  storageCloudinaryCloudName: "",
+  storageCloudinaryApiKey: "",
+  storageCloudinaryApiSecret: "",
+  storageCloudinaryFolder: "",
 
   socialGoogleEnabled: false,
   socialGoogleCallbackUrl: "",
@@ -2109,7 +2119,7 @@ export default function ThirdPartyConfigurationPage() {
 
         <div style={styles.integrationCardBodyLarge}>
           <p style={styles.helperText}>
-            Upload flows now use this setting at runtime. Local storage writes to `/uploads`; third-party storage switches uploads to your configured S3-compatible bucket.
+            Upload flows now use this setting at runtime. Local storage writes to `/uploads`; third-party storage can target either an S3-compatible bucket or Cloudinary.
           </p>
           <div style={styles.grid2Compact}>
             <label style={styles.toggleTile}>
@@ -2141,50 +2151,120 @@ export default function ThirdPartyConfigurationPage() {
           <div style={styles.divider} />
 
           <div style={styles.storageSectionHeader}>
-            <h4 style={styles.providerCardTitle}>S3 Credential</h4>
+            <h4 style={styles.providerCardTitle}>3rd Party Provider</h4>
             <p style={styles.sectionSubtext}>
-              Configure your S3-compatible credentials for asset uploads.
+              Choose which third-party storage backend should receive uploaded assets.
             </p>
           </div>
 
-          <Field label="Key">
-            <input
-              style={styles.input}
-              value={form.storageS3Key}
-              onChange={(event) => set("storageS3Key", event.target.value)}
-            />
-          </Field>
-          <Field label="Secret">
-            <input
-              style={styles.input}
-              value={form.storageS3Secret}
-              onChange={(event) => set("storageS3Secret", event.target.value)}
-            />
-          </Field>
-          <Field label="Region">
-            <input
-              style={styles.input}
-              value={form.storageS3Region}
-              onChange={(event) => set("storageS3Region", event.target.value)}
-            />
+          <Field label="Provider">
+            <select
+              style={styles.select}
+              value={form.storageThirdPartyProvider}
+              onChange={(event) =>
+                set("storageThirdPartyProvider", event.target.value)
+              }
+            >
+              <option value="s3">S3 Compatible</option>
+              <option value="cloudinary">Cloudinary</option>
+            </select>
           </Field>
 
-          <div style={styles.grid2Compact}>
-            <Field label="Bucket">
-              <input
-                style={styles.input}
-                value={form.storageS3Bucket}
-                onChange={(event) => set("storageS3Bucket", event.target.value)}
-              />
-            </Field>
-            <Field label="Endpoint URL">
-              <input
-                style={styles.input}
-                value={form.storageS3Endpoint}
-                onChange={(event) => set("storageS3Endpoint", event.target.value)}
-              />
-            </Field>
-          </div>
+          {form.storageThirdPartyProvider === "cloudinary" ? (
+            <>
+              <div style={styles.storageSectionHeader}>
+                <h4 style={styles.providerCardTitle}>Cloudinary Credentials</h4>
+                <p style={styles.sectionSubtext}>
+                  Configure Cloudinary so uploads from the dashboard and mobile app are stored remotely through the backend.
+                </p>
+              </div>
+
+              <Field label="Cloud Name">
+                <input
+                  style={styles.input}
+                  value={form.storageCloudinaryCloudName}
+                  onChange={(event) =>
+                    set("storageCloudinaryCloudName", event.target.value)
+                  }
+                />
+              </Field>
+              <Field label="API Key">
+                <input
+                  style={styles.input}
+                  value={form.storageCloudinaryApiKey}
+                  onChange={(event) =>
+                    set("storageCloudinaryApiKey", event.target.value)
+                  }
+                />
+              </Field>
+              <Field label="API Secret">
+                <input
+                  style={styles.input}
+                  value={form.storageCloudinaryApiSecret}
+                  onChange={(event) =>
+                    set("storageCloudinaryApiSecret", event.target.value)
+                  }
+                />
+              </Field>
+              <Field label="Folder">
+                <input
+                  style={styles.input}
+                  value={form.storageCloudinaryFolder}
+                  onChange={(event) =>
+                    set("storageCloudinaryFolder", event.target.value)
+                  }
+                />
+              </Field>
+            </>
+          ) : (
+            <>
+              <div style={styles.storageSectionHeader}>
+                <h4 style={styles.providerCardTitle}>S3 Credentials</h4>
+                <p style={styles.sectionSubtext}>
+                  Configure your S3-compatible credentials for asset uploads.
+                </p>
+              </div>
+
+              <Field label="Key">
+                <input
+                  style={styles.input}
+                  value={form.storageS3Key}
+                  onChange={(event) => set("storageS3Key", event.target.value)}
+                />
+              </Field>
+              <Field label="Secret">
+                <input
+                  style={styles.input}
+                  value={form.storageS3Secret}
+                  onChange={(event) => set("storageS3Secret", event.target.value)}
+                />
+              </Field>
+              <Field label="Region">
+                <input
+                  style={styles.input}
+                  value={form.storageS3Region}
+                  onChange={(event) => set("storageS3Region", event.target.value)}
+                />
+              </Field>
+
+              <div style={styles.grid2Compact}>
+                <Field label="Bucket">
+                  <input
+                    style={styles.input}
+                    value={form.storageS3Bucket}
+                    onChange={(event) => set("storageS3Bucket", event.target.value)}
+                  />
+                </Field>
+                <Field label="Endpoint URL">
+                  <input
+                    style={styles.input}
+                    value={form.storageS3Endpoint}
+                    onChange={(event) => set("storageS3Endpoint", event.target.value)}
+                  />
+                </Field>
+              </div>
+            </>
+          )}
 
           <div style={styles.actionsInlineEnd}>
             <button
@@ -2195,11 +2275,18 @@ export default function ThirdPartyConfigurationPage() {
                   ...prev,
                   storageLocalEnabled: INITIAL_STATE.storageLocalEnabled,
                   storageThirdPartyEnabled: INITIAL_STATE.storageThirdPartyEnabled,
+                  storageThirdPartyProvider: INITIAL_STATE.storageThirdPartyProvider,
                   storageS3Key: INITIAL_STATE.storageS3Key,
                   storageS3Secret: INITIAL_STATE.storageS3Secret,
                   storageS3Region: INITIAL_STATE.storageS3Region,
                   storageS3Bucket: INITIAL_STATE.storageS3Bucket,
                   storageS3Endpoint: INITIAL_STATE.storageS3Endpoint,
+                  storageCloudinaryCloudName:
+                    INITIAL_STATE.storageCloudinaryCloudName,
+                  storageCloudinaryApiKey: INITIAL_STATE.storageCloudinaryApiKey,
+                  storageCloudinaryApiSecret:
+                    INITIAL_STATE.storageCloudinaryApiSecret,
+                  storageCloudinaryFolder: INITIAL_STATE.storageCloudinaryFolder,
                 }))
               }
             >
@@ -2212,11 +2299,16 @@ export default function ThirdPartyConfigurationPage() {
                 void saveSection("storage-connection", "Storage Connection", {
                   storageLocalEnabled: form.storageLocalEnabled,
                   storageThirdPartyEnabled: form.storageThirdPartyEnabled,
+                  storageThirdPartyProvider: form.storageThirdPartyProvider,
                   storageS3Key: form.storageS3Key,
                   storageS3Secret: form.storageS3Secret,
                   storageS3Region: form.storageS3Region,
                   storageS3Bucket: form.storageS3Bucket,
                   storageS3Endpoint: form.storageS3Endpoint,
+                  storageCloudinaryCloudName: form.storageCloudinaryCloudName,
+                  storageCloudinaryApiKey: form.storageCloudinaryApiKey,
+                  storageCloudinaryApiSecret: form.storageCloudinaryApiSecret,
+                  storageCloudinaryFolder: form.storageCloudinaryFolder,
                 })
               }
               disabled={savingSection === "storage-connection"}
@@ -3226,6 +3318,17 @@ const styles: Record<string, CSSProperties> = {
     letterSpacing: 0.2,
   },
   input: {
+    height: 42,
+    borderRadius: 8,
+    border: "1px solid var(--input-border)",
+    background: "var(--surface-2)",
+    color: "var(--foreground)",
+    padding: "0 10px",
+    outline: "none",
+    fontSize: 14,
+    width: "100%",
+  },
+  select: {
     height: 42,
     borderRadius: 8,
     border: "1px solid var(--input-border)",

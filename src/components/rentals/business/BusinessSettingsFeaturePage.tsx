@@ -26,6 +26,13 @@ type TemplateConfig = {
   body: string;
 };
 
+type GalleryItem = {
+  id: string;
+  url: string;
+  title: string;
+  folder: string;
+};
+
 type FeatureProps = {
   feature: BusinessFeature;
   title: string;
@@ -39,6 +46,21 @@ type ClientPlatformConfig = {
   };
 };
 
+const DEFAULT_EMAIL_TEMPLATES: Record<TemplateKey, TemplateConfig> = {
+  welcome: {
+    subject: "Welcome to Sureride",
+    body: "Hi {{firstName}}, welcome to Sureride.",
+  },
+  "password-reset": {
+    subject: "Reset your password",
+    body: "Click {{resetLink}} to reset your password.",
+  },
+  "booking-confirmed": {
+    subject: "Booking confirmed",
+    body: "Your booking {{bookingId}} is now confirmed.",
+  },
+};
+
 const FEATURE_STORAGE_PREFIX = "sureride_business_feature";
 const BUSINESS_DEFAULT_CENTER = { lat: 6.6018, lng: 3.3515 };
 let googleMapsScriptPromise: Promise<void> | null = null;
@@ -49,6 +71,80 @@ function storageKey(feature: BusinessFeature) {
 
 function randomId() {
   return Math.random().toString(36).slice(2, 11);
+}
+
+function normalizeGalleryFolder(value: unknown) {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text || "General";
+}
+
+function createGalleryItem(
+  url: string,
+  index: number,
+  overrides?: Partial<Pick<GalleryItem, "title" | "folder" | "id">>,
+): GalleryItem {
+  const cleanUrl = url.trim();
+  const title =
+    overrides?.title?.trim() ||
+    cleanUrl.split("/").pop()?.split("?")[0]?.trim() ||
+    `Image ${index + 1}`;
+
+  return {
+    id: overrides?.id?.trim() || `${randomId()}_${index}`,
+    url: cleanUrl,
+    title,
+    folder: normalizeGalleryFolder(overrides?.folder),
+  };
+}
+
+function normalizeGalleryItems(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [] as GalleryItem[];
+  }
+
+  return value
+    .map((item, index) => {
+      if (typeof item === "string" && item.trim()) {
+        return createGalleryItem(item, index);
+      }
+
+      if (item && typeof item === "object") {
+        const record = item as Record<string, unknown>;
+        const url = typeof record.url === "string" ? record.url.trim() : "";
+
+        if (!url) {
+          return null;
+        }
+
+        return createGalleryItem(url, index, {
+          id: typeof record.id === "string" ? record.id : undefined,
+          title: typeof record.title === "string" ? record.title : undefined,
+          folder: typeof record.folder === "string" ? record.folder : undefined,
+        });
+      }
+
+      return null;
+    })
+    .filter((item): item is GalleryItem => Boolean(item));
+}
+
+function normalizeGalleryState(payload?: Record<string, unknown>) {
+  const items = normalizeGalleryItems(payload?.items);
+  const draftFolder = normalizeGalleryFolder(payload?.draftFolder);
+  const savedActiveFolder =
+    typeof payload?.activeFolder === "string" ? payload.activeFolder.trim() : "";
+  const availableFolders = new Set(items.map((item) => item.folder));
+
+  return {
+    items,
+    draftUrl: typeof payload?.draftUrl === "string" ? payload.draftUrl : "",
+    draftTitle: typeof payload?.draftTitle === "string" ? payload.draftTitle : "",
+    draftFolder,
+    activeFolder:
+      savedActiveFolder === "All" || availableFolders.has(savedActiveFolder)
+        ? savedActiveFolder
+        : "All",
+  };
 }
 
 function createInitialState(feature: BusinessFeature) {
@@ -95,20 +191,7 @@ function createInitialState(feature: BusinessFeature) {
     case "email-template":
       return {
         activeTemplate: "welcome" as TemplateKey,
-        templates: {
-          welcome: {
-            subject: "Welcome to Sureride",
-            body: "Hi {{firstName}}, welcome to Sureride.",
-          },
-          "password-reset": {
-            subject: "Reset your password",
-            body: "Click {{resetLink}} to reset your password.",
-          },
-          "booking-confirmed": {
-            subject: "Booking confirmed",
-            body: "Your booking {{bookingId}} is now confirmed.",
-          },
-        } as Record<TemplateKey, TemplateConfig>,
+        templates: DEFAULT_EMAIL_TEMPLATES,
       };
 
     case "theme-settings":
@@ -120,12 +203,24 @@ function createInitialState(feature: BusinessFeature) {
       };
 
     case "gallery":
-      return {
+      return normalizeGalleryState({
         items: [
-          "https://images.unsplash.com/photo-1503376780353-7e6692767b70",
+          {
+            id: "gallery_demo_car",
+            title: "Hero Sedan",
+            folder: "Homepage",
+            url: "https://images.unsplash.com/photo-1503376780353-7e6692767b70",
+          },
+          {
+            id: "gallery_demo_showroom",
+            title: "Showroom Detail",
+            folder: "Marketing",
+            url: "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7",
+          },
         ],
-        draftUrl: "",
-      };
+        draftFolder: "Homepage",
+        activeFolder: "All",
+      });
 
     case "login-setup":
       return {
@@ -163,6 +258,13 @@ function loadFeatureState(feature: BusinessFeature) {
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
 
+    if (feature === "gallery") {
+      return {
+        ...initial,
+        ...normalizeGalleryState(parsed),
+      };
+    }
+
     if (feature === "business-setup") {
       const legacy = parsed as Record<string, string | undefined>;
       const migrated = {
@@ -188,6 +290,13 @@ function parseFeatureState(
 ) {
   const initial = createInitialState(feature);
   const parsed = payload ?? {};
+
+  if (feature === "gallery") {
+    return {
+      ...initial,
+      ...normalizeGalleryState(parsed),
+    };
+  }
 
   if (feature === "business-setup") {
     const legacy = parsed as Record<string, string | undefined>;
@@ -1100,7 +1209,7 @@ export default function BusinessSettingsFeaturePage({
       const activeTemplate = (state.activeTemplate as TemplateKey) ?? "welcome";
       const templates =
         (state.templates as Record<TemplateKey, TemplateConfig>) ??
-        createInitialState(feature).templates;
+        DEFAULT_EMAIL_TEMPLATES;
       const current = templates[activeTemplate];
 
       return (
@@ -1218,53 +1327,167 @@ export default function BusinessSettingsFeaturePage({
     }
 
     if (feature === "gallery") {
-      const items = (state.items as string[]) ?? [];
+      const items = normalizeGalleryItems(state.items);
       const draftUrl = String(state.draftUrl ?? "");
+      const draftTitle = String(state.draftTitle ?? "");
+      const draftFolder = normalizeGalleryFolder(state.draftFolder);
+      const activeFolder = String(state.activeFolder ?? "All");
+      const folders = Array.from(new Set(items.map((item) => item.folder))).sort(
+        (a, b) => a.localeCompare(b),
+      );
+      const visibleItems =
+        activeFolder === "All"
+          ? items
+          : items.filter((item) => item.folder === activeFolder);
 
       return (
         <div style={styles.stack}>
-          <div style={styles.galleryAddRow}>
-            <input
-              style={styles.input}
-              placeholder="Paste image URL"
-              value={draftUrl}
-              onChange={(e) =>
-                setState((prev) => ({ ...prev, draftUrl: e.target.value }))
-              }
-            />
-            <button
-              style={styles.secondaryBtn}
-              onClick={() => {
-                if (!draftUrl.trim()) return;
-                setState((prev) => ({
-                  ...prev,
-                  items: [...((prev.items as string[]) ?? []), draftUrl.trim()],
-                  draftUrl: "",
-                }));
-              }}
-            >
-              Add
-            </button>
+          <div style={styles.galleryToolbar}>
+            <div style={styles.galleryComposer}>
+              <h3 style={styles.galleryPanelTitle}>Add Gallery Image</h3>
+              <div style={styles.galleryAddGrid}>
+                <input
+                  style={styles.input}
+                  placeholder="Paste image URL"
+                  value={draftUrl}
+                  onChange={(e) =>
+                    setState((prev) => ({ ...prev, draftUrl: e.target.value }))
+                  }
+                />
+                <input
+                  style={styles.input}
+                  placeholder="Image title"
+                  value={draftTitle}
+                  onChange={(e) =>
+                    setState((prev) => ({ ...prev, draftTitle: e.target.value }))
+                  }
+                />
+                <input
+                  style={styles.input}
+                  placeholder="Folder name"
+                  value={draftFolder}
+                  onChange={(e) =>
+                    setState((prev) => ({
+                      ...prev,
+                      draftFolder: e.target.value,
+                    }))
+                  }
+                />
+                <button
+                  style={styles.secondaryBtn}
+                  onClick={() => {
+                    const nextUrl = draftUrl.trim();
+                    if (!nextUrl) return;
+
+                    setState((prev) => ({
+                      ...prev,
+                      items: [
+                        ...normalizeGalleryItems(prev.items),
+                        createGalleryItem(nextUrl, items.length, {
+                          title: draftTitle,
+                          folder: draftFolder,
+                        }),
+                      ],
+                      draftUrl: "",
+                      draftTitle: "",
+                      draftFolder,
+                    }));
+                  }}
+                >
+                  Add Image
+                </button>
+              </div>
+            </div>
+
+            <div style={styles.galleryFoldersPanel}>
+              <h3 style={styles.galleryPanelTitle}>Folders</h3>
+              <div style={styles.galleryFolderChips}>
+                {["All", ...folders].map((folder) => {
+                  const isActive = activeFolder === folder;
+                  const count =
+                    folder === "All"
+                      ? items.length
+                      : items.filter((item) => item.folder === folder).length;
+
+                  return (
+                    <button
+                      key={folder}
+                      style={{
+                        ...styles.galleryFolderChip,
+                        ...(isActive ? styles.galleryFolderChipActive : {}),
+                      }}
+                      onClick={() =>
+                        setState((prev) => ({ ...prev, activeFolder: folder }))
+                      }
+                    >
+                      {folder} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div style={styles.gallerySummaryRow}>
+            <span style={styles.gallerySummaryText}>
+              {visibleItems.length} image{visibleItems.length === 1 ? "" : "s"} in{" "}
+              {activeFolder === "All" ? "all folders" : activeFolder}
+            </span>
           </div>
 
           <div style={styles.galleryGrid}>
-            {items.map((item, index) => (
-              <div key={`${item}-${index}`} style={styles.galleryCard}>
-                <a href={item} target="_blank" rel="noreferrer" style={styles.galleryLink}>
-                  {item}
-                </a>
-                <button
-                  style={styles.ghostBtn}
-                  onClick={() => {
-                    const next = items.filter((_, i) => i !== index);
-                    setState((prev) => ({ ...prev, items: next }));
-                  }}
-                >
-                  Remove
-                </button>
-              </div>
+            {visibleItems.map((item) => (
+              <article key={item.id} style={styles.galleryCard}>
+                <div style={styles.galleryImageWrap}>
+                  <img src={item.url} alt={item.title} style={styles.galleryImage} />
+                </div>
+                <div style={styles.galleryMeta}>
+                  <div style={styles.galleryMetaHeader}>
+                    <div style={styles.galleryTextGroup}>
+                      <h4 style={styles.galleryItemTitle}>{item.title}</h4>
+                      <span style={styles.galleryFolderBadge}>{item.folder}</span>
+                    </div>
+                    <button
+                      style={styles.ghostBtn}
+                      onClick={() => {
+                        const nextItems = items.filter(
+                          (existing) => existing.id !== item.id,
+                        );
+                        const remainingFolders = new Set(
+                          nextItems.map((existing) => existing.folder),
+                        );
+
+                        setState((prev) => ({
+                          ...prev,
+                          items: nextItems,
+                          activeFolder:
+                            activeFolder !== "All" && !remainingFolders.has(activeFolder)
+                              ? "All"
+                              : prev.activeFolder,
+                        }));
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={styles.galleryLink}
+                  >
+                    {item.url}
+                  </a>
+                </div>
+              </article>
             ))}
           </div>
+
+          {visibleItems.length === 0 ? (
+            <div style={styles.galleryEmptyState}>
+              No images in this folder yet. Add one above or switch folders.
+            </div>
+          ) : null}
         </div>
       );
     }
@@ -1980,30 +2203,142 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 14,
     color: "var(--foreground)",
   },
-  galleryAddRow: {
+  galleryToolbar: {
     display: "grid",
-    gridTemplateColumns: "1fr auto",
+    gridTemplateColumns: "minmax(0, 2fr) minmax(280px, 1fr)",
+    gap: 14,
+  },
+  galleryComposer: {
+    borderRadius: 12,
+    border: "1px solid var(--input-border)",
+    background: "var(--surface-2)",
+    padding: 14,
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+  },
+  galleryFoldersPanel: {
+    borderRadius: 12,
+    border: "1px solid var(--input-border)",
+    background: "var(--surface-2)",
+    padding: 14,
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+  },
+  galleryPanelTitle: {
+    margin: 0,
+    fontSize: 15,
+    fontWeight: 700,
+    color: "var(--foreground)",
+  },
+  galleryAddGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 10,
+  },
+  galleryFolderChips: {
+    display: "flex",
+    flexWrap: "wrap",
     gap: 8,
+  },
+  galleryFolderChip: {
+    borderRadius: 999,
+    border: "1px solid var(--input-border)",
+    background: "var(--surface-1)",
+    color: "var(--foreground)",
+    padding: "8px 12px",
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+  galleryFolderChipActive: {
+    background: "var(--foreground)",
+    color: "var(--background)",
+    borderColor: "var(--foreground)",
+  },
+  gallerySummaryRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  gallerySummaryText: {
+    fontSize: 13,
+    color: "var(--muted-foreground)",
   },
   galleryGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-    gap: 10,
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gap: 14,
   },
   galleryCard: {
-    borderRadius: 10,
-    border: "1px solid var(--glass-10)",
-    background: "var(--glass-06)",
-    padding: 10,
+    borderRadius: 14,
+    border: "1px solid var(--input-border)",
+    background: "var(--surface-2)",
+    overflow: "hidden",
     display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: "column",
+  },
+  galleryImageWrap: {
+    width: "100%",
+    aspectRatio: "16 / 10",
+    background: "var(--surface-1)",
+    overflow: "hidden",
+  },
+  galleryImage: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    display: "block",
+  },
+  galleryMeta: {
+    width: "100%",
+    padding: 12,
+    display: "flex",
+    flexDirection: "column",
     gap: 10,
+  },
+  galleryMetaHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  galleryTextGroup: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    minWidth: 0,
+  },
+  galleryItemTitle: {
+    margin: 0,
+    fontSize: 15,
+    fontWeight: 700,
+    color: "var(--foreground)",
+  },
+  galleryFolderBadge: {
+    width: "fit-content",
+    borderRadius: 999,
+    border: "1px solid var(--input-border)",
+    background: "var(--surface-1)",
+    color: "var(--muted-foreground)",
+    padding: "5px 9px",
+    fontSize: 12,
+    fontWeight: 600,
+  },
+  galleryEmptyState: {
+    borderRadius: 12,
+    border: "1px dashed var(--input-border)",
+    background: "var(--surface-2)",
+    padding: 18,
+    textAlign: "center",
+    color: "var(--muted-foreground)",
   },
   galleryLink: {
     color: "#93C5FD",
     textDecoration: "none",
     fontSize: 13,
+    lineHeight: 1.5,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",

@@ -1,4 +1,4 @@
-import { mapCarToRow, type AdminCarFeatureOption, type RentalLocationOption } from "@/src/lib/carsApi";
+import { mapCarToRow, type AdminCarFeatureOption } from "@/src/lib/carsApi";
 import type { RentalCarRow } from "@/src/types/rentalCar";
 
 type ProviderApiRequestInit = RequestInit;
@@ -75,6 +75,9 @@ export type ProviderProfile = {
   contactPersonRole?: string | null;
   contactPersonPhone?: string | null;
   businessAddress?: string | null;
+  businessOpeningTime?: string | null;
+  businessClosingTime?: string | null;
+  businessOperatingDays?: string[];
   status: string;
   isVerified: boolean;
   isActive: boolean;
@@ -157,6 +160,48 @@ export type UpdateProviderProfilePayload = {
   contactPersonRole?: string | null;
   contactPersonPhone?: string | null;
   businessAddress?: string | null;
+  businessOpeningTime?: string | null;
+  businessClosingTime?: string | null;
+  businessOperatingDays?: string[];
+};
+
+export type ProviderCountryOption = {
+  id: string;
+  name: string;
+  code: string;
+};
+
+export type ProviderLocation = {
+  id: string;
+  name: string;
+  address: string;
+  providerId: string;
+  providerName: string;
+  countryId: string;
+  countryName: string;
+  countryCode: string;
+  latitude?: number | null;
+  longitude?: number | null;
+};
+
+export type UpsertProviderLocationPayload = {
+  name: string;
+  address: string;
+  countryId: string;
+  latitude?: string | null;
+  longitude?: string | null;
+};
+
+type RawProviderLocation = {
+  id: string;
+  name?: string;
+  address?: string;
+  providerId?: string;
+  provider?: { name?: string };
+  countryId?: string;
+  country?: { name?: string; code?: string };
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 function getProviderToken() {
@@ -224,6 +269,21 @@ function makeQuery(params: Record<string, string | number | undefined>) {
 
   const query = search.toString();
   return query ? `?${query}` : "";
+}
+
+function mapProviderLocation(row: RawProviderLocation): ProviderLocation {
+  return {
+    id: row.id,
+    name: row.name || "Unnamed location",
+    address: row.address || "",
+    providerId: row.providerId || "",
+    providerName: row.provider?.name || "",
+    countryId: row.countryId || "",
+    countryName: row.country?.name || "",
+    countryCode: row.country?.code || "",
+    latitude: row.latitude ?? null,
+    longitude: row.longitude ?? null,
+  };
 }
 
 function mapBookingToRow(booking: ProviderRawBooking): ProviderBookingRow {
@@ -312,23 +372,47 @@ export function getProviderDashboardStats() {
 }
 
 export async function listProviderLocations() {
-  const rows = await providerApiRequest<
-    Array<{
-      id: string;
-      name?: string;
-      address?: string;
-      providerId?: string;
-      provider?: { name?: string };
-    }>
-  >("/provider/locations");
+  const rows = await providerApiRequest<RawProviderLocation[]>("/provider/locations");
+  return rows.map(mapProviderLocation);
+}
 
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name || "Unnamed location",
-    address: row.address || "",
-    providerId: row.providerId || "",
-    providerName: row.provider?.name || "",
-  })) as RentalLocationOption[];
+export function listProviderCountries() {
+  return providerApiRequest<ProviderCountryOption[]>("/provider/countries");
+}
+
+export function createProviderLocation(payload: UpsertProviderLocationPayload) {
+  return providerApiRequest<{ message: string; location: RawProviderLocation }>(
+    "/provider/locations",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  ).then((response) => ({
+    ...response,
+    location: mapProviderLocation(response.location),
+  }));
+}
+
+export function updateProviderLocation(
+  locationId: string,
+  payload: Partial<UpsertProviderLocationPayload>,
+) {
+  return providerApiRequest<{ message: string; location: RawProviderLocation }>(
+    `/provider/locations/${locationId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    },
+  ).then((response) => ({
+    ...response,
+    location: mapProviderLocation(response.location),
+  }));
+}
+
+export function deleteProviderLocation(locationId: string) {
+  return providerApiRequest<{ message: string }>(`/provider/locations/${locationId}`, {
+    method: "DELETE",
+  });
 }
 
 export function listProviderCars(params: {
