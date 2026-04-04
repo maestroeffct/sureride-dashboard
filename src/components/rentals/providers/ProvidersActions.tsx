@@ -20,14 +20,40 @@ export default function ProvidersActions({
 }) {
   const [busy, setBusy] = useState(false);
 
+  const showTemporaryPassword = (result: {
+    temporaryPassword?: string | null;
+    tempPasswordExpiresAt?: string | null;
+  }) => {
+    if (!result.temporaryPassword) {
+      return;
+    }
+
+    const expiryText = result.tempPasswordExpiresAt
+      ? `\nExpires: ${new Date(result.tempPasswordExpiresAt).toLocaleString()}`
+      : "";
+
+    void navigator.clipboard
+      ?.writeText(result.temporaryPassword)
+      .catch(() => undefined);
+
+    window.alert(
+      `Temporary provider password:\n${result.temporaryPassword}${expiryText}\n\nIt has been copied to your clipboard when supported.`,
+    );
+  };
+
   const runAction = async (
     label: string,
-    request: () => Promise<{ message: string }>,
+    request: () => Promise<{
+      message: string;
+      temporaryPassword?: string | null;
+      tempPasswordExpiresAt?: string | null;
+    }>,
   ) => {
     try {
       setBusy(true);
       const res = await request();
       toast.success(res.message || `${label} successful`);
+      showTemporaryPassword(res);
       await onMutated?.();
     } catch (err) {
       const message = err instanceof Error ? err.message : `${label} failed`;
