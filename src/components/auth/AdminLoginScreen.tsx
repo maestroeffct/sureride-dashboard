@@ -12,6 +12,7 @@ import {
 } from "@/src/lib/publicPlatformConfig";
 import logoIcon from "@/src/assets/logo_icon.png";
 import logoNameWhite from "@/src/assets/logo_name_white.png";
+import { useIsMobile } from "@/src/hooks/useIsMobile";
 
 type AdminLoginResponse = {
   token?: string;
@@ -52,6 +53,7 @@ const initialBrand = {
 
 export default function AdminLoginScreen() {
   const router = useRouter();
+  const isMobile = useIsMobile(960);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -269,14 +271,25 @@ export default function AdminLoginScreen() {
     : "Manage providers, pricing, approvals, and business configuration from one console.";
 
   return (
-    <div style={styles.page}>
+    <div
+      style={{
+        ...styles.page,
+        gridTemplateColumns: isMobile ? "1fr" : "1.08fr 0.92fr",
+      }}
+    >
       <section
         style={{
           ...styles.hero,
+          minHeight: isMobile ? 360 : "100vh",
           backgroundImage: `linear-gradient(135deg, rgba(2,6,23,0.88), rgba(15,118,110,0.30)), url(${brand.backgroundImage})`,
         }}
       >
-        <div style={styles.heroInner}>
+        <div
+          style={{
+            ...styles.heroInner,
+            padding: isMobile ? "28px 20px 24px" : "42px 48px 56px",
+          }}
+        >
           <div style={styles.logoRow}>
             {brand.logoUrl ? (
               <img src={brand.logoUrl} alt={brand.companyName} style={styles.logoRemote} />
@@ -289,10 +302,29 @@ export default function AdminLoginScreen() {
           </div>
 
           <span style={styles.badge}>Admin Console</span>
-          <h1 style={styles.heroTitle}>{headline}</h1>
-          <p style={styles.heroSubtitle}>{heroBody}</p>
+          <h1
+            style={{
+              ...styles.heroTitle,
+              fontSize: isMobile ? 34 : 52,
+            }}
+          >
+            {headline}
+          </h1>
+          <p
+            style={{
+              ...styles.heroSubtitle,
+              fontSize: isMobile ? 15 : 17,
+            }}
+          >
+            {heroBody}
+          </p>
 
-          <div style={styles.featureGrid}>
+          <div
+            style={{
+              ...styles.featureGrid,
+              gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(220px, 1fr))",
+            }}
+          >
             <div style={styles.featureCard}>
               <ShieldCheck size={18} />
               <div>
@@ -315,8 +347,20 @@ export default function AdminLoginScreen() {
         </div>
       </section>
 
-      <section style={styles.panel}>
-        <div style={styles.card}>
+      <section
+        style={{
+          ...styles.panel,
+          minHeight: isMobile ? "auto" : "100vh",
+          padding: isMobile ? 16 : 32,
+        }}
+      >
+        <div
+          style={{
+            ...styles.card,
+            padding: isMobile ? 24 : 34,
+            borderRadius: isMobile ? 22 : 30,
+          }}
+        >
           <div style={styles.cardHeader}>
             <p style={styles.eyebrow}>Administrative Access</p>
             <h2 style={styles.cardTitle}>Sign in to {brand.companyName}</h2>

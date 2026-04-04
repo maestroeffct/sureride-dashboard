@@ -9,12 +9,19 @@ export default function RentalsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { sidebarCollapsed } = useLayoutUI();
+  const { sidebarCollapsed, isMobile } = useLayoutUI();
 
   return (
     <div style={styles.wrapper}>
       <Sidebar module="rentals" collapsed={sidebarCollapsed} />
-      <main style={styles.main}>{children}</main>
+      <main
+        style={{
+          ...styles.main,
+          padding: isMobile ? 16 : 24,
+        }}
+      >
+        {children}
+      </main>
     </div>
   );
 }

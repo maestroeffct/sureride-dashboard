@@ -8,14 +8,21 @@ import { LayoutUIProvider } from "@/src/providers/LayoutUIProvider";
 import { useLayoutUI } from "@/src/hooks/useLayoutUI";
 
 function ProviderShell({ children }: { children: React.ReactNode }) {
-  const { sidebarCollapsed } = useLayoutUI();
+  const { sidebarCollapsed, isMobile } = useLayoutUI();
 
   return (
     <div style={styles.wrapper}>
       <Topbar />
       <div style={styles.body}>
         <Sidebar module="providerRentals" collapsed={sidebarCollapsed} />
-        <main style={styles.main}>{children}</main>
+        <main
+          style={{
+            ...styles.main,
+            padding: isMobile ? 16 : 24,
+          }}
+        >
+          {children}
+        </main>
       </div>
     </div>
   );

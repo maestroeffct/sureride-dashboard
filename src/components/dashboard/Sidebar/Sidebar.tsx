@@ -7,6 +7,7 @@ import { SidebarModule, SidebarItem } from "@/src/types/sidebar";
 import React, { useEffect, useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLayoutUI } from "@/src/hooks/useLayoutUI";
 
 const basePath = (path?: string) => path?.split("?")[0] ?? "";
 
@@ -19,40 +20,66 @@ export default function Sidebar({
 }) {
   const pathname = usePathname();
   const menu = sidebarMenus[module];
+  const { isMobile, setSidebarCollapsed } = useLayoutUI();
 
-  return (
-    <aside
-      style={{
+  const sidebarStyle: React.CSSProperties = isMobile
+    ? {
+        ...styles.sidebar,
+        position: "fixed",
+        top: 72,
+        left: 0,
+        bottom: 0,
+        width: 280,
+        minWidth: 280,
+        zIndex: 70,
+        borderRight: "1px solid var(--sidebar-border)",
+        boxShadow: collapsed ? "none" : "0 24px 60px rgba(0,0,0,0.28)",
+        transform: collapsed ? "translateX(-100%)" : "translateX(0)",
+        opacity: 1,
+      }
+    : {
         ...styles.sidebar,
         width: collapsed ? 0 : 260,
         minWidth: collapsed ? 0 : 260,
         borderRight: collapsed ? "none" : "1px solid var(--sidebar-border)",
         opacity: collapsed ? 0 : 1,
-      }}
-      aria-hidden={collapsed}
-    >
-      <div
-        style={{
-          ...styles.scrollArea,
-          pointerEvents: collapsed ? "none" : "auto",
-        }}
-      >
-        {menu.map((item) =>
-          item.kind === "section" ? (
-            <div key={`section-${item.label}`} style={styles.sectionLabel}>
-              {item.label}
-            </div>
-          ) : (
-            <SidebarItemView
-              key={item.label}
-              item={item}
-              pathname={pathname}
-              module={module}
-            />
-          )
-        )}
-      </div>
-    </aside>
+      };
+
+  return (
+    <>
+      {isMobile && !collapsed ? (
+        <button
+          type="button"
+          aria-label="Close navigation"
+          style={styles.backdrop}
+          onClick={() => setSidebarCollapsed(true)}
+        />
+      ) : null}
+
+      <aside style={sidebarStyle} aria-hidden={collapsed}>
+        <div
+          style={{
+            ...styles.scrollArea,
+            pointerEvents: collapsed ? "none" : "auto",
+          }}
+        >
+          {menu.map((item) =>
+            item.kind === "section" ? (
+              <div key={`section-${item.label}`} style={styles.sectionLabel}>
+                {item.label}
+              </div>
+            ) : (
+              <SidebarItemView
+                key={item.label}
+                item={item}
+                pathname={pathname}
+                module={module}
+              />
+            )
+          )}
+        </div>
+      </aside>
+    </>
   );
 }
 
@@ -65,6 +92,7 @@ function SidebarItemView({
   pathname: string;
   module: SidebarModule;
 }) {
+  const { isMobile, setSidebarCollapsed } = useLayoutUI();
   const Icon = item.icon;
 
   const hasActiveChild = useMemo(
@@ -147,6 +175,11 @@ function SidebarItemView({
                   >
                     <Link
                       href={child.path}
+                      onClick={() => {
+                        if (isMobile) {
+                          setSidebarCollapsed(true);
+                        }
+                      }}
                       style={{
                         ...styles.childItem,
                         background: active
@@ -177,6 +210,11 @@ function SidebarItemView({
   return (
     <Link
       href={item.path}
+      onClick={() => {
+        if (isMobile) {
+          setSidebarCollapsed(true);
+        }
+      }}
       style={{
         ...styles.item,
         background: isActive ? "var(--sidebar-item-active-bg)" : "transparent",
@@ -193,6 +231,7 @@ function SidebarItemView({
 
 const styles: {
   sidebar: React.CSSProperties;
+  backdrop: React.CSSProperties;
   scrollArea: React.CSSProperties;
   sectionLabel: React.CSSProperties;
   item: React.CSSProperties;
@@ -209,6 +248,16 @@ const styles: {
     flexDirection: "column",
     overflow: "hidden",
     transition: "width 220ms ease, opacity 180ms ease, border-color 180ms ease",
+  },
+  backdrop: {
+    position: "fixed",
+    inset: "72px 0 0 0",
+    background: "rgba(2, 6, 23, 0.42)",
+    border: "none",
+    padding: 0,
+    margin: 0,
+    zIndex: 60,
+    cursor: "pointer",
   },
 
   scrollArea: {

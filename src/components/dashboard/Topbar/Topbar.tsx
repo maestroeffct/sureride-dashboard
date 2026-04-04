@@ -36,7 +36,7 @@ export default function Topbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
-  const { sidebarCollapsed, toggleSidebar } = useLayoutUI();
+  const { sidebarCollapsed, toggleSidebar, isMobile } = useLayoutUI();
   const [open, setOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -94,8 +94,18 @@ export default function Topbar() {
   };
 
   return (
-    <header style={styles.container}>
-      <div style={styles.left}>
+    <header
+      style={{
+        ...styles.container,
+        padding: isMobile ? "0 12px" : "0 24px",
+      }}
+    >
+      <div
+        style={{
+          ...styles.left,
+          gap: isMobile ? 8 : 10,
+        }}
+      >
         {canToggleSidebar && (
           <button
             style={{
@@ -115,54 +125,71 @@ export default function Topbar() {
         )}
 
         <Image src={logoIcon} alt="Sureride icon" priority style={styles.brandIcon} />
-        <Image
-          src={theme === "dark" ? logoNameWhite : logoNameBlack}
-          alt="Sureride"
-          priority
-          style={styles.brandName}
-        />
+        {!isMobile ? (
+          <Image
+            src={theme === "dark" ? logoNameWhite : logoNameBlack}
+            alt="Sureride"
+            priority
+            style={styles.brandName}
+          />
+        ) : null}
       </div>
 
       <div style={styles.right}>
-        <div style={styles.iconGroup}>
-          <button style={styles.iconButton}>
-            <Bell size={18} />
-            <span style={styles.notificationDot} />
-          </button>
+        {!isMobile ? (
+          <div style={styles.iconGroup}>
+            <button style={styles.iconButton}>
+              <Bell size={18} />
+              <span style={styles.notificationDot} />
+            </button>
 
-          <button style={styles.iconButton}>
-            <MessageCircle size={18} />
-          </button>
+            <button style={styles.iconButton}>
+              <MessageCircle size={18} />
+            </button>
 
-          <button style={styles.iconButton}>
-            <Settings size={18} />
-          </button>
-        </div>
+            <button style={styles.iconButton}>
+              <Settings size={18} />
+            </button>
+          </div>
+        ) : null}
 
         <div style={styles.iconGroup}>
           <button
-            style={{
-              ...styles.iconButton,
-              ...(theme === "light" ? styles.iconActive : {}),
-            }}
-            onClick={() => setTheme("light")}
-            aria-label="Switch to light mode"
+            style={styles.iconButton}
+            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            aria-label="Toggle theme"
           >
-            <Sun size={18} />
+            {theme === "light" ? <Sun size={18} /> : <Moon size={18} />}
           </button>
 
-          <div style={styles.divider} />
+          {!isMobile ? (
+            <>
+              <div style={styles.divider} />
+              <button
+                style={{
+                  ...styles.iconButton,
+                  ...(theme === "light" ? styles.iconActive : {}),
+                }}
+                onClick={() => setTheme("light")}
+                aria-label="Switch to light mode"
+              >
+                <Sun size={18} />
+              </button>
 
-          <button
-            style={{
-              ...styles.iconButton,
-              ...(theme === "dark" ? styles.iconActive : {}),
-            }}
-            onClick={() => setTheme("dark")}
-            aria-label="Switch to dark mode"
-          >
-            <Moon size={18} />
-          </button>
+              <div style={styles.divider} />
+
+              <button
+                style={{
+                  ...styles.iconButton,
+                  ...(theme === "dark" ? styles.iconActive : {}),
+                }}
+                onClick={() => setTheme("dark")}
+                aria-label="Switch to dark mode"
+              >
+                <Moon size={18} />
+              </button>
+            </>
+          ) : null}
         </div>
 
         <div style={styles.profileWrapper} ref={profileRef}>

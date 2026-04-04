@@ -16,6 +16,7 @@ import {
   requestProviderPasswordReset,
   resetProviderPassword,
 } from "@/src/lib/providerApi";
+import { useIsMobile } from "@/src/hooks/useIsMobile";
 
 const initialBrand = {
   companyName: "Sureride",
@@ -35,6 +36,7 @@ function getMode(value: string | null): AuthMode {
 function ProviderLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const isMobile = useIsMobile(960);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -175,22 +177,54 @@ function ProviderLoginContent() {
         : "Sign in to manage your fleet, upload cars, and monitor live rentals.";
 
   return (
-    <div style={styles.page}>
+    <div
+      style={{
+        ...styles.page,
+        gridTemplateColumns: isMobile ? "1fr" : "1.1fr 0.9fr",
+      }}
+    >
       <div
         style={{
           ...styles.hero,
+          minHeight: isMobile ? 300 : "100vh",
+          padding: isMobile ? 24 : 56,
           backgroundImage: `linear-gradient(135deg, rgba(2,6,23,0.80), rgba(15,118,110,0.42)), url(${brand.backgroundImage})`,
         }}
       >
         <div style={styles.heroContent}>
           <span style={styles.badge}>Provider Portal</span>
-          <h1 style={styles.title}>{heroTitle}</h1>
-          <p style={styles.subtitle}>{heroSubtitle}</p>
+          <h1
+            style={{
+              ...styles.title,
+              fontSize: isMobile ? 34 : 46,
+            }}
+          >
+            {heroTitle}
+          </h1>
+          <p
+            style={{
+              ...styles.subtitle,
+              fontSize: isMobile ? 15 : 17,
+            }}
+          >
+            {heroSubtitle}
+          </p>
         </div>
       </div>
 
-      <div style={styles.panel}>
-        <div style={styles.card}>
+      <div
+        style={{
+          ...styles.panel,
+          minHeight: isMobile ? "auto" : "100vh",
+          padding: isMobile ? 16 : 32,
+        }}
+      >
+        <div
+          style={{
+            ...styles.card,
+            padding: isMobile ? 24 : 32,
+          }}
+        >
           <p style={styles.eyebrow}>Provider Access</p>
           <h2 style={styles.cardTitle}>
             {mode === "forgot"
