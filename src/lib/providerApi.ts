@@ -113,8 +113,76 @@ export type ProviderDashboardStats = {
   activeRentals: number;
   upcomingRentals: number;
   completedRentals: number;
+  cancelledRentals: number;
   revenueThisMonth: number;
+  charts: {
+    revenueTrend: Array<{ label: string; value: number }>;
+    bookingsTrend: Array<{ label: string; value: number }>;
+    bookingStatusBreakdown: Array<{ label: string; value: number }>;
+    fleetStatusBreakdown: Array<{ label: string; value: number }>;
+  };
+  recent: {
+    bookings: Array<{
+      id: string;
+      title: string;
+      subtitle: string;
+      status: string;
+      createdAt: string;
+      value?: number;
+    }>;
+  };
 };
+
+function normalizeProviderDashboardStats(raw: any): ProviderDashboardStats {
+  const totalCars = Number(raw?.totalCars ?? 0);
+  const activeCars = Number(raw?.activeCars ?? 0);
+  const pendingCars = Number(raw?.pendingCars ?? 0);
+  const activeRentals = Number(raw?.activeRentals ?? 0);
+  const upcomingRentals = Number(raw?.upcomingRentals ?? 0);
+  const completedRentals = Number(raw?.completedRentals ?? 0);
+  const cancelledRentals = Number(raw?.cancelledRentals ?? 0);
+  const revenueThisMonth = Number(raw?.revenueThisMonth ?? 0);
+
+  return {
+    totalCars,
+    activeCars,
+    pendingCars,
+    activeRentals,
+    upcomingRentals,
+    completedRentals,
+    cancelledRentals,
+    revenueThisMonth,
+    charts: {
+      revenueTrend: Array.isArray(raw?.charts?.revenueTrend)
+        ? raw.charts.revenueTrend
+        : [],
+      bookingsTrend: Array.isArray(raw?.charts?.bookingsTrend)
+        ? raw.charts.bookingsTrend
+        : [],
+      bookingStatusBreakdown: Array.isArray(raw?.charts?.bookingStatusBreakdown)
+        ? raw.charts.bookingStatusBreakdown
+        : [
+            { label: "Active", value: activeRentals },
+            { label: "Upcoming", value: upcomingRentals },
+            { label: "Completed", value: completedRentals },
+            { label: "Cancelled", value: cancelledRentals },
+          ],
+      fleetStatusBreakdown: Array.isArray(raw?.charts?.fleetStatusBreakdown)
+        ? raw.charts.fleetStatusBreakdown
+        : [
+            { label: "Approved", value: activeCars },
+            { label: "Pending", value: pendingCars },
+            {
+              label: "Other",
+              value: Math.max(totalCars - activeCars - pendingCars, 0),
+            },
+          ],
+    },
+    recent: {
+      bookings: Array.isArray(raw?.recent?.bookings) ? raw.recent.bookings : [],
+    },
+  };
+}
 
 export type ProviderBookingRow = {
   id: string;
@@ -414,7 +482,9 @@ export function updateProviderProfile(payload: UpdateProviderProfilePayload) {
 }
 
 export function getProviderDashboardStats() {
-  return providerApiRequest<ProviderDashboardStats>("/provider/dashboard");
+  return providerApiRequest<any>("/provider/dashboard").then(
+    normalizeProviderDashboardStats,
+  );
 }
 
 export async function listProviderLocations() {

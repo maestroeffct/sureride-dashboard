@@ -1630,6 +1630,10 @@ export default function BusinessSettingsFeaturePage({
             />
             Show &quot;Remember me&quot; checkbox
           </label>
+          <div style={styles.helperText}>
+            If password login is disabled, admins will sign in with a 6-digit email
+            access code instead of getting locked out.
+          </div>
         </div>
       );
     }
@@ -2239,6 +2243,12 @@ const styles: Record<string, CSSProperties> = {
   hint: {
     margin: 0,
     fontSize: 12,
+    color: "var(--fg-60)",
+  },
+  helperText: {
+    margin: 0,
+    fontSize: 12,
+    lineHeight: 1.5,
     color: "var(--fg-60)",
   },
   actions: {

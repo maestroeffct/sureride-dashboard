@@ -104,24 +104,15 @@ function SidebarItemView({
     [item.children, pathname]
   );
 
-  const storageKey = `sidebar:${module}:${item.label}`;
-
-  const [open, setOpen] = useState<boolean>(() => {
-    if (typeof window === "undefined") return hasActiveChild;
-    const stored = localStorage.getItem(storageKey);
-    return stored ? stored === "open" : hasActiveChild;
-  });
+  const [open, setOpen] = useState<boolean>(hasActiveChild);
+  const [isHovered, setIsHovered] = useState(false);
+  const [hoveredChildPath, setHoveredChildPath] = useState<string | null>(null);
 
   useEffect(() => {
     if (hasActiveChild) {
-      const id = window.setTimeout(() => setOpen(true), 0);
-      return () => window.clearTimeout(id);
+      setOpen(true);
     }
   }, [hasActiveChild]);
-
-  useEffect(() => {
-    localStorage.setItem(storageKey, open ? "open" : "closed");
-  }, [open, storageKey]);
 
   const isActive = Boolean(item.path) && pathname === basePath(item.path);
 
@@ -130,9 +121,20 @@ function SidebarItemView({
       <div>
         <button
           onClick={() => setOpen((v) => !v)}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
           style={{
             ...styles.groupButton,
-            background: open ? "var(--sidebar-group-open-bg)" : "transparent",
+            background:
+              open || isHovered
+                ? "var(--sidebar-group-open-bg)"
+                : "transparent",
+            color:
+              open || hasActiveChild || isHovered
+                ? "var(--sidebar-item-active-fg)"
+                : "var(--sidebar-item-fg-muted)",
+            transform:
+              open || isHovered ? "translateX(2px)" : "translateX(0)",
           }}
         >
           {Icon && <Icon size={18} />}
@@ -184,11 +186,21 @@ function SidebarItemView({
                         ...styles.childItem,
                         background: active
                           ? "var(--sidebar-item-active-bg)"
+                          : hoveredChildPath === child.path
+                            ? "rgba(255,255,255,0.05)"
                           : "transparent",
                         color: active
                           ? "var(--sidebar-item-active-fg)"
+                          : hoveredChildPath === child.path
+                            ? "var(--sidebar-item-fg)"
                           : "var(--sidebar-item-fg-muted)",
+                        transform:
+                          active || hoveredChildPath === child.path
+                            ? "translateX(2px)"
+                            : "translateX(0)",
                       }}
+                      onMouseEnter={() => setHoveredChildPath(child.path ?? null)}
+                      onMouseLeave={() => setHoveredChildPath(null)}
                     >
                       {ChildIcon && <ChildIcon size={16} />}
                       <span>{child.label}</span>
@@ -210,6 +222,8 @@ function SidebarItemView({
   return (
     <Link
       href={item.path}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       onClick={() => {
         if (isMobile) {
           setSidebarCollapsed(true);
@@ -217,10 +231,18 @@ function SidebarItemView({
       }}
       style={{
         ...styles.item,
-        background: isActive ? "var(--sidebar-item-active-bg)" : "transparent",
+        background: isActive
+          ? "var(--sidebar-item-active-bg)"
+          : isHovered
+            ? "rgba(255,255,255,0.05)"
+            : "transparent",
         color: isActive
           ? "var(--sidebar-item-active-fg)"
+          : isHovered
+            ? "var(--sidebar-item-fg)"
           : "var(--sidebar-item-fg-muted)",
+        transform:
+          isActive || isHovered ? "translateX(2px)" : "translateX(0)",
       }}
     >
       {Icon && <Icon size={18} />}
@@ -289,6 +311,8 @@ const styles: {
     fontSize: 14,
     textDecoration: "none",
     cursor: "pointer",
+    transition:
+      "background-color 160ms ease, color 160ms ease, transform 160ms ease",
   },
 
   groupButton: {
@@ -303,6 +327,8 @@ const styles: {
     width: "100%",
     fontSize: 14,
     color: "var(--sidebar-item-fg-muted)",
+    transition:
+      "background-color 160ms ease, color 160ms ease, transform 160ms ease",
   },
 
   childItem: {
@@ -314,5 +340,7 @@ const styles: {
     fontSize: 13,
     textDecoration: "none",
     cursor: "pointer",
+    transition:
+      "background-color 160ms ease, color 160ms ease, transform 160ms ease",
   },
 };

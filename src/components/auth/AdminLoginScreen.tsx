@@ -58,9 +58,13 @@ export default function AdminLoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [accessCode, setAccessCode] = useState("");
+  const [accessCodeSent, setAccessCodeSent] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [magicLoading, setMagicLoading] = useState(false);
+  const [requestingCode, setRequestingCode] = useState(false);
+  const [verifyingCode, setVerifyingCode] = useState(false);
   const [verifyingMagicLink, setVerifyingMagicLink] = useState(false);
   const [platformConfig, setPlatformConfig] = useState<PublicPlatformConfig | null>(
     null,
@@ -86,6 +90,11 @@ export default function AdminLoginScreen() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    setAccessCodeSent(false);
+    setAccessCode("");
+  }, [email]);
 
   useEffect(() => {
     const token =
@@ -272,14 +281,83 @@ export default function AdminLoginScreen() {
     }
   };
 
+  const handleRequestAccessCode = async () => {
+    if (!email) {
+      toast.error("Enter your admin email first");
+      return;
+    }
+
+    try {
+      setRequestingCode(true);
+      const recaptchaToken = await getRecaptchaToken(
+        recaptchaSiteKey,
+        "admin_access_code",
+      );
+      await apiRequest("/admin/auth/code/request", {
+        method: "POST",
+        body: JSON.stringify({ email, rememberMe, recaptchaToken }),
+      });
+      setAccessCodeSent(true);
+      toast.success("If the account exists, a 6-digit access code has been sent.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to send access code",
+      );
+    } finally {
+      setRequestingCode(false);
+    }
+  };
+
+  const handleVerifyAccessCode = async () => {
+    if (!email || !accessCode.trim()) {
+      toast.error("Enter your email and 6-digit access code");
+      return;
+    }
+
+    try {
+      setVerifyingCode(true);
+      const response = await apiRequest<AdminLoginResponse>("/admin/auth/code/verify", {
+        method: "POST",
+        body: JSON.stringify({
+          email,
+          code: accessCode.trim(),
+          rememberMe,
+        }),
+      });
+
+      if (!response.token || !response.admin) {
+        throw new Error("Code verification failed");
+      }
+
+      persistAdminSession({
+        token: response.token,
+        admin: response.admin,
+        rememberMe,
+      });
+
+      toast.success("Login successful");
+      router.push("/modules");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to verify access code",
+      );
+    } finally {
+      setVerifyingCode(false);
+    }
+  };
+
   const headline = verifyingMagicLink
     ? "Verifying secure access"
+    : !allowPasswordLogin
+      ? "Admin sign-in with a secure email code"
     : requiresMfa
       ? "Admin sign-in with email confirmation"
       : "Operations control for the entire platform";
 
   const heroBody = verifyingMagicLink
     ? "Hold on while we validate the sign-in link."
+    : !allowPasswordLogin
+      ? "Password login is off, so admins sign in with a 6-digit code sent to their email."
     : "Manage providers, pricing, approvals, and business configuration from one console.";
 
   return (
@@ -379,6 +457,8 @@ export default function AdminLoginScreen() {
             <p style={styles.cardSubtitle}>
               {verifyingMagicLink
                 ? "Verifying your secure sign-in link..."
+                : !allowPasswordLogin
+                  ? "Password login is off. Request a 6-digit code and use it to sign in."
                 : requiresMfa
                   ? "Password login completes with an email confirmation step."
                   : "Use your admin credentials to continue."}
@@ -442,9 +522,61 @@ export default function AdminLoginScreen() {
               </button>
             </>
           ) : (
-            <div style={styles.notice}>
-              Password login is disabled for admins. Use a magic link if it is enabled below.
-            </div>
+            <>
+              <div style={styles.notice}>
+                Password login is disabled. Use the email access code flow below.
+              </div>
+
+              <label style={styles.field}>
+                <span style={styles.label}>6-Digit Access Code</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={accessCode}
+                  onChange={(event) =>
+                    setAccessCode(event.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
+                  style={styles.input}
+                  disabled={requestingCode || verifyingCode || verifyingMagicLink}
+                />
+              </label>
+
+              {showRememberMe ? (
+                <label style={styles.rememberRow}>
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(event) => setRememberMe(event.target.checked)}
+                  />
+                  Remember me on this device
+                </label>
+              ) : null}
+
+              <div style={styles.codeActions}>
+                <button
+                  type="button"
+                  onClick={handleRequestAccessCode}
+                  disabled={requestingCode || verifyingCode || verifyingMagicLink}
+                  style={primaryButtonStyle}
+                >
+                  {requestingCode ? "Sending Code..." : "Send Access Code"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleVerifyAccessCode}
+                  disabled={
+                    !accessCodeSent ||
+                    requestingCode ||
+                    verifyingCode ||
+                    verifyingMagicLink
+                  }
+                  style={secondaryButtonStyle}
+                >
+                  {verifyingCode ? "Verifying..." : "Verify Code"}
+                </button>
+              </div>
+            </>
           )}
 
           {allowMagicLink ? (
@@ -683,6 +815,11 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
+  },
+  codeActions: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 12,
   },
   notice: {
     borderRadius: 16,
