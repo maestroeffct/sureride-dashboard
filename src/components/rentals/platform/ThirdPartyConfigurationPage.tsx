@@ -31,6 +31,7 @@ import {
 import {
   listPlatformSettingsDraft,
   savePlatformSettingsDraft,
+  sendPlatformTestMail,
   type PlatformSettingsSection,
 } from "@/src/lib/platformSettingsDraftApi";
 
@@ -463,6 +464,7 @@ function ProviderCard({
 
 export default function ThirdPartyConfigurationPage() {
   const [activeTab, setActiveTab] = useState<ThirdPartyTab>("payment-methods");
+  const [mailInnerTab, setMailInnerTab] = useState<"config" | "test">("config");
   const [countryScope, setCountryScope] = useState(() => readAdminCountryScope());
   const [countries, setCountries] = useState<AdminCountry[]>([]);
   const [isCountriesLoading, setIsCountriesLoading] = useState(false);
@@ -491,6 +493,8 @@ export default function ThirdPartyConfigurationPage() {
   const [defaultingGatewayId, setDefaultingGatewayId] = useState<string | null>(null);
   const [archivingGatewayId, setArchivingGatewayId] = useState<string | null>(null);
   const [savingSection, setSavingSection] = useState<PlatformSettingsSection | null>(null);
+  const [testMailTo, setTestMailTo] = useState("");
+  const [sendingTestMail, setSendingTestMail] = useState(false);
   const parameterLibrary = useMemo(
     () => parameterLibraryFromMeta(paymentMeta),
     [paymentMeta],
@@ -649,6 +653,33 @@ export default function ThirdPartyConfigurationPage() {
       toast.error(getErrorMessage(error));
     } finally {
       setSavingSection(null);
+    }
+  };
+
+  const handleSendTestMail = async () => {
+    if (!testMailTo.trim()) {
+      toast.error("Enter a recipient email for the test");
+      return;
+    }
+
+    try {
+      setSendingTestMail(true);
+      await sendPlatformTestMail(testMailTo.trim(), {
+        mailEnabled: form.mailEnabled,
+        mailerName: form.mailerName,
+        mailHost: form.mailHost,
+        mailDriver: form.mailDriver,
+        mailPort: form.mailPort,
+        mailUsername: form.mailUsername,
+        mailEmailId: form.mailEmailId,
+        mailEncryption: form.mailEncryption,
+        mailPassword: form.mailPassword,
+      });
+      toast.success("Test email sent successfully");
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setSendingTestMail(false);
     }
   };
 
@@ -1720,12 +1751,23 @@ export default function ThirdPartyConfigurationPage() {
           <div style={styles.mailTabsLeft}>
             <button
               type="button"
-              style={{ ...styles.mailInnerTab, ...styles.mailInnerTabActive }}
+              onClick={() => setMailInnerTab("config")}
+              style={{
+                ...styles.mailInnerTab,
+                ...(mailInnerTab === "config" ? styles.mailInnerTabActive : {}),
+              }}
             >
               <MailCheck size={16} />
               Mail Config
             </button>
-            <button type="button" style={styles.mailInnerTab}>
+            <button
+              type="button"
+              onClick={() => setMailInnerTab("test")}
+              style={{
+                ...styles.mailInnerTab,
+                ...(mailInnerTab === "test" ? styles.mailInnerTabActive : {}),
+              }}
+            >
               <MessageSquareText size={16} />
               Send Test Mail
             </button>
@@ -1736,6 +1778,8 @@ export default function ThirdPartyConfigurationPage() {
         </header>
 
         <div style={styles.mailBody}>
+          {mailInnerTab === "config" ? (
+            <>
           <label style={styles.switchLine}>
             <span>{form.mailEnabled ? "Turn OFF" : "Turn ON"}</span>
             <input
@@ -1860,6 +1904,35 @@ export default function ThirdPartyConfigurationPage() {
               {savingSection === "mail-config" ? "Saving..." : "Save"}
             </button>
           </div>
+            </>
+          ) : (
+            <div style={styles.simplePanel}>
+              <h4 style={styles.simpleTitle}>Send Test Mail</h4>
+              <p style={styles.simpleText}>
+                This sends a real email using the SMTP values currently in the form,
+                even if you have not saved them yet.
+              </p>
+              <Field label="Recipient Email">
+                <input
+                  style={styles.input}
+                  type="email"
+                  value={testMailTo}
+                  onChange={(event) => setTestMailTo(event.target.value)}
+                  placeholder="admin@example.com"
+                />
+              </Field>
+              <div style={styles.actionsInlineEnd}>
+                <button
+                  type="button"
+                  style={styles.primaryBtn}
+                  onClick={() => void handleSendTestMail()}
+                  disabled={sendingTestMail}
+                >
+                  {sendingTestMail ? "Sending..." : "Send Test Email"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </article>
     );

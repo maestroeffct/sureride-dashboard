@@ -40,6 +40,11 @@ type ScopeOptions = {
   countryId?: string | null;
 };
 
+type TestMailPayload = {
+  toEmail: string;
+  payload: PlatformSettingsPayload;
+};
+
 function buildDraftStorageKey(options?: ScopeOptions) {
   const countryId = options?.countryId?.trim();
   return countryId ? `${DRAFT_STORAGE_KEY}:${countryId}` : DRAFT_STORAGE_KEY;
@@ -150,4 +155,17 @@ export async function savePlatformSettingsDraft(
       payload,
     };
   }
+}
+
+export async function sendPlatformTestMail(
+  toEmail: string,
+  payload: PlatformSettingsPayload,
+) {
+  return apiRequest<{ message: string }>("/admin/platform/settings/mail-config/test", {
+    method: "POST",
+    body: JSON.stringify({
+      toEmail,
+      payload,
+    } satisfies TestMailPayload),
+  });
 }
