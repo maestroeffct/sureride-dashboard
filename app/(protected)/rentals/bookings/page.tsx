@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import styles from "./styles";
 import {
   Calendar,
@@ -11,6 +11,7 @@ import {
   Eye,
   MoreHorizontal,
 } from "lucide-react";
+import { listAdminBookings, type AdminBookingRow } from "@/src/lib/adminBookingsApi";
 
 type BookingStatus =
   | "Upcoming"
@@ -97,97 +98,78 @@ function getPaymentStyle(p: PaymentStatus) {
   return { ...base, ...map[p] };
 }
 
+function mapApiRow(r: AdminBookingRow): BookingRow {
+  const firstName = r.user?.firstName?.trim() || "";
+  const lastName = r.user?.lastName?.trim() || "";
+  const customerName = `${firstName} ${lastName}`.trim() || r.user?.email || "Unknown";
+  const customerPhone =
+    `${r.user?.phoneCountry || ""} ${r.user?.phoneNumber || ""}`.trim() || "-";
+  const carName = r.car ? `${r.car.brand} ${r.car.model}` : "—";
+  const carMeta = [r.car?.category, r.car?.transmission].filter(Boolean).join(" • ") || "—";
+  const providerName = r.car?.provider?.name || "—";
+  const providerMeta = r.car?.location?.name || r.car?.location?.address || "—";
+
+  const paymentStatusMap: Record<string, PaymentStatus> = {
+    SUCCEEDED: "Paid",
+    UNPAID: "Pending",
+    PROCESSING: "Pending",
+    REQUIRES_ACTION: "Pending",
+    FAILED: "Failed",
+    CANCELED: "Refunded",
+  };
+  const paymentStatus: PaymentStatus = paymentStatusMap[r.paymentStatus] ?? "Pending";
+
+  const statusMap: Record<string, BookingStatus> = {
+    PENDING: "Pending",
+    CONFIRMED: "Upcoming",
+    COMPLETED: "Completed",
+    CANCELLED: "Cancelled",
+  };
+  const status: BookingStatus = statusMap[r.status] ?? "Pending";
+
+  return {
+    id: r.id.slice(0, 8).toUpperCase(),
+    createdAt: r.createdAt,
+    customerName,
+    customerPhone,
+    carName,
+    carMeta,
+    providerName,
+    providerMeta,
+    pickupAt: r.pickupAt,
+    returnAt: r.returnAt,
+    amount: r.totalPrice,
+    currency: "NGN",
+    paymentStatus,
+    status,
+  };
+}
+
 export default function RentalBookingsPage() {
   const [tab, setTab] = useState<(typeof STATUS_TABS)[number]["key"]>("All");
   const [query, setQuery] = useState("");
   const [exportOpen, setExportOpen] = useState(false);
+  const [apiRows, setApiRows] = useState<AdminBookingRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Dummy data (replace later with API)
-  const rows: BookingRow[] = useMemo(
-    () => [
-      {
-        id: "RB-100031",
-        createdAt: "2025-12-11T09:14:00.000Z",
-        customerName: "Precious Omokhaiye",
-        customerPhone: "+234 907 844 2536",
-        carName: "Toyota Corolla",
-        carMeta: "Economy • Automatic",
-        providerName: "Sixt Rentals",
-        providerMeta: "Lagos – Ikeja",
-        pickupAt: "2025-12-23T09:00:00.000Z",
-        returnAt: "2025-12-24T09:00:00.000Z",
-        amount: 168000,
-        currency: "NGN",
-        paymentStatus: "Paid",
-        status: "Completed",
-      },
-      {
-        id: "RB-100032",
-        createdAt: "2025-12-12T12:02:00.000Z",
-        customerName: "Wole A.",
-        customerPhone: "+234 901 234 5678",
-        carName: "Ford Figo",
-        carMeta: "Compact • Manual",
-        providerName: "Hertz",
-        providerMeta: "Lagos – VI",
-        pickupAt: "2025-12-26T10:00:00.000Z",
-        returnAt: "2025-12-28T10:00:00.000Z",
-        amount: 117000,
-        currency: "NGN",
-        paymentStatus: "Pending",
-        status: "Upcoming",
-      },
-      {
-        id: "RB-100033",
-        createdAt: "2025-12-12T16:44:00.000Z",
-        customerName: "Darlene Roberts",
-        customerPhone: "+234 809 555 1122",
-        carName: "BMW 523",
-        carMeta: "Luxury • Automatic",
-        providerName: "Local Vendor",
-        providerMeta: "Abuja – Garki",
-        pickupAt: "2025-12-20T08:00:00.000Z",
-        returnAt: "2025-12-22T08:00:00.000Z",
-        amount: 420000,
-        currency: "NGN",
-        paymentStatus: "Paid",
-        status: "Active",
-      },
-      {
-        id: "RB-100034",
-        createdAt: "2025-12-10T21:30:00.000Z",
-        customerName: "Arlene McCoy",
-        customerPhone: "+234 813 222 4567",
-        carName: "MG 750",
-        carMeta: "Standard • Automatic",
-        providerName: "Sixt Rentals",
-        providerMeta: "Lagos – Ikeja",
-        pickupAt: "2025-12-18T10:00:00.000Z",
-        returnAt: "2025-12-18T20:00:00.000Z",
-        amount: 168000,
-        currency: "NGN",
-        paymentStatus: "Failed",
-        status: "Issue",
-      },
-      {
-        id: "RB-100035",
-        createdAt: "2025-12-09T10:10:00.000Z",
-        customerName: "John Doe",
-        customerPhone: "+234 700 000 0000",
-        carName: "Hyundai Tucson",
-        carMeta: "SUV • Automatic",
-        providerName: "Hertz",
-        providerMeta: "Lagos – Lekki",
-        pickupAt: "2025-12-15T10:00:00.000Z",
-        returnAt: "2025-12-16T10:00:00.000Z",
-        amount: 250000,
-        currency: "NGN",
-        paymentStatus: "Refunded",
-        status: "Cancelled",
-      },
-    ],
-    []
-  );
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      void (async () => {
+        try {
+          setLoading(true);
+          const res = await listAdminBookings({ q: query || undefined, limit: 200 });
+          setApiRows(res.items);
+        } catch {
+          // silently keep previous data
+        } finally {
+          setLoading(false);
+        }
+      })();
+    }, 300);
+    return () => window.clearTimeout(t);
+  }, [query]);
+
+  const rows: BookingRow[] = useMemo(() => apiRows.map(mapApiRow), [apiRows]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -434,10 +416,18 @@ export default function RentalBookingsPage() {
                 );
               })}
 
-              {filtered.length === 0 && (
+              {loading && (
                 <tr>
                   <td style={styles.emptyCell} colSpan={11}>
-                    No bookings found for this filter/search.
+                    Loading bookings...
+                  </td>
+                </tr>
+              )}
+
+              {!loading && filtered.length === 0 && (
+                <tr>
+                  <td style={styles.emptyCell} colSpan={11}>
+                    No bookings found.
                   </td>
                 </tr>
               )}
