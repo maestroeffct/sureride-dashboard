@@ -668,6 +668,7 @@ export default function ThirdPartyConfigurationPage() {
       setSendingTestMail(true);
       await sendPlatformTestMail(testMailTo.trim(), {
         mailEnabled: form.mailEnabled,
+        mailProvider: form.mailProvider,
         mailerName: form.mailerName,
         mailHost: form.mailHost,
         mailDriver: form.mailDriver,
