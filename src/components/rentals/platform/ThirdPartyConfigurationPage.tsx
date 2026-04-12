@@ -271,6 +271,7 @@ type FormState = {
   twoFactorApiKey: string;
 
   mailEnabled: boolean;
+  mailProvider: "mailgun" | "sendgrid" | "custom";
   mailerName: string;
   mailHost: string;
   mailDriver: string;
@@ -335,6 +336,7 @@ const INITIAL_STATE: FormState = {
   twoFactorApiKey: "",
 
   mailEnabled: true,
+  mailProvider: "mailgun",
   mailerName: "Sureride",
   mailHost: "smtp.mailgun.org",
   mailDriver: "smtp",
@@ -1793,9 +1795,86 @@ export default function ThirdPartyConfigurationPage() {
             *By turning OFF mail configuration all your mailing services will be
             off.
           </p>
-          <p style={styles.helperText}>
-            These settings are now used by the backend mailer for OTP and system emails.
+
+          {/* PROVIDER SELECTOR */}
+          <p style={{ ...styles.helperText, fontWeight: 700, color: "var(--foreground)", marginBottom: 2 }}>
+            Select Email Provider
           </p>
+          <div style={styles.mailProviderGrid}>
+            {(
+              [
+                {
+                  id: "mailgun",
+                  name: "Mailgun",
+                  subtitle: "smtp.mailgun.org · Port 587",
+                  color: "#E53935",
+                  preset: {
+                    mailHost: "smtp.mailgun.org",
+                    mailPort: "587",
+                    mailUsername: "",
+                    mailEncryption: "tls",
+                    mailDriver: "smtp",
+                  },
+                },
+                {
+                  id: "sendgrid",
+                  name: "SendGrid",
+                  subtitle: "smtp.sendgrid.net · Port 587",
+                  color: "#1A82E2",
+                  preset: {
+                    mailHost: "smtp.sendgrid.net",
+                    mailPort: "587",
+                    mailUsername: "apikey",
+                    mailEncryption: "tls",
+                    mailDriver: "smtp",
+                  },
+                },
+                {
+                  id: "custom",
+                  name: "Custom SMTP",
+                  subtitle: "Enter your own SMTP settings",
+                  color: "#6B7280",
+                  preset: null,
+                },
+              ] as const
+            ).map((provider) => {
+              const active = form.mailProvider === provider.id;
+              return (
+                <button
+                  key={provider.id}
+                  type="button"
+                  onClick={() => {
+                    setForm((prev) => ({
+                      ...prev,
+                      mailProvider: provider.id,
+                      ...(provider.preset ?? {}),
+                    }));
+                  }}
+                  style={{
+                    ...styles.mailProviderTile,
+                    ...(active ? styles.mailProviderTileActive : {}),
+                    borderColor: active ? provider.color : undefined,
+                  }}
+                >
+                  <span
+                    style={{
+                      ...styles.mailProviderDot,
+                      background: provider.color,
+                    }}
+                  />
+                  <span style={styles.mailProviderInfo}>
+                    <span style={{ ...styles.mailProviderName, ...(active ? { color: provider.color } : {}) }}>
+                      {provider.name}
+                    </span>
+                    <span style={styles.mailProviderSub}>{provider.subtitle}</span>
+                  </span>
+                  {active && (
+                    <span style={{ ...styles.mailProviderCheck, background: provider.color }}>✓</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
 
           <Field label="Mailer name">
             <input
@@ -1829,7 +1908,7 @@ export default function ThirdPartyConfigurationPage() {
             </Field>
           </div>
 
-          <Field label="Username">
+          <Field label={form.mailProvider === "sendgrid" ? 'Username (always "apikey" for SendGrid)' : "Username"}>
             <input
               style={styles.input}
               value={form.mailUsername}
@@ -1838,7 +1917,7 @@ export default function ThirdPartyConfigurationPage() {
           </Field>
 
           <div style={styles.grid3}>
-            <Field label="Email id">
+            <Field label="From Email">
               <input
                 style={styles.input}
                 value={form.mailEmailId}
@@ -1852,7 +1931,7 @@ export default function ThirdPartyConfigurationPage() {
                 onChange={(event) => set("mailEncryption", event.target.value)}
               />
             </Field>
-            <Field label="Password">
+            <Field label={form.mailProvider === "sendgrid" ? "API Key (Password)" : "Password"}>
               <input
                 style={styles.input}
                 type="password"
@@ -1870,6 +1949,7 @@ export default function ThirdPartyConfigurationPage() {
                 setForm((prev) => ({
                   ...prev,
                   mailEnabled: INITIAL_STATE.mailEnabled,
+                  mailProvider: INITIAL_STATE.mailProvider,
                   mailerName: INITIAL_STATE.mailerName,
                   mailHost: INITIAL_STATE.mailHost,
                   mailDriver: INITIAL_STATE.mailDriver,
@@ -1889,6 +1969,7 @@ export default function ThirdPartyConfigurationPage() {
               onClick={() =>
                 void saveSection("mail-config", "Mail Config", {
                   mailEnabled: form.mailEnabled,
+                  mailProvider: form.mailProvider,
                   mailerName: form.mailerName,
                   mailHost: form.mailHost,
                   mailDriver: form.mailDriver,
@@ -3353,6 +3434,59 @@ const styles: Record<string, CSSProperties> = {
     gap: 6,
     fontSize: 14,
     color: "var(--fg-80)",
+  },
+  mailProviderGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: 10,
+  },
+  mailProviderTile: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "10px 14px",
+    borderRadius: 10,
+    border: "1.5px solid var(--input-border)",
+    background: "var(--surface-2)",
+    cursor: "pointer",
+    textAlign: "left" as const,
+    transition: "border-color 0.15s",
+  },
+  mailProviderTileActive: {
+    background: "var(--surface-1)",
+  },
+  mailProviderDot: {
+    width: 10,
+    height: 10,
+    borderRadius: "50%",
+    flexShrink: 0,
+  },
+  mailProviderInfo: {
+    display: "flex",
+    flexDirection: "column" as const,
+    flex: 1,
+    gap: 1,
+  },
+  mailProviderName: {
+    fontSize: 14,
+    fontWeight: 700,
+    color: "var(--foreground)",
+  },
+  mailProviderSub: {
+    fontSize: 11,
+    color: "var(--muted-foreground)",
+  },
+  mailProviderCheck: {
+    width: 18,
+    height: 18,
+    borderRadius: "50%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 11,
+    color: "#fff",
+    fontWeight: 700,
+    flexShrink: 0,
   },
   mailCard: {
     border: "1px solid var(--input-border)",
