@@ -60,3 +60,9 @@ export function listAdminBookings(params: {
     `/admin/bookings?${search.toString()}`,
   );
 }
+
+export function cancelAdminBooking(bookingId: string) {
+  return apiRequest<{ message: string }>(`/admin/bookings/${bookingId}/cancel`, {
+    method: "PATCH",
+  });
+}

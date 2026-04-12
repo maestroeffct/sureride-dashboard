@@ -9,9 +9,9 @@ import {
   Filter,
   Search,
   Eye,
-  MoreHorizontal,
+  XCircle,
 } from "lucide-react";
-import { listAdminBookings, type AdminBookingRow } from "@/src/lib/adminBookingsApi";
+import { listAdminBookings, cancelAdminBooking, type AdminBookingRow } from "@/src/lib/adminBookingsApi";
 
 type BookingStatus =
   | "Upcoming"
@@ -24,7 +24,8 @@ type BookingStatus =
 type PaymentStatus = "Paid" | "Pending" | "Failed" | "Refunded";
 
 type BookingRow = {
-  id: string;
+  id: string;       // short display ID (first 8 chars)
+  fullId: string;   // full UUID for API calls
   createdAt: string; // ISO
   customerName: string;
   customerPhone: string;
@@ -129,6 +130,7 @@ function mapApiRow(r: AdminBookingRow): BookingRow {
 
   return {
     id: r.id.slice(0, 8).toUpperCase(),
+    fullId: r.id,
     createdAt: r.createdAt,
     customerName,
     customerPhone,
@@ -151,23 +153,39 @@ export default function RentalBookingsPage() {
   const [exportOpen, setExportOpen] = useState(false);
   const [apiRows, setApiRows] = useState<AdminBookingRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+
+  const loadBookings = React.useCallback(() => {
+    void (async () => {
+      try {
+        setLoading(true);
+        const res = await listAdminBookings({ q: query || undefined, limit: 200 });
+        setApiRows(res.items);
+      } catch {
+        // silently keep previous data
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [query]);
 
   useEffect(() => {
-    const t = window.setTimeout(() => {
-      void (async () => {
-        try {
-          setLoading(true);
-          const res = await listAdminBookings({ q: query || undefined, limit: 200 });
-          setApiRows(res.items);
-        } catch {
-          // silently keep previous data
-        } finally {
-          setLoading(false);
-        }
-      })();
-    }, 300);
+    const t = window.setTimeout(loadBookings, 300);
     return () => window.clearTimeout(t);
-  }, [query]);
+  }, [loadBookings]);
+
+  const handleCancelBooking = async (fullId: string, shortId: string) => {
+    if (!window.confirm(`Cancel booking ${shortId}? This cannot be undone.`)) return;
+    setCancellingId(fullId);
+    try {
+      await cancelAdminBooking(fullId);
+      loadBookings();
+    } catch (err: any) {
+      window.alert(err?.message ?? "Failed to cancel booking");
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   const rows: BookingRow[] = useMemo(() => apiRows.map(mapApiRow), [apiRows]);
 
@@ -407,9 +425,20 @@ export default function RentalBookingsPage() {
                         <button style={styles.iconAction} title="View">
                           <Eye size={18} />
                         </button>
-                        <button style={styles.iconAction} title="More">
-                          <MoreHorizontal size={18} />
-                        </button>
+                        {r.status !== "Cancelled" && r.status !== "Completed" && (
+                          <button
+                            style={{
+                              ...styles.iconAction,
+                              color: cancellingId === r.fullId ? "#9CA3AF" : "#EF4444",
+                              cursor: cancellingId === r.fullId ? "not-allowed" : "pointer",
+                            }}
+                            title="Cancel Booking"
+                            disabled={cancellingId === r.fullId}
+                            onClick={() => handleCancelBooking(r.fullId, r.id)}
+                          >
+                            <XCircle size={18} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
