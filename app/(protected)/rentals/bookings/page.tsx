@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import styles from "./styles";
 import {
   Calendar,
@@ -148,6 +149,7 @@ function mapApiRow(r: AdminBookingRow): BookingRow {
 }
 
 export default function RentalBookingsPage() {
+  const router = useRouter();
   const [tab, setTab] = useState<(typeof STATUS_TABS)[number]["key"]>("All");
   const [query, setQuery] = useState("");
   const [exportOpen, setExportOpen] = useState(false);
@@ -422,7 +424,11 @@ export default function RentalBookingsPage() {
 
                     <td style={styles.tdRight}>
                       <div style={styles.actionsRow}>
-                        <button style={styles.iconAction} title="View">
+                        <button
+                          style={styles.iconAction}
+                          title="View"
+                          onClick={() => router.push(`/rentals/bookings/${r.fullId}`)}
+                        >
                           <Eye size={18} />
                         </button>
                         {r.status !== "Cancelled" && r.status !== "Completed" && (

@@ -86,6 +86,7 @@ export const adminMenu: AdminMenuSection[] = [
 
       // OPERATIONS
       { label: "Bookings", path: "/rentals/bookings" },
+      { label: "Finance Overview", path: "/rentals/finance" },
       { label: "Issues & Claims", path: "/rentals/issues" },
 
       // BUSINESS RULES
