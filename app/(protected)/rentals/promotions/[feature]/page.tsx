@@ -6,10 +6,7 @@ const PROMOTIONS_PAGES: Record<string, { title: string; description: string }> =
     title: "Campaigns",
     description: "Create and manage time-bound promotional campaigns.",
   },
-  coupons: {
-    title: "Coupons",
-    description: "Issue and track coupon usage, limits, and expiration windows.",
-  },
+  // coupons has a dedicated page at /rentals/promotions/coupons
   "promo-campaigns": {
     title: "Promo Campaigns",
     description: "Coordinate bundled promotion flows across provider segments.",
