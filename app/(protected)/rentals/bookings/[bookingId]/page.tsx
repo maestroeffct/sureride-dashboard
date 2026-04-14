@@ -384,7 +384,7 @@ export default function BookingDetailPage() {
                   : "—"
               }
             />
-            <Field label="KYC Status" value={booking.user?.kycStatus ?? booking.user?.profileStatus ?? "—"} />
+            <Field label="Profile Status" value={booking.user?.profileStatus ?? "—"} />
             {booking.user?.id && (
               <button
                 style={s.viewUserBtn}

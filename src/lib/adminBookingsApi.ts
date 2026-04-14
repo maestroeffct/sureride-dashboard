@@ -27,7 +27,6 @@ export type AdminBookingDetail = {
     phoneCountry: string | null;
     phoneNumber: string | null;
     profileStatus: string | null;
-    kycStatus: string | null;
   } | null;
   car: {
     id: string;
