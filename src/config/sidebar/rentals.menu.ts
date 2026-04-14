@@ -19,6 +19,32 @@ export const rentalsMenu: SidebarItem[] = [
 
   {
     kind: "section",
+    label: "FINANCE & PAYOUTS",
+  },
+  {
+    label: "Finance Overview",
+    path: "/rentals/finance",
+    icon: sidebarIcons.pricing,
+  },
+  {
+    label: "Payment & Payouts",
+    icon: sidebarIcons.pricing,
+    children: [
+      {
+        label: "Payment Gateways",
+        path: "/rentals/platform/third-party-configuration",
+        icon: sidebarIcons.settings,
+      },
+      {
+        label: "Provider Payouts",
+        path: "/rentals/payouts",
+        icon: sidebarIcons.providers,
+      },
+    ],
+  },
+
+  {
+    kind: "section",
     label: "NETWORK MANAGEMENT",
   },
   {
