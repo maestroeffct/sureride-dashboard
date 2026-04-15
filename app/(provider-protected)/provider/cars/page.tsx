@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { Search } from "lucide-react";
+import { Pencil, Search } from "lucide-react";
 import { listProviderCars } from "@/src/lib/providerApi";
 import type { RentalCarRow } from "@/src/types/rentalCar";
 
@@ -92,6 +92,7 @@ export default function ProviderCarsPage() {
               <th style={styles.th}>Location</th>
               <th style={styles.th}>Pricing</th>
               <th style={styles.th}>Status</th>
+              <th style={styles.th} />
             </tr>
           </thead>
           <tbody>
@@ -143,6 +144,15 @@ export default function ProviderCarsPage() {
                     {car.moderationNote ? (
                       <p style={styles.note}>{car.moderationNote}</p>
                     ) : null}
+                  </td>
+                  <td style={{ ...styles.td, width: 52 }}>
+                    <Link
+                      href={`/provider/cars/${car.id}/edit`}
+                      style={styles.editBtn}
+                      title="Edit car"
+                    >
+                      <Pencil size={14} />
+                    </Link>
                   </td>
                 </tr>
               ))
@@ -245,4 +255,16 @@ const styles: Record<string, React.CSSProperties> = {
   },
   note: { margin: "8px 0 0", fontSize: 12, color: "var(--fg-60)" },
   empty: { padding: 28, textAlign: "center", color: "var(--fg-60)" },
+  editBtn: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    border: "1px solid var(--input-border)",
+    background: "var(--surface-2)",
+    color: "var(--fg-60)",
+    textDecoration: "none",
+  },
 };

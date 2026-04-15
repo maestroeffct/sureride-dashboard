@@ -610,6 +610,57 @@ export function listProviderCarMetaModels() {
   );
 }
 
+export type ProviderCarDetail = {
+  id: string;
+  brand: string;
+  model: string;
+  category: string;
+  year: number | null;
+  seats: number | null;
+  bags: string | null;
+  hasAC: boolean;
+  transmission: string;
+  mileagePolicy: string;
+  dailyRate: number;
+  hourlyRate: number | null;
+  status: string;
+  isActive: boolean;
+  moderationNote: string | null;
+  flaggedReason: string | null;
+  locationId: string;
+  images: Array<{ id: string; url: string; isPrimary: boolean }>;
+  features: Array<{ featureId: string; feature: { id: string; name: string; category: string } }>;
+  location: {
+    id: string;
+    name: string;
+    address: string;
+    country?: { name: string; code: string } | null;
+  } | null;
+};
+
+export type UpdateProviderCarPayload = Partial<ProviderCreateCarPayload>;
+
+export function getProviderCar(carId: string) {
+  return providerApiRequest<ProviderCarDetail>(`/provider/cars/${carId}`);
+}
+
+export function updateProviderCar(carId: string, payload: UpdateProviderCarPayload) {
+  return providerApiRequest<{ message: string; car: ProviderCarDetail }>(
+    `/provider/cars/${carId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function deleteProviderCarImage(carId: string, imageId: string) {
+  return providerApiRequest<{ message: string }>(
+    `/provider/cars/${carId}/images/${imageId}`,
+    { method: "DELETE" },
+  );
+}
+
 export function createProviderCar(payload: ProviderCreateCarPayload) {
   return providerApiRequest<{ message: string; car: { id: string } }>(
     "/provider/cars",

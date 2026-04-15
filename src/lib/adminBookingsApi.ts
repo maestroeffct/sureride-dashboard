@@ -13,6 +13,9 @@ export type AdminBookingDetail = {
   totalPrice: number;
   basePrice: number;
   insuranceFee: number;
+  platformFee: number;
+  providerEarning: number;
+  depositAmount: number;
   currency: string;
   pricingUnit: string;
   collectionCode: string | null;
