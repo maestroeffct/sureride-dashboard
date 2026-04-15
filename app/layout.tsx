@@ -35,13 +35,11 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title,
     description,
-    icons: favicon
-      ? {
-          icon: favicon,
-          shortcut: favicon,
-          apple: favicon,
-        }
-      : undefined,
+    icons: {
+      icon: favicon || '/icon.png',
+      shortcut: favicon || '/icon.png',
+      apple: favicon || '/icon.png',
+    },
     openGraph: {
       title,
       description,
