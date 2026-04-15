@@ -116,6 +116,11 @@ export const rentalsMenu: SidebarItem[] = [
     label: "SYSTEM SETTINGS",
   },
   {
+    label: "Pricing Rules",
+    path: "/rentals/pricing-rules",
+    icon: sidebarIcons.pricing,
+  },
+  {
     label: "Configuration",
     icon: sidebarIcons.settings,
     children: [
