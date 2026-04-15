@@ -704,6 +704,75 @@ export function submitProviderCar(carId: string, note?: string) {
   });
 }
 
+/* ── Earnings & Payouts ── */
+
+export type ProviderEarningsOverview = {
+  totalEarned: number;
+  totalPaid: number;
+  pendingAmount: number;
+  availableBalance: number;
+  bookingCount?: number;
+  pendingPayoutCount?: number;
+  recentPayouts: Array<{
+    id: string;
+    amount: number;
+    currency: string;
+    status: "PENDING" | "PAID" | "CANCELLED";
+    reference: string | null;
+    note: string | null;
+    createdAt: string;
+  }>;
+  recentBookings: Array<{
+    id: string;
+    car?: { brand?: string; model?: string } | null;
+    providerEarning: number | null;
+    status: string;
+    pickupAt: string;
+    returnAt: string;
+  }>;
+};
+
+export type ProviderPayoutAccount = {
+  id?: string;
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
+  currency?: string;
+  isVerified?: boolean;
+};
+
+export function getProviderEarnings() {
+  return providerApiRequest<ProviderEarningsOverview>("/provider/earnings");
+}
+
+export function listProviderPayouts(params?: { page?: number; limit?: number }) {
+  const query = makeQuery({ page: params?.page ?? 1, limit: params?.limit ?? 50 });
+  return providerApiRequest<{ items: ProviderEarningsOverview["recentPayouts"]; meta: { total: number; pages: number } }>(
+    `/provider/payouts${query}`,
+  );
+}
+
+export function requestProviderPayout(amount: number, note?: string) {
+  return providerApiRequest<{ message: string }>("/provider/payouts/request", {
+    method: "POST",
+    body: JSON.stringify({ amount, note }),
+  });
+}
+
+export function getProviderPayoutAccount() {
+  return providerApiRequest<ProviderPayoutAccount | null>("/provider/payout-account");
+}
+
+export function upsertProviderPayoutAccount(payload: Omit<ProviderPayoutAccount, "id" | "isVerified">) {
+  return providerApiRequest<{ message: string; account: ProviderPayoutAccount }>(
+    "/provider/payout-account",
+    {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
 export function listProviderBookings(params: {
   q?: string;
   status?: string;

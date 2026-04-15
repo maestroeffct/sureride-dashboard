@@ -8,7 +8,7 @@ import type { CSSProperties } from "react";
 
 /* ─── Types ──────────────────────────────────────────────── */
 
-type PayoutStatus = "PENDING" | "PAID";
+type PayoutStatus = "PENDING" | "PAID" | "CANCELLED";
 
 type PayoutRow = {
   id: string;
@@ -53,6 +53,13 @@ function markPaid(payoutId: string, reference: string) {
   });
 }
 
+function rejectPayout(payoutId: string, note: string) {
+  return apiRequest<{ message: string; payout: PayoutRow }>(`/admin/payouts/${payoutId}/reject`, {
+    method: "PATCH",
+    body: JSON.stringify({ note }),
+  });
+}
+
 /* ─── Helpers ────────────────────────────────────────────── */
 
 function fmtMoney(v: number, currency = "NGN") {
@@ -75,6 +82,7 @@ const STATUS_TABS = [
   { key: "ALL", label: "All" },
   { key: "PENDING", label: "Pending" },
   { key: "PAID", label: "Paid" },
+  { key: "CANCELLED", label: "Rejected" },
 ] as const;
 
 /* ─── Page ───────────────────────────────────────────────── */
@@ -85,6 +93,7 @@ export default function PayoutsPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"ALL" | PayoutStatus>("ALL");
   const [markingId, setMarkingId] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -121,6 +130,23 @@ export default function PayoutsPage() {
       window.alert(e?.message ?? "Failed to mark as paid");
     } finally {
       setMarkingId(null);
+    }
+  };
+
+  const handleReject = async (row: PayoutRow) => {
+    const note = window.prompt(
+      `Reject payout request for ${row.provider?.name ?? "provider"}.\nReason (optional):`,
+      ""
+    );
+    if (note === null) return; // cancelled
+    setRejectingId(row.id);
+    try {
+      await rejectPayout(row.id, note);
+      load();
+    } catch (e: any) {
+      window.alert(e?.message ?? "Failed to reject payout");
+    } finally {
+      setRejectingId(null);
     }
   };
 
@@ -237,10 +263,10 @@ export default function PayoutsPage() {
                     <span
                       style={{
                         ...s.statusPill,
-                        ...(row.status === "PAID" ? s.statusPaid : s.statusPending),
+                        ...(row.status === "PAID" ? s.statusPaid : row.status === "CANCELLED" ? s.statusCancelled : s.statusPending),
                       }}
                     >
-                      {row.status === "PAID" ? "Paid" : "Pending"}
+                      {row.status === "PAID" ? "Paid" : row.status === "CANCELLED" ? "Rejected" : "Pending"}
                     </span>
                   </td>
 
@@ -258,18 +284,31 @@ export default function PayoutsPage() {
 
                   <td style={s.tdRight}>
                     {row.status === "PENDING" && (
-                      <button
-                        style={{
-                          ...s.markPaidBtn,
-                          opacity: markingId === row.id ? 0.5 : 1,
-                          cursor: markingId === row.id ? "not-allowed" : "pointer",
-                        }}
-                        disabled={markingId === row.id}
-                        onClick={() => handleMarkPaid(row)}
-                      >
-                        <CheckCircle size={14} />
-                        {markingId === row.id ? "Saving…" : "Mark Paid"}
-                      </button>
+                      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                        <button
+                          style={{
+                            ...s.markPaidBtn,
+                            opacity: markingId === row.id ? 0.5 : 1,
+                            cursor: markingId === row.id ? "not-allowed" : "pointer",
+                          }}
+                          disabled={markingId === row.id}
+                          onClick={() => handleMarkPaid(row)}
+                        >
+                          <CheckCircle size={14} />
+                          {markingId === row.id ? "Saving…" : "Mark Paid"}
+                        </button>
+                        <button
+                          style={{
+                            ...s.rejectBtn,
+                            opacity: rejectingId === row.id ? 0.5 : 1,
+                            cursor: rejectingId === row.id ? "not-allowed" : "pointer",
+                          }}
+                          disabled={rejectingId === row.id}
+                          onClick={() => handleReject(row)}
+                        >
+                          {rejectingId === row.id ? "…" : "Reject"}
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -349,10 +388,16 @@ const s: Record<string, CSSProperties> = {
   },
   statusPending: { background: "rgba(251,191,36,0.14)", color: "#FCD34D", border: "1px solid rgba(251,191,36,0.22)" },
   statusPaid: { background: "rgba(52,211,153,0.14)", color: "#34D399", border: "1px solid rgba(52,211,153,0.22)" },
+  statusCancelled: { background: "rgba(239,68,68,0.14)", color: "#F87171", border: "1px solid rgba(239,68,68,0.22)" },
   markPaidBtn: {
     display: "inline-flex", alignItems: "center", gap: 6, height: 32, padding: "0 12px",
     borderRadius: 8, border: "1px solid rgba(52,211,153,0.35)", background: "rgba(52,211,153,0.1)",
     color: "#34D399", fontSize: 12, fontWeight: 600,
+  },
+  rejectBtn: {
+    display: "inline-flex", alignItems: "center", gap: 6, height: 32, padding: "0 12px",
+    borderRadius: 8, border: "1px solid rgba(239,68,68,0.35)", background: "rgba(239,68,68,0.1)",
+    color: "#F87171", fontSize: 12, fontWeight: 600,
   },
   emptyCell: { padding: 22, textAlign: "center", color: "var(--fg-65)", fontSize: 13 },
 };
