@@ -128,33 +128,31 @@ export async function savePlatformSettingsDraft(
   payload: PlatformSettingsPayload,
   options?: ScopeOptions,
 ) {
-  try {
-    const data = await apiRequest<PlatformSettingsSaveResponse>(
-      buildSettingsSectionEndpoint(section, options),
-      {
-        method: "PATCH",
-        body: JSON.stringify({ payload }),
-      },
-    );
+  // Strip base64 data URLs before sending to server — they are too large and
+  // will cause the request to fail. Only plain https:// URLs should be persisted.
+  const sanitized = Object.fromEntries(
+    Object.entries(payload).map(([k, v]) => {
+      if (typeof v === "string" && v.startsWith("data:")) return [k, ""];
+      return [k, v];
+    }),
+  );
 
-    const local = readLocalDraft(options);
-    local[section] = data.payload ?? payload;
-    writeLocalDraft(local, options);
+  const data = await apiRequest<PlatformSettingsSaveResponse>(
+    buildSettingsSectionEndpoint(section, options),
+    {
+      method: "PATCH",
+      body: JSON.stringify({ payload: sanitized }),
+    },
+  );
 
-    return {
-      source: "server" as const,
-      payload: data.payload ?? payload,
-    };
-  } catch {
-    const local = readLocalDraft(options);
-    local[section] = payload;
-    writeLocalDraft(local, options);
+  const local = readLocalDraft(options);
+  local[section] = data.payload ?? sanitized;
+  writeLocalDraft(local, options);
 
-    return {
-      source: "local" as const,
-      payload,
-    };
-  }
+  return {
+    source: "server" as const,
+    payload: data.payload ?? sanitized,
+  };
 }
 
 export async function sendPlatformTestMail(
