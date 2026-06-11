@@ -169,7 +169,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   btnPrimary: {
     padding: "10px 14px",
-    background: "#2563EB",
+    background: "var(--brand-primary)",
     color: "#fff",
     borderRadius: 8,
     textDecoration: "none",

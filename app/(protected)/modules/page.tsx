@@ -1,27 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { styles } from "./styles";
 import { ModuleCard } from "@/src/components/modules/ModuleCard";
-
-/* ---------------------------------------------
-   Animation Variants (Container)
---------------------------------------------- */
 
 const containerVariants = {
   hidden: {},
   visible: {
     transition: {
-      staggerChildren: 0.12,
-      delayChildren: 0.1,
+      staggerChildren: 0.09,
+      delayChildren: 0.05,
     },
   },
 };
-
-/* ---------------------------------------------
-   Modules Config
---------------------------------------------- */
 
 const MODULES = [
   {
@@ -30,6 +23,7 @@ const MODULES = [
     icon: "🚗",
     href: "/rentals",
     accent: "#F59E0B",
+    status: "live" as const,
   },
   {
     title: "Rideshare",
@@ -37,6 +31,7 @@ const MODULES = [
     icon: "🚕",
     href: "/rideshare",
     accent: "#6366F1",
+    status: "soon" as const,
   },
   {
     title: "Insurance",
@@ -44,6 +39,7 @@ const MODULES = [
     icon: "🛡",
     href: "/insurance",
     accent: "#22C55E",
+    status: "soon" as const,
   },
   {
     title: "Mobile Mechanic",
@@ -51,6 +47,7 @@ const MODULES = [
     icon: "🛠",
     href: "/mechanic",
     accent: "#EC4899",
+    status: "soon" as const,
   },
   {
     title: "Auto Deal",
@@ -58,6 +55,7 @@ const MODULES = [
     icon: "🚙",
     href: "/autodeal",
     accent: "#38BDF8",
+    status: "soon" as const,
   },
   {
     title: "Spare Parts",
@@ -65,6 +63,7 @@ const MODULES = [
     icon: "🔧",
     href: "/parts",
     accent: "#A855F7",
+    status: "soon" as const,
   },
   {
     title: "Diagnostics",
@@ -72,50 +71,77 @@ const MODULES = [
     icon: "🧠",
     href: "/diagnostics",
     accent: "#14B8A6",
+    status: "soon" as const,
+  },
+  {
+    title: "Emergency",
+    description: "SOS • Dispatch • Response",
+    icon: "🚨",
+    href: "/emergency",
+    accent: "#EF4444",
+    status: "soon" as const,
   },
 ];
 
-/* ---------------------------------------------
-   Page
---------------------------------------------- */
-
 export default function ModuleSelectorPage() {
-  const [lastUsed, setLastUsed] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      return localStorage.getItem("sureride_last_module");
-    } catch {
-      return null;
-    }
-  });
+  const router = useRouter();
+  const [lastUsed, setLastUsed] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [redirecting, setRedirecting] = useState(false);
+
+  useEffect(() => {
+    const active = localStorage.getItem("sureride_active_module");
+    if (active) {
+      setRedirecting(true);
+      router.replace(active);
+      return;
+    }
+    try {
+      setLastUsed(localStorage.getItem("sureride_last_module"));
+    } catch {
+      // noop
+    }
+  }, [router]);
 
   const filteredModules = useMemo(() => {
     return MODULES.filter(
       (m) =>
         m.title.toLowerCase().includes(query.toLowerCase()) ||
-        m.description.toLowerCase().includes(query.toLowerCase())
+        m.description.toLowerCase().includes(query.toLowerCase()),
     ).sort((a, b) => (a.href === lastUsed ? -1 : b.href === lastUsed ? 1 : 0));
   }, [query, lastUsed]);
+
+  if (redirecting) {
+    return (
+      <div style={styles.redirecting}>
+        <div style={styles.redirectSpinner} />
+        <span style={styles.redirectText}>Loading your module…</span>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.page}>
       <div style={styles.header}>
-        <h1 style={styles.title}>Select a Sureride Module</h1>
-        <p style={styles.subtitle}>Choose the module you want to manage</p>
+        <div style={styles.titleRow}>
+          <h1 style={styles.title}>Platform Modules</h1>
+          <span style={styles.moduleCount}>{MODULES.length} modules</span>
+        </div>
+        <p style={styles.subtitle}>
+          Select a module to manage. Your choice is locked in — use the sidebar to switch.
+        </p>
 
         <input
           style={styles.search}
-          placeholder="Search modules..."
+          placeholder="Search modules…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
       </div>
 
-      {/* 🔑 KEY FIX: key the container by query */}
       <AnimatePresence mode="wait">
         <motion.div
-          key={query} // 👈 CRITICAL FIX
+          key={query}
           style={styles.grid}
           variants={containerVariants}
           initial="hidden"
@@ -123,7 +149,11 @@ export default function ModuleSelectorPage() {
           exit="hidden"
         >
           {filteredModules.map((m) => (
-            <ModuleCard key={m.href} {...m} isLastUsed={m.href === lastUsed} />
+            <ModuleCard
+              key={m.href}
+              {...m}
+              isLastUsed={m.href === lastUsed}
+            />
           ))}
         </motion.div>
       </AnimatePresence>

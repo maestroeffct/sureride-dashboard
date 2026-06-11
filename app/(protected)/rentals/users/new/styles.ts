@@ -131,8 +131,8 @@ const styles = {
 
   btnPrimary: {
     borderRadius: 10,
-    border: "1px solid rgba(37,99,235,0.55)",
-    background: "#2563EB",
+    border: "none",
+    background: "var(--brand-primary)",
     color: "#fff",
     padding: "10px 14px",
     fontSize: 13,

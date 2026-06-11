@@ -163,7 +163,7 @@ function statusPill(status: string): React.CSSProperties {
     return { ...styles.pill, background: "rgba(34,197,94,0.14)", color: "#86EFAC" };
   }
   if (status === "CONFIRMED") {
-    return { ...styles.pill, background: "rgba(59,130,246,0.14)", color: "#93C5FD" };
+    return { ...styles.pill, background: "color-mix(in srgb, var(--brand-primary) 14%, transparent)", color: "var(--brand-primary)" };
   }
   if (status === "CANCELLED") {
     return { ...styles.pill, background: "rgba(239,68,68,0.14)", color: "#FCA5A5" };

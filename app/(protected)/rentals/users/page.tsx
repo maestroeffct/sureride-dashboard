@@ -441,9 +441,12 @@ export default function UsersManagementPage() {
 
                       <td style={styles.tdRight}>
                         <div style={styles.actions}>
-                          <Link href={`/rentals/users/${user.id}`} style={styles.actionBtn}>
-                            <Eye size={14} />
-                            <span>View</span>
+                          <Link
+                            href={`/rentals/users/${user.id}`}
+                            style={styles.actionBtn}
+                            title="View user"
+                          >
+                            <Eye size={15} />
                           </Link>
 
                           <button
@@ -451,16 +454,13 @@ export default function UsersManagementPage() {
                             style={{
                               ...styles.actionBtn,
                               ...styles.resetPasswordBtn,
-                              opacity: resetBusy ? 0.65 : 1,
+                              opacity: resetBusy ? 0.5 : 1,
                             }}
-                            onClick={() => {
-                              setResetTarget(user);
-                              setSendResetEmail(true);
-                            }}
+                            title="Reset password"
+                            onClick={() => { setResetTarget(user); setSendResetEmail(true); }}
                             disabled={resetBusy}
                           >
-                            <KeyRound size={14} />
-                            <span>Reset Password</span>
+                            <KeyRound size={15} />
                           </button>
 
                           {kycStatus === "PENDING_VERIFICATION" && (
@@ -470,13 +470,13 @@ export default function UsersManagementPage() {
                                 style={{
                                   ...styles.actionBtn,
                                   ...styles.kycApproveBtn,
-                                  opacity: kycBusy ? 0.65 : 1,
+                                  opacity: kycBusy ? 0.5 : 1,
                                 }}
+                                title="Approve KYC"
                                 onClick={() => void handleApproveKyc(user)}
                                 disabled={kycBusy}
                               >
-                                <CheckCircle2 size={14} />
-                                <span>Approve KYC</span>
+                                <CheckCircle2 size={15} />
                               </button>
 
                               <button
@@ -484,13 +484,13 @@ export default function UsersManagementPage() {
                                 style={{
                                   ...styles.actionBtn,
                                   ...styles.kycRejectBtn,
-                                  opacity: kycBusy ? 0.65 : 1,
+                                  opacity: kycBusy ? 0.5 : 1,
                                 }}
+                                title="Reject KYC"
                                 onClick={() => void handleRejectKyc(user)}
                                 disabled={kycBusy}
                               >
-                                <XCircle size={14} />
-                                <span>Reject KYC</span>
+                                <XCircle size={15} />
                               </button>
                             </>
                           )}
@@ -500,13 +500,13 @@ export default function UsersManagementPage() {
                             style={{
                               ...styles.actionBtn,
                               ...styles.verifyBtn,
-                              opacity: verifyBusy ? 0.65 : 1,
+                              opacity: verifyBusy ? 0.5 : 1,
                             }}
+                            title={user.isVerified ? "Remove verification" : "Mark as verified"}
                             onClick={() => void handleToggleVerification(user)}
                             disabled={verifyBusy}
                           >
-                            <ShieldCheck size={14} />
-                            <span>{user.isVerified ? "Unverify" : "Verify"}</span>
+                            <ShieldCheck size={15} />
                           </button>
 
                           <button
@@ -514,13 +514,13 @@ export default function UsersManagementPage() {
                             style={{
                               ...styles.actionBtn,
                               ...(user.isActive ? styles.suspendBtn : styles.activateBtn),
-                              opacity: activeBusy ? 0.65 : 1,
+                              opacity: activeBusy ? 0.5 : 1,
                             }}
+                            title={user.isActive ? "Suspend user" : "Activate user"}
                             onClick={() => void handleToggleActive(user)}
                             disabled={activeBusy}
                           >
-                            <Ban size={14} />
-                            <span>{user.isActive ? "Suspend" : "Activate"}</span>
+                            <Ban size={15} />
                           </button>
                         </div>
                       </td>

@@ -2,7 +2,13 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import type { AdminCountry } from "@/src/lib/adminCountriesApi";
-import { GLOBAL_COUNTRY_SCOPE, isGlobalCountryScope } from "@/src/lib/adminCountryScope";
+import {
+  GLOBAL_COUNTRY_SCOPE,
+  GLOBAL_REGION_SCOPE,
+  isGlobalCountryScope,
+  isGlobalRegionScope,
+} from "@/src/lib/adminCountryScope";
+import { countryHasRegions, regionsFor } from "@/src/lib/adminRegions";
 
 type Props = {
   scope: string;
@@ -12,6 +18,12 @@ type Props = {
   onScopeChange: (scope: string) => void;
   onCreateCountry?: (payload: { name: string; code: string }) => Promise<void>;
   onToggleCountry?: (country: AdminCountry) => Promise<void>;
+  // Region scope is optional — pages that don't care about sub-country scoping
+  // can omit it and the region picker stays hidden. Pages that do care pass
+  // both pieces in and the bar surfaces a second dropdown for countries with
+  // a region catalog (US states, CA provinces, AU states/territories).
+  regionScope?: string;
+  onRegionScopeChange?: (scope: string) => void;
 };
 
 export default function AdminCountryScopeBar({
@@ -22,6 +34,8 @@ export default function AdminCountryScopeBar({
   onScopeChange,
   onCreateCountry,
   onToggleCountry,
+  regionScope = GLOBAL_REGION_SCOPE,
+  onRegionScopeChange,
 }: Props) {
   const [isManageOpen, setIsManageOpen] = useState(false);
   const [countryName, setCountryName] = useState("");
@@ -38,6 +52,19 @@ export default function AdminCountryScopeBar({
     () => countries.filter((country) => country.isActive),
     [countries],
   );
+
+  // Region picker only renders when (a) a country is selected AND (b) the
+  // caller wired up an onRegionScopeChange handler AND (c) the catalog lists
+  // sub-regions for this country.
+  const regionsForCountry = useMemo(
+    () => (selectedCountry ? regionsFor(selectedCountry.code) : []),
+    [selectedCountry],
+  );
+  const showRegionPicker =
+    !!selectedCountry &&
+    !!onRegionScopeChange &&
+    countryHasRegions(selectedCountry.code);
+  const activeRegion = regionsForCountry.find((r) => r.code === regionScope);
 
   const handleCreate = async () => {
     if (!onCreateCountry) {
@@ -102,6 +129,24 @@ export default function AdminCountryScopeBar({
             ))}
           </select>
 
+          {showRegionPicker ? (
+            <select
+              style={styles.select}
+              value={regionScope}
+              onChange={(event) => onRegionScopeChange?.(event.target.value)}
+              disabled={loading}
+            >
+              <option value={GLOBAL_REGION_SCOPE}>
+                All {selectedCountry?.code}
+              </option>
+              {regionsForCountry.map((region) => (
+                <option key={region.code} value={region.code}>
+                  {region.label}
+                </option>
+              ))}
+            </select>
+          ) : null}
+
           {allowManage && onCreateCountry ? (
             <button
               type="button"
@@ -122,12 +167,18 @@ export default function AdminCountryScopeBar({
           }}
         >
           {selectedCountry
-            ? `Editing ${selectedCountry.name} override`
+            ? activeRegion
+              ? `Editing ${selectedCountry.name} / ${activeRegion.label} override`
+              : `Editing ${selectedCountry.name} override`
             : "Editing global platform defaults"}
         </span>
         <span style={styles.summaryText}>
           {selectedCountry
-            ? "Only this country's override values will differ from the global defaults."
+            ? activeRegion
+              ? `Only ${activeRegion.label}-scoped values will differ from the country-wide override.`
+              : isGlobalRegionScope(regionScope) && showRegionPicker
+                ? "Country-wide override applied to every region without its own settings."
+                : "Only this country's override values will differ from the global defaults."
             : "Global defaults act as the fallback for every country without an explicit override."}
         </span>
       </div>

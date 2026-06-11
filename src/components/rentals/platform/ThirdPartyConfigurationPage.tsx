@@ -2786,7 +2786,7 @@ const styles: Record<string, CSSProperties> = {
     background: "var(--surface-1)",
     display: "grid",
     placeItems: "center",
-    color: "#60A5FA",
+    color: "var(--brand-primary)",
   },
   title: {
     margin: 0,

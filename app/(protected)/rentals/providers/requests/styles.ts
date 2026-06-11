@@ -107,8 +107,8 @@ const styles = {
   },
 
   tabActive: {
-    color: "#3B82F6",
-    borderBottom: "2px solid #3B82F6",
+    color: "var(--brand-primary)",
+    borderBottom: "2px solid var(--brand-primary)",
   },
 
   card: bookingsTableTheme.card,

@@ -331,7 +331,7 @@ const statusPill: CSSProperties = {
 
 const statusUpcoming: CSSProperties = {
   background: "rgba(59, 130, 246, 0.16)",
-  color: "#93C5FD",
+  color: "var(--brand-primary)",
   border: "1px solid rgba(59, 130, 246, 0.22)",
 };
 

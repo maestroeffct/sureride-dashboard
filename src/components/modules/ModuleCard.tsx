@@ -34,6 +34,7 @@ export function ModuleCard({
 }: Props) {
   const handleClick = () => {
     localStorage.setItem("sureride_last_module", href);
+    localStorage.setItem("sureride_active_module", href);
   };
 
   return (
@@ -78,10 +79,10 @@ const cardStyle: CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   textAlign: "center",
-  gap: 16,
+  gap: 14,
   width: "100%",
-  height: 250,
-  padding: 24,
+  height: 200,
+  padding: 22,
   borderRadius: 16,
   border: "1.5px solid transparent",
   background: "var(--module-card-bg)",

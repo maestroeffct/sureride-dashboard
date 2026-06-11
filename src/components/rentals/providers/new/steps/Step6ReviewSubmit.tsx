@@ -245,7 +245,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 12,
     background: "none",
     border: "none",
-    color: "#60A5FA",
+    color: "var(--brand-primary)",
     cursor: "pointer",
   },
 

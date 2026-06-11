@@ -27,20 +27,9 @@ export const rentalsMenu: SidebarItem[] = [
     icon: sidebarIcons.pricing,
   },
   {
-    label: "Payment & Payouts",
+    label: "Provider Payouts",
+    path: "/rentals/payouts",
     icon: sidebarIcons.pricing,
-    children: [
-      {
-        label: "Payment Gateways",
-        path: "/rentals/platform/third-party-configuration",
-        icon: sidebarIcons.settings,
-      },
-      {
-        label: "Provider Payouts",
-        path: "/rentals/payouts",
-        icon: sidebarIcons.providers,
-      },
-    ],
   },
 
   {
@@ -119,6 +108,11 @@ export const rentalsMenu: SidebarItem[] = [
     label: "Pricing Rules",
     path: "/rentals/pricing-rules",
     icon: sidebarIcons.pricing,
+  },
+  {
+    label: "Insurance Packages",
+    path: "/rentals/insurance",
+    icon: sidebarIcons.insurance,
   },
   {
     label: "Configuration",
@@ -232,19 +226,9 @@ export const rentalsMenu: SidebarItem[] = [
         icon: sidebarIcons.reports,
       },
       {
-        label: "React Site",
-        path: "/rentals/platform/react-site",
-        icon: sidebarIcons.reports,
-      },
-      {
         label: "Clean Database",
         path: "/rentals/platform/clean-database",
         icon: sidebarIcons.claims,
-      },
-      {
-        label: "Addon Activation",
-        path: "/rentals/platform/addon-activation",
-        icon: sidebarIcons.settings,
       },
     ],
   },
@@ -279,11 +263,6 @@ export const rentalsMenu: SidebarItem[] = [
         icon: sidebarIcons.pricing,
       },
       {
-        label: "Promo Campaigns",
-        path: "/rentals/promotions/promo-campaigns",
-        icon: sidebarIcons.reviews,
-      },
-      {
         label: "Cashback",
         path: "/rentals/promotions/cashback",
         icon: sidebarIcons.pricing,
@@ -292,16 +271,6 @@ export const rentalsMenu: SidebarItem[] = [
         label: "Banners",
         path: "/rentals/promotions/banners",
         icon: sidebarIcons.settings,
-      },
-      {
-        label: "Promotional Banner",
-        path: "/rentals/promotions/promotional-banner",
-        icon: sidebarIcons.settings,
-      },
-      {
-        label: "Advertisement",
-        path: "/rentals/promotions/advertisement",
-        icon: sidebarIcons.claims,
       },
       {
         label: "Push Notification",

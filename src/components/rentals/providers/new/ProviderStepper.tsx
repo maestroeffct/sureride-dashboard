@@ -1,127 +1,141 @@
 "use client";
 
+import React from "react";
+import { Check } from "lucide-react";
 import { StepKey } from "@/src/types/rentalProvider";
 
-const steps: { key: StepKey; label: string }[] = [
+const STEPS: { key: StepKey; label: string }[] = [
   { key: "business", label: "Business Info" },
-  { key: "contact", label: "Contact Person" },
+  { key: "contact", label: "Contact" },
   { key: "location", label: "Location" },
   { key: "documents", label: "Documents" },
   { key: "financials", label: "Financials" },
-  { key: "review", label: "Review & Submit" },
+  { key: "review", label: "Review" },
 ];
 
 export default function ProviderStepper({
   active,
   completed,
-  expanded,
-  onHoverChange,
   onSelect,
 }: {
   active: StepKey;
   completed: Record<StepKey, boolean>;
-  expanded: boolean;
-  onHoverChange: (v: boolean) => void;
+  expanded?: boolean;
+  onHoverChange?: (v: boolean) => void;
   onSelect: (s: StepKey) => void;
 }) {
   return (
-    <div
-      style={{
-        ...styles.container,
-        width: expanded ? 260 : 72,
-      }}
-      onMouseEnter={() => onHoverChange(true)}
-      onMouseLeave={() => onHoverChange(false)}
-    >
-      {steps.map((s, idx) => {
-        const isActive = active === s.key;
-        const isDone = completed[s.key];
+    <div style={s.wrapper}>
+      {STEPS.map((step, idx) => {
+        const isActive = active === step.key;
+        const isDone = completed[step.key];
+        const isLast = idx === STEPS.length - 1;
+        const prevDone = idx === 0 || completed[STEPS[idx - 1].key];
 
         return (
-          <button
-            key={s.key}
-            onClick={() => onSelect(s.key)}
-            style={{
-              ...styles.item,
-              background: isActive ? "var(--surface-1)" : "transparent",
-              borderColor: isActive ? "#1D4ED8" : "transparent",
-            }}
-          >
-            <span
-              style={{
-                ...styles.circle,
-                background: isDone
-                  ? "#22C55E22"
-                  : isActive
-                  ? "#2563EB22"
-                  : "var(--surface-2)",
-                color: isDone ? "#22C55E" : isActive ? "#60A5FA" : "var(--muted-foreground)",
-              }}
-            >
-              {isDone ? "✓" : idx + 1}
-            </span>
+          <React.Fragment key={step.key}>
+            <button style={s.step} onClick={() => onSelect(step.key)}>
+              <div
+                style={{
+                  ...s.circle,
+                  background: isDone
+                    ? "var(--brand-secondary)"
+                    : isActive
+                      ? "var(--brand-primary)"
+                      : "transparent",
+                  borderColor: isDone
+                    ? "var(--brand-secondary)"
+                    : isActive
+                      ? "var(--brand-primary)"
+                      : "var(--input-border)",
+                  color: isDone || isActive ? "#fff" : "var(--muted-foreground)",
+                }}
+              >
+                {isDone ? <Check size={13} strokeWidth={3} /> : <span style={s.num}>{idx + 1}</span>}
+              </div>
+              <span
+                style={{
+                  ...s.label,
+                  color: isActive
+                    ? "var(--brand-primary)"
+                    : isDone
+                      ? "var(--foreground)"
+                      : "var(--muted-foreground)",
+                  fontWeight: isActive ? 650 : 400,
+                }}
+              >
+                {step.label}
+              </span>
+            </button>
 
-            <span
-              style={{
-                ...styles.label,
-                opacity: expanded ? 1 : 0,
-                transform: expanded ? "translateX(0)" : "translateX(-6px)",
-                pointerEvents: expanded ? "auto" : "none",
-              }}
-            >
-              {s.label}
-            </span>
-          </button>
+            {!isLast && (
+              <div
+                style={{
+                  ...s.connector,
+                  background: isDone ? "var(--brand-primary)" : "var(--input-border)",
+                }}
+              />
+            )}
+          </React.Fragment>
         );
       })}
     </div>
   );
 }
 
-/* -------------------------------- */
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-    padding: 10,
-    background: "var(--surface-2)",
-    border: "1px solid var(--input-border)",
-    borderRadius: 14,
-    overflow: "hidden",
-    transition: "width 0.25s ease",
-  },
-
-  item: {
+const s: Record<string, React.CSSProperties> = {
+  wrapper: {
     display: "flex",
     alignItems: "center",
-    gap: 12,
-    width: "100%",
-    padding: "10px",
-    borderRadius: 12,
-    border: "1px solid transparent",
-    background: "transparent",
+    gap: 0,
+    padding: "18px 24px",
+    background: "var(--surface-1)",
+    border: "1px solid var(--input-border)",
+    borderRadius: 14,
+    overflowX: "auto",
+  },
+
+  step: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    background: "none",
+    border: "none",
     cursor: "pointer",
-    textAlign: "left",
-    color: "var(--foreground)",
-    transition: "background 0.2s ease, border 0.2s ease",
+    padding: "4px 10px",
+    flexShrink: 0,
+    borderRadius: 8,
   },
 
   circle: {
-    width: 26,
-    height: 26,
-    borderRadius: 999,
-    display: "grid",
-    placeItems: "center",
-    fontSize: 12,
-    border: "1px solid var(--input-border)",
+    width: 30,
+    height: 30,
+    borderRadius: "50%",
+    border: "2px solid",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
     flexShrink: 0,
+    transition: "background 0.2s, border-color 0.2s",
+  },
+
+  num: {
+    fontSize: 12,
+    fontWeight: 700,
+    lineHeight: 1,
   },
 
   label: {
-    fontSize: 14,
+    fontSize: 13,
     whiteSpace: "nowrap",
-    transition: "opacity 0.2s ease, transform 0.2s ease",
+    transition: "color 0.2s",
+  },
+
+  connector: {
+    flex: 1,
+    height: 2,
+    minWidth: 20,
+    borderRadius: 1,
+    transition: "background 0.3s",
   },
 };

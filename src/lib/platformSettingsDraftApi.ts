@@ -14,7 +14,17 @@ export type PlatformSettingsSection =
   | "theme-settings"
   | "gallery"
   | "login-setup"
-  | "pages-social-media";
+  | "pages-social-media"
+  | "app-update-enforcement"
+  | "notification-channels"
+  | "notification-messages"
+  | "webhook-config"
+  | "push-config"
+  | "inapp-config"
+  | "promo-campaigns"
+  | "promo-cashback"
+  | "promo-banners"
+  | "promo-push-history";
 
 export type PlatformSettingsPayload = Record<string, unknown>;
 
@@ -24,6 +34,7 @@ type PlatformSettingsListResponse = {
     payload: PlatformSettingsPayload;
     updatedAt?: string;
     countryId?: string | null;
+    region?: string | null;
   }>;
 };
 
@@ -32,12 +43,16 @@ type PlatformSettingsSaveResponse = {
   payload: PlatformSettingsPayload;
   updatedAt?: string;
   countryId?: string | null;
+  region?: string | null;
 };
 
 const DRAFT_STORAGE_KEY = "sureride_admin_platform_settings_draft_v1";
 
 type ScopeOptions = {
   countryId?: string | null;
+  // Sub-country region code (e.g. "CA", "NY"). Omit or pass "ALL" for
+  // country-wide scope. Mirrors the backend's ALL_REGIONS sentinel.
+  regionId?: string | null;
 };
 
 type TestMailPayload = {
@@ -45,30 +60,40 @@ type TestMailPayload = {
   payload: PlatformSettingsPayload;
 };
 
+function normalizeRegion(regionId?: string | null) {
+  const trimmed = regionId?.trim();
+  if (!trimmed || trimmed.toUpperCase() === "ALL") return undefined;
+  return trimmed.toUpperCase();
+}
+
 function buildDraftStorageKey(options?: ScopeOptions) {
   const countryId = options?.countryId?.trim();
-  return countryId ? `${DRAFT_STORAGE_KEY}:${countryId}` : DRAFT_STORAGE_KEY;
+  const regionId = normalizeRegion(options?.regionId);
+  if (!countryId) return DRAFT_STORAGE_KEY;
+  return regionId
+    ? `${DRAFT_STORAGE_KEY}:${countryId}:${regionId}`
+    : `${DRAFT_STORAGE_KEY}:${countryId}`;
+}
+
+function buildScopeQueryString(options?: ScopeOptions) {
+  const countryId = options?.countryId?.trim();
+  if (!countryId) return "";
+
+  const regionId = normalizeRegion(options?.regionId);
+  const params = new URLSearchParams({ countryId });
+  if (regionId) params.set("region", regionId);
+  return `?${params.toString()}`;
 }
 
 function buildSettingsEndpoint(options?: ScopeOptions) {
-  const countryId = options?.countryId?.trim();
-  if (!countryId) {
-    return "/admin/platform/settings";
-  }
-
-  return `/admin/platform/settings?countryId=${encodeURIComponent(countryId)}`;
+  return `/admin/platform/settings${buildScopeQueryString(options)}`;
 }
 
 function buildSettingsSectionEndpoint(
   section: PlatformSettingsSection,
   options?: ScopeOptions,
 ) {
-  const countryId = options?.countryId?.trim();
-  if (!countryId) {
-    return `/admin/platform/settings/${section}`;
-  }
-
-  return `/admin/platform/settings/${section}?countryId=${encodeURIComponent(countryId)}`;
+  return `/admin/platform/settings/${section}${buildScopeQueryString(options)}`;
 }
 
 function readLocalDraft(options?: ScopeOptions) {
@@ -165,5 +190,51 @@ export async function sendPlatformTestMail(
       toEmail,
       payload,
     } satisfies TestMailPayload),
+  });
+}
+
+// ── Webhook test ────────────────────────────────────────────────────────────
+
+export type WebhookTestPayload = {
+  url: string;
+  secret?: string;
+  headers?: Record<string, string>;
+};
+
+export type WebhookTestResult = {
+  delivered: boolean;
+  status: number;
+  statusText: string;
+};
+
+export async function sendWebhookTest(payload: WebhookTestPayload) {
+  return apiRequest<WebhookTestResult>("/admin/platform/settings/webhook-config/test", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+// ── Push notification test ──────────────────────────────────────────────────
+
+export type PushTestPayload = {
+  // Either serviceAccountJson (preferred, v1 API) or serverKey (legacy) must
+  // be provided. Backend picks v1 if both are present.
+  serviceAccountJson?: string;
+  serverKey?: string;
+  deviceToken: string;
+  title?: string;
+  body?: string;
+};
+
+export type PushTestResult = {
+  delivered: boolean;
+  status: number;
+  response: unknown;
+};
+
+export async function sendPushTest(payload: PushTestPayload) {
+  return apiRequest<PushTestResult>("/admin/platform/settings/push-config/test", {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }

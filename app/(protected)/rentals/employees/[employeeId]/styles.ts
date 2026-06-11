@@ -72,7 +72,7 @@ const styles = {
   resetBtn: {
     border: "1px solid rgba(59,130,246,0.45)",
     background: "rgba(59,130,246,0.16)",
-    color: "#93C5FD",
+    color: "var(--brand-primary)",
   },
 
   select: {

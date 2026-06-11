@@ -208,7 +208,7 @@ export default function FinanceOverviewPage() {
           <div style={s.cardBody}>
             {[
               { label: "Completed", count: summary.completedBookings, color: "#34D399" },
-              { label: "Confirmed / Upcoming", count: summary.confirmedBookings, color: "#93C5FD" },
+              { label: "Confirmed / Upcoming", count: summary.confirmedBookings, color: "var(--brand-primary)" },
               { label: "Pending", count: summary.pendingBookings, color: "#FDE68A" },
               { label: "Cancelled", count: summary.cancelledBookings, color: "#FCA5A5" },
             ].map((row) => {

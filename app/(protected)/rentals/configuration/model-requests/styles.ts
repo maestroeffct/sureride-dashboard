@@ -111,7 +111,7 @@ const styles: Record<string, CSSProperties> = {
   primaryBtn: {
     padding: "10px 14px",
     borderRadius: 12,
-    background: "#2563EB",
+    background: "var(--brand-primary)",
     color: "#fff",
     border: "none",
     cursor: "pointer",

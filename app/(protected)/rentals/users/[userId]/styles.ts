@@ -72,7 +72,7 @@ const styles = {
   verifyBtn: {
     border: "1px solid rgba(59,130,246,0.45)",
     background: "rgba(59,130,246,0.16)",
-    color: "#93C5FD",
+    color: "var(--brand-primary)",
   },
 
   kycApproveBtn: {
@@ -158,7 +158,7 @@ const styles = {
     borderRadius: 10,
     border: "1px solid var(--glass-10)",
     background: "var(--glass-06)",
-    color: "#93C5FD",
+    color: "var(--brand-primary)",
     padding: "10px 12px",
     fontSize: 13,
     fontWeight: 600,

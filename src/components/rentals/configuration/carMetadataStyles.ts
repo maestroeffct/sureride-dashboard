@@ -43,7 +43,7 @@ const styles: Record<string, CSSProperties> = {
   primaryBtn: {
     padding: "10px 14px",
     borderRadius: 12,
-    background: "#2563EB",
+    background: "var(--brand-primary)",
     color: "#fff",
     border: "none",
     cursor: "pointer",
@@ -376,7 +376,7 @@ const styles: Record<string, CSSProperties> = {
   checkbox: {
     width: 16,
     height: 16,
-    accentColor: "#2563EB",
+    accentColor: "var(--brand-primary)",
     cursor: "pointer",
   },
 

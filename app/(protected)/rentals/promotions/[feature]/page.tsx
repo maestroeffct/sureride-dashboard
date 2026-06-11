@@ -1,35 +1,27 @@
 import { notFound } from "next/navigation";
-import FeaturePlaceholderPage from "@/src/components/rentals/common/FeaturePlaceholderPage";
+import type { ComponentType } from "react";
+import CampaignsPage from "@/src/components/rentals/promotions/CampaignsPage";
+import CashbackPage from "@/src/components/rentals/promotions/CashbackPage";
+import BannersPage from "@/src/components/rentals/promotions/BannersPage";
+import PushNotificationPage from "@/src/components/rentals/promotions/PushNotificationPage";
 
-const PROMOTIONS_PAGES: Record<string, { title: string; description: string }> = {
+const PROMOTIONS_PAGES: Record<string, { title: string; Component: ComponentType }> = {
   campaigns: {
     title: "Campaigns",
-    description: "Create and manage time-bound promotional campaigns.",
+    Component: CampaignsPage,
   },
   // coupons has a dedicated page at /rentals/promotions/coupons
-  "promo-campaigns": {
-    title: "Promo Campaigns",
-    description: "Coordinate bundled promotion flows across provider segments.",
-  },
   cashback: {
     title: "Cashback",
-    description: "Manage cashback percentages, eligibility rules, and payout states.",
+    Component: CashbackPage,
   },
   banners: {
     title: "Banners",
-    description: "Manage top-level in-app and web banners for rental promotions.",
-  },
-  "promotional-banner": {
-    title: "Promotional Banner",
-    description: "Configure dedicated promotional banner slots and scheduling.",
-  },
-  advertisement: {
-    title: "Advertisement",
-    description: "Control advertisement placements, content, and targeting.",
+    Component: BannersPage,
   },
   "push-notification": {
     title: "Push Notification",
-    description: "Design and schedule promotional push notifications.",
+    Component: PushNotificationPage,
   },
 };
 
@@ -45,11 +37,6 @@ export default async function PromotionsFeaturePage({
     notFound();
   }
 
-  return (
-    <FeaturePlaceholderPage
-      section="Promotions Management"
-      title={config.title}
-      description={config.description}
-    />
-  );
+  const { Component } = config;
+  return <Component />;
 }

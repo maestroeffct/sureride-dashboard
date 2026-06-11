@@ -168,7 +168,7 @@ const chip: React.CSSProperties = {
   cursor: "pointer",
 };
 const chipActive: React.CSSProperties = {
-  background: "#2563EB22",
-  borderColor: "#2563EB66",
-  color: "#93C5FD",
+  background: "color-mix(in srgb, var(--brand-primary) 14%, transparent)",
+  borderColor: "color-mix(in srgb, var(--brand-primary) 40%, transparent)",
+  color: "var(--brand-primary)",
 };

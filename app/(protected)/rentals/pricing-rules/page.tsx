@@ -9,7 +9,9 @@ import {
   Globe,
   Tag,
   Info,
+  AlertTriangle,
 } from "lucide-react";
+import toast from "react-hot-toast";
 import {
   listPricingRules,
   upsertPricingRule,
@@ -18,7 +20,44 @@ import {
   type UpsertPricingRulePayload,
   type DepositType,
 } from "@/src/lib/adminPricingRulesApi";
+import {
+  isGlobalCountryScope,
+  readAdminCountryScope,
+} from "@/src/lib/adminCountryScope";
+import { listAdminCountries } from "@/src/lib/adminCountriesApi";
 import type { CSSProperties } from "react";
+
+/* ─── Currency helpers ────────────────────────────────────── */
+
+// Map of ISO country code → ISO 4217 currency. Sticking to majors keeps the
+// fallback path cheap; anything missing falls through to USD.
+const COUNTRY_TO_CURRENCY: Record<string, string> = {
+  NG: "NGN",
+  US: "USD",
+  GB: "GBP",
+  CA: "CAD",
+  AU: "AUD",
+  GH: "GHS",
+  KE: "KES",
+  ZA: "ZAR",
+  DE: "EUR",
+  FR: "EUR",
+  IE: "EUR",
+};
+
+// Display locale per currency — using "en-XX" gives us the right symbol
+// placement and grouping without needing a full intl-data dependency.
+const CURRENCY_TO_LOCALE: Record<string, string> = {
+  NGN: "en-NG",
+  USD: "en-US",
+  GBP: "en-GB",
+  CAD: "en-CA",
+  AUD: "en-AU",
+  GHS: "en-GH",
+  KES: "en-KE",
+  ZAR: "en-ZA",
+  EUR: "en-IE",
+};
 
 /* ─── Car categories ─────────────────────────────────────── */
 
@@ -37,12 +76,14 @@ function fmtPct(v: number) {
   return `${(v * 100).toFixed(1)}%`;
 }
 
-function fmtMoney(v: number) {
-  return new Intl.NumberFormat("en-NG", {
+function fmtMoneyFor(currency: string) {
+  const locale = CURRENCY_TO_LOCALE[currency] ?? "en-US";
+  const formatter = new Intl.NumberFormat(locale, {
     style: "currency",
-    currency: "NGN",
+    currency,
     maximumFractionDigits: 0,
-  }).format(v);
+  });
+  return (v: number) => formatter.format(v);
 }
 
 function categoryLabel(slug: string | null) {
@@ -266,10 +307,12 @@ function RuleCard({
   rule,
   onEdit,
   onDelete,
+  fmtMoney,
 }: {
   rule: PricingRule;
   onEdit: () => void;
   onDelete: () => void;
+  fmtMoney: (v: number) => string;
 }) {
   const isGlobal = rule.categorySlug === null;
 
@@ -345,6 +388,10 @@ export default function PricingRulesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<PricingRule | null>(null);
   const [saving, setSaving] = useState(false);
+  // Currency for deposit display follows the country scope. Resolved once on
+  // mount from localStorage + the countries catalog — pricing rules don't
+  // re-fetch when scope changes today, so neither does this.
+  const [currency, setCurrency] = useState("USD");
 
   const load = () => {
     setLoading(true);
@@ -356,9 +403,32 @@ export default function PricingRulesPage() {
 
   useEffect(() => { load(); }, []);
 
+  // Resolve scope → ISO country code → currency once on mount. The scope is
+  // stored as a country id (UUID), so we need the catalog to map back to a
+  // code. Falls back to USD for "GLOBAL" or unknown countries.
+  useEffect(() => {
+    const scope = readAdminCountryScope();
+    if (isGlobalCountryScope(scope)) {
+      setCurrency("USD");
+      return;
+    }
+    void listAdminCountries()
+      .then((countries) => {
+        const match = countries.find((c) => c.id === scope);
+        const code = match?.code?.toUpperCase();
+        setCurrency((code && COUNTRY_TO_CURRENCY[code]) || "USD");
+      })
+      .catch(() => setCurrency("USD"));
+  }, []);
+
+  const fmtMoney = fmtMoneyFor(currency);
+
   const globalRule = rules.find((r) => r.categorySlug === null);
   const categoryRules = rules.filter((r) => r.categorySlug !== null);
   const existingSlugs = rules.map((r) => r.categorySlug);
+
+  const [deleteTarget, setDeleteTarget] = useState<PricingRule | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const handleSave = async (data: UpsertPricingRulePayload) => {
     setSaving(true);
@@ -371,20 +441,24 @@ export default function PricingRulesPage() {
       setModalOpen(false);
       setEditTarget(null);
       load();
-    } catch (e: any) {
-      window.alert(e?.message ?? "Failed to save rule");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to save rule");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (rule: PricingRule) => {
-    if (!window.confirm(`Remove override for ${categoryLabel(rule.categorySlug)}? It will fall back to the global rule.`)) return;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await deletePricingRule(rule.id);
+      await deletePricingRule(deleteTarget.id);
+      setDeleteTarget(null);
       load();
-    } catch (e: any) {
-      window.alert(e?.message ?? "Failed to delete rule");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete rule");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -412,7 +486,7 @@ export default function PricingRulesPage() {
             <h1 style={s.pageTitle}>Pricing Rules</h1>
           </div>
           <p style={s.pageSub}>
-            Configure platform commission, deposit requirements, and per-category price adjustments
+            Set the platform commission, deposit, and price multipliers for each car category
           </p>
         </div>
         <button
@@ -424,13 +498,35 @@ export default function PricingRulesPage() {
         </button>
       </div>
 
-      {/* How it works */}
-      <div style={s.infoBanner}>
-        <Info size={15} style={{ flexShrink: 0, marginTop: 1 }} />
-        <span>
-          The <strong>Global Default</strong> applies to all car categories unless a specific category override exists.
-          Overrides inherit unset fields from the global rule. Changes take effect on the next booking price calculation.
-        </span>
+      {/* How it works — plain English */}
+      <div style={s.explainCard}>
+        <div style={s.explainRow}>
+          <div style={s.explainBlock}>
+            <div style={s.explainIcon}><Globe size={18} /></div>
+            <div>
+              <p style={s.explainLabel}>Global Default</p>
+              <p style={s.explainText}>
+                Think of this as the base rule that applies to <strong>every car</strong> on the platform.
+                If a car category has no special rule, it falls back to these numbers.
+              </p>
+            </div>
+          </div>
+          <div style={s.explainArrow}>→</div>
+          <div style={s.explainBlock}>
+            <div style={{ ...s.explainIcon, background: "rgba(167,139,250,0.12)", color: "#A78BFA" }}><Tag size={18} /></div>
+            <div>
+              <p style={s.explainLabel}>Category Override</p>
+              <p style={s.explainText}>
+                A special exception for <strong>one specific car type</strong> (e.g. Luxury cars charge 15% commission
+                instead of the global 10%). The global rule still applies to all other categories.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div style={s.explainFootnote}>
+          <Info size={12} />
+          Changes take effect on the next booking price calculation.
+        </div>
       </div>
 
       {loading ? (
@@ -442,22 +538,23 @@ export default function PricingRulesPage() {
         <>
           {/* Global rule */}
           <div>
-            <h2 style={s.sectionTitle}>Global Default</h2>
+            <div style={s.sectionHeaderRow}>
+              <h2 style={s.sectionTitle}>Global Default</h2>
+              <span style={s.sectionHint}>Fallback for any category without an override</span>
+            </div>
             {globalRule ? (
               <RuleCard
                 rule={globalRule}
                 onEdit={() => { setEditTarget(globalRule); setModalOpen(true); }}
                 onDelete={() => {}}
+                fmtMoney={fmtMoney}
               />
             ) : (
               <div style={s.emptyGlobal}>
-                No global rule set. All bookings will use hardcoded defaults (10% commission, 20% deposit).
+                <span>No global rule set yet. All bookings will use hardcoded defaults (10% commission, 20% deposit).</span>
                 <button
                   style={s.createBtn}
-                  onClick={() => {
-                    setEditTarget(null);
-                    setModalOpen(true);
-                  }}
+                  onClick={() => { setEditTarget(null); setModalOpen(true); }}
                 >
                   <Plus size={14} /> Create Global Rule
                 </button>
@@ -467,10 +564,13 @@ export default function PricingRulesPage() {
 
           {/* Category overrides */}
           <div>
-            <h2 style={s.sectionTitle}>Category Overrides</h2>
+            <div style={s.sectionHeaderRow}>
+              <h2 style={s.sectionTitle}>Category Overrides</h2>
+              <span style={s.sectionHint}>Rules that apply only to a specific car category — override the global default</span>
+            </div>
             {categoryRules.length === 0 ? (
               <div style={s.emptyCategory}>
-                No category overrides. All categories use the global rule.
+                No category overrides yet — all categories currently use the global rule.
               </div>
             ) : (
               <div style={s.rulesGrid}>
@@ -479,7 +579,8 @@ export default function PricingRulesPage() {
                     key={rule.id}
                     rule={rule}
                     onEdit={() => { setEditTarget(rule); setModalOpen(true); }}
-                    onDelete={() => handleDelete(rule)}
+                    onDelete={() => setDeleteTarget(rule)}
+                    fmtMoney={fmtMoney}
                   />
                 ))}
               </div>
@@ -496,6 +597,39 @@ export default function PricingRulesPage() {
           onClose={() => { setModalOpen(false); setEditTarget(null); }}
           saving={saving}
         />
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div style={s.overlay}>
+          <div style={{ ...s.modal, maxWidth: 420 }}>
+            <div style={s.modalHeader}>
+              <span style={{ ...s.modalTitle, display: "flex", alignItems: "center", gap: 8 }}>
+                <AlertTriangle size={16} color="#EF4444" />
+                Remove Override
+              </span>
+              <button style={s.closeBtn} onClick={() => setDeleteTarget(null)}>✕</button>
+            </div>
+            <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 16 }}>
+              <p style={{ margin: 0, fontSize: 14, color: "var(--fg-75)", lineHeight: 1.6 }}>
+                Remove the <strong>{categoryLabel(deleteTarget.categorySlug)}</strong> override?{" "}
+                That category will fall back to the <strong>Global Default</strong> rule.
+              </p>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button style={s.cancelBtn} onClick={() => setDeleteTarget(null)} disabled={deleting}>
+                  Cancel
+                </button>
+                <button
+                  style={{ ...s.saveBtn, background: "#DC2626" }}
+                  onClick={handleDelete}
+                  disabled={deleting}
+                >
+                  {deleting ? "Removing…" : "Remove Override"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -517,17 +651,35 @@ const s: Record<string, CSSProperties> = {
   pageSub: { margin: "4px 0 0", fontSize: 13, color: "var(--fg-65)" },
   createBtn: {
     display: "inline-flex", alignItems: "center", gap: 8, height: 42, padding: "0 18px",
-    borderRadius: 10, border: "none", background: "#0A6A4B", color: "#fff",
+    borderRadius: 10, border: "none", background: "var(--brand-primary)", color: "#fff",
     cursor: "pointer", fontSize: 14, fontWeight: 600,
   },
 
-  infoBanner: {
-    display: "flex", alignItems: "flex-start", gap: 10, padding: "14px 18px",
-    borderRadius: 12, background: "rgba(58,237,225,0.06)", border: "1px solid rgba(58,237,225,0.16)",
-    color: "var(--fg-75)", fontSize: 13, lineHeight: 1.6,
+  explainCard: {
+    borderRadius: 14, border: "1px solid var(--input-border)", background: "var(--surface-1)",
+    padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14,
+  },
+  explainRow: { display: "flex", alignItems: "flex-start", gap: 20 },
+  explainBlock: { flex: 1, display: "flex", gap: 14, alignItems: "flex-start" },
+  explainIcon: {
+    width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+    background: "color-mix(in srgb, var(--brand-primary) 12%, transparent)",
+    color: "var(--brand-primary)",
+    display: "flex", alignItems: "center", justifyContent: "center",
+  },
+  explainLabel: { margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: "var(--foreground)" },
+  explainText: { margin: 0, fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.6 },
+  explainArrow: {
+    fontSize: 20, color: "var(--input-border)", fontWeight: 300, paddingTop: 8, flexShrink: 0,
+  },
+  explainFootnote: {
+    display: "flex", alignItems: "center", gap: 6, fontSize: 11,
+    color: "var(--muted-foreground)", borderTop: "1px solid var(--input-border)", paddingTop: 12,
   },
 
-  sectionTitle: { margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: "var(--fg-65)", textTransform: "uppercase", letterSpacing: 0.6 },
+  sectionHeaderRow: { display: "flex", alignItems: "baseline", gap: 12, marginBottom: 12 },
+  sectionTitle: { margin: 0, fontSize: 13, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: 0.6 },
+  sectionHint: { fontSize: 12, color: "var(--muted-foreground)" },
 
   rulesGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 },
 
@@ -615,6 +767,6 @@ const s: Record<string, CSSProperties> = {
   },
   saveBtn: {
     height: 40, padding: "0 18px", borderRadius: 10, border: "none",
-    background: "#0A6A4B", color: "#fff", cursor: "pointer", fontSize: 14, fontWeight: 600,
+    background: "var(--brand-primary)", color: "#fff", cursor: "pointer", fontSize: 14, fontWeight: 600,
   },
 };

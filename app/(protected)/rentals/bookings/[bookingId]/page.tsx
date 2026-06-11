@@ -66,7 +66,7 @@ const STATUS_STYLE: Record<BookingStatus, CSSProperties> = {
   },
   CONFIRMED: {
     background: "rgba(59,130,246,0.16)",
-    color: "#93C5FD",
+    color: "var(--brand-primary)",
     border: "1px solid rgba(59,130,246,0.22)",
   },
   COMPLETED: {
@@ -84,7 +84,7 @@ const STATUS_STYLE: Record<BookingStatus, CSSProperties> = {
 const PAYMENT_STATUS_LABEL: Record<string, { label: string; color: string }> = {
   SUCCEEDED: { label: "Paid", color: "#34D399" },
   UNPAID: { label: "Unpaid", color: "#FBBF24" },
-  PROCESSING: { label: "Processing", color: "#60A5FA" },
+  PROCESSING: { label: "Processing", color: "var(--brand-primary)" },
   REQUIRES_ACTION: { label: "Action Required", color: "#F59E0B" },
   FAILED: { label: "Failed", color: "#EF4444" },
   CANCELED: { label: "Refunded", color: "#9CA3AF" },

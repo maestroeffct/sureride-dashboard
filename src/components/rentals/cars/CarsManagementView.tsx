@@ -24,8 +24,14 @@ import {
 } from "@/src/lib/carsApi";
 import { bookingsTableTheme } from "@/src/components/rentals/table/sharedTableStyles";
 import type { DashboardCarStatus, RentalCarRow } from "@/src/types/rentalCar";
+import ReasonModal, { type ReasonModalConfig } from "./ReasonModal";
 
 type ViewMode = "all" | "pending" | "flagged";
+
+type ModalState = {
+  config: ReasonModalConfig;
+  onConfirm: (reason: string) => void;
+} | null;
 
 export default function CarsManagementView({ mode }: { mode: ViewMode }) {
   const [cars, setCars] = useState<RentalCarRow[]>([]);
@@ -33,6 +39,7 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [total, setTotal] = useState(0);
+  const [modal, setModal] = useState<ModalState>(null);
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -101,70 +108,119 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
     }
   };
 
-  const handleApprove = (car: RentalCarRow) => {
-    const note = window.prompt("Approval note (optional):", car.moderationNote || "");
-    if (note === null) return;
+  const openModal = (config: ReasonModalConfig, onConfirm: (reason: string) => void) => {
+    setModal({ config, onConfirm });
+  };
 
-    void runAction(
-      `${car.id}:approve`,
-      () => approveAdminCar(car.id, note.trim() || undefined),
-      "Car approved",
+  const closeModal = () => setModal(null);
+
+  const handleApprove = (car: RentalCarRow) => {
+    openModal(
+      {
+        title: "Approve Car",
+        description: `Approve "${car.brand} ${car.model}" and make it visible to riders. You can optionally add a moderation note.`,
+        placeholder: "Moderation note (optional)",
+        required: false,
+        confirmLabel: "Approve Car",
+        confirmDanger: false,
+        defaultValue: car.moderationNote || "",
+      },
+      (note) => {
+        closeModal();
+        void runAction(
+          `${car.id}:approve`,
+          () => approveAdminCar(car.id, note || undefined),
+          "Car approved",
+        );
+      },
     );
   };
 
   const handleReject = (car: RentalCarRow) => {
-    const reason = window.prompt(
-      "Reason for rejection:",
-      car.moderationNote || "Car details need review.",
-    );
-    if (!reason || reason.trim().length < 2) return;
-
-    void runAction(
-      `${car.id}:reject`,
-      () => rejectAdminCar(car.id, reason.trim()),
-      "Car rejected",
+    openModal(
+      {
+        title: "Reject Car",
+        description: `Provide a reason for rejecting "${car.brand} ${car.model}". The provider will be notified.`,
+        placeholder: "e.g. Photos are unclear, pricing is invalid…",
+        required: true,
+        confirmLabel: "Reject Car",
+        confirmDanger: true,
+        defaultValue: car.moderationNote || "",
+      },
+      (reason) => {
+        closeModal();
+        void runAction(
+          `${car.id}:reject`,
+          () => rejectAdminCar(car.id, reason),
+          "Car rejected",
+        );
+      },
     );
   };
 
   const handleFlag = (car: RentalCarRow) => {
-    const reason = window.prompt(
-      "Reason for flagging:",
-      car.flaggedReason || "This listing needs admin review.",
-    );
-    if (!reason || reason.trim().length < 2) return;
-
-    void runAction(
-      `${car.id}:flag`,
-      () => flagAdminCar(car.id, reason.trim()),
-      "Car flagged",
+    openModal(
+      {
+        title: "Flag Car",
+        description: `Flag "${car.brand} ${car.model}" for review. The listing will be hidden from riders until resolved.`,
+        placeholder: "e.g. Suspicious pricing, duplicate listing…",
+        required: true,
+        confirmLabel: "Flag Car",
+        confirmDanger: true,
+        defaultValue: car.flaggedReason || "",
+      },
+      (reason) => {
+        closeModal();
+        void runAction(
+          `${car.id}:flag`,
+          () => flagAdminCar(car.id, reason),
+          "Car flagged",
+        );
+      },
     );
   };
 
   const handleUnflag = (car: RentalCarRow) => {
-    const note = window.prompt(
-      "Unflag note (optional):",
-      car.moderationNote || "Resolved and restored.",
-    );
-    if (note === null) return;
-
-    void runAction(
-      `${car.id}:unflag`,
-      () => unflagAdminCar(car.id, note.trim() || undefined),
-      "Car unflagged",
+    openModal(
+      {
+        title: "Unflag Car",
+        description: `Remove the flag on "${car.brand} ${car.model}" and restore it to active listings. Add a resolution note if needed.`,
+        placeholder: "Resolution note (optional)",
+        required: false,
+        confirmLabel: "Unflag Car",
+        confirmDanger: false,
+        defaultValue: car.moderationNote || "",
+      },
+      (note) => {
+        closeModal();
+        void runAction(
+          `${car.id}:unflag`,
+          () => unflagAdminCar(car.id, note || undefined),
+          "Car unflagged",
+        );
+      },
     );
   };
 
   const handleDeactivate = (car: RentalCarRow) => {
-    const reason = window.prompt(
-      "Reason for deactivation (optional):",
-      car.moderationNote || "Temporarily removed from active listings.",
-    );
-    if (reason === null) return;
-
-    void runAction(
-      `${car.id}:deactivate`,
-      () => deactivateAdminCar(car.id, reason.trim() || undefined),
-      "Car deactivated",
+    openModal(
+      {
+        title: "Deactivate Car",
+        description: `Deactivate "${car.brand} ${car.model}". The listing will be hidden until reactivated. Provide a reason if applicable.`,
+        placeholder: "Reason for deactivation (optional)",
+        required: false,
+        confirmLabel: "Deactivate",
+        confirmDanger: true,
+        defaultValue: car.moderationNote || "",
+      },
+      (reason) => {
+        closeModal();
+        void runAction(
+          `${car.id}:deactivate`,
+          () => deactivateAdminCar(car.id, reason || undefined),
+          "Car deactivated",
+        );
+      },
     );
   };
 
@@ -263,6 +319,14 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
   };
 
   return (
+    <>
+    {modal && (
+      <ReasonModal
+        {...modal.config}
+        onConfirm={modal.onConfirm}
+        onCancel={closeModal}
+      />
+    )}
     <div style={styles.page}>
       <div style={styles.header}>
         <div>
@@ -414,6 +478,7 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
@@ -492,7 +557,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   addCarButton: {
     padding: "10px 14px",
-    background: "#2563EB",
+    background: "var(--brand-primary)",
     color: "#fff",
     borderRadius: 8,
     textDecoration: "none",
@@ -605,7 +670,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   restoreBtn: {
     background: "rgba(59,130,246,0.16)",
-    color: "#93C5FD",
+    color: "var(--brand-primary)",
     border: "1px solid rgba(59,130,246,0.22)",
   },
   statusActive: {

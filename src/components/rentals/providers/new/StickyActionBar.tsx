@@ -93,7 +93,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   primary: {
-    background: "#2563EB",
+    background: "var(--brand-primary)",
     border: "none",
     color: "#fff",
     padding: "10px 14px",

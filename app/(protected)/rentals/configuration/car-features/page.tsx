@@ -346,7 +346,7 @@ const styles: Record<string, React.CSSProperties> = {
   title: { margin: 0, fontSize: 24, fontWeight: 700, color: "var(--foreground)" },
   subtitle: { margin: "6px 0 0", color: "var(--fg-60)", fontSize: 13, maxWidth: 720 },
   headerActions: { display: "inline-flex", gap: 10, alignItems: "center", flexWrap: "wrap" },
-  primaryBtn: { height: 42, padding: "0 16px", borderRadius: 10, border: "none", background: "#2563EB", color: "#fff", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 700 },
+  primaryBtn: { height: 42, padding: "0 16px", borderRadius: 10, border: "none", background: "var(--brand-primary)", color: "#fff", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 700 },
   secondaryBtn: { height: 42, padding: "0 16px", borderRadius: 10, border: "1px solid var(--input-border)", background: "var(--surface-2)", color: "var(--foreground)", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 600 },
   summaryGrid: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 },
   summaryCard: { border: "1px solid var(--input-border)", borderRadius: 12, background: "var(--surface-2)", padding: 14, display: "flex", flexDirection: "column", gap: 4 },

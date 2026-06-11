@@ -14,9 +14,13 @@ import {
 } from "@/src/lib/adminCountriesApi";
 import {
   GLOBAL_COUNTRY_SCOPE,
+  GLOBAL_REGION_SCOPE,
   readAdminCountryScope,
+  readAdminRegionScope,
   toCountryId,
+  toRegionId,
   writeAdminCountryScope,
+  writeAdminRegionScope,
 } from "@/src/lib/adminCountryScope";
 import {
   listPlatformSettingsDraft,
@@ -399,6 +403,7 @@ export default function BusinessSettingsFeaturePage({
   description,
 }: FeatureProps) {
   const [countryScope, setCountryScope] = useState(() => readAdminCountryScope());
+  const [regionScope, setRegionScope] = useState(() => readAdminRegionScope());
   const [countries, setCountries] = useState<AdminCountry[]>([]);
   const [isCountriesLoading, setIsCountriesLoading] = useState(false);
   const [state, setState] = useState<Record<string, unknown>>(() =>
@@ -418,6 +423,11 @@ export default function BusinessSettingsFeaturePage({
   const mapAutocompleteRef = useRef<any>(null);
   const suppressMapSyncRef = useRef(false);
   const selectedCountryId = toCountryId(countryScope);
+  // Region scoping is opt-in per feature. Today only `system-tax` cares about
+  // region — other features fall back to country-level scoping regardless of
+  // what the user has picked in the region dropdown.
+  const featureSupportsRegion = feature === "system-tax";
+  const selectedRegionId = featureSupportsRegion ? toRegionId(regionScope) : undefined;
 
   useEffect(() => {
     let mounted = true;
@@ -453,6 +463,7 @@ export default function BusinessSettingsFeaturePage({
       try {
         const result = await listPlatformSettingsDraft({
           countryId: selectedCountryId,
+          regionId: selectedRegionId,
         });
         if (!mounted) return;
 
@@ -482,7 +493,7 @@ export default function BusinessSettingsFeaturePage({
     return () => {
       mounted = false;
     };
-  }, [feature, selectedCountryId]);
+  }, [feature, selectedCountryId, selectedRegionId]);
 
   useEffect(() => {
     let mounted = true;
@@ -542,6 +553,7 @@ export default function BusinessSettingsFeaturePage({
         state,
         {
           countryId: selectedCountryId,
+          regionId: selectedRegionId,
         },
       );
 
@@ -570,7 +582,15 @@ export default function BusinessSettingsFeaturePage({
 
   const handleCountryScopeChange = (scope: string) => {
     setCountryScope(scope);
+    // writeAdminCountryScope already drops the persisted region — mirror that
+    // in component state so the UI doesn't briefly show a stale region label.
+    setRegionScope(GLOBAL_REGION_SCOPE);
     writeAdminCountryScope(scope);
+  };
+
+  const handleRegionScopeChange = (scope: string) => {
+    setRegionScope(scope);
+    writeAdminRegionScope(scope);
   };
 
   const handleCreateCountry = async (payload: { name: string; code: string }) => {
@@ -1730,6 +1750,10 @@ export default function BusinessSettingsFeaturePage({
         onScopeChange={handleCountryScopeChange}
         onCreateCountry={handleCreateCountry}
         onToggleCountry={handleToggleCountry}
+        regionScope={featureSupportsRegion ? regionScope : undefined}
+        onRegionScopeChange={
+          featureSupportsRegion ? handleRegionScopeChange : undefined
+        }
       />
 
       <section style={styles.card}>{content}</section>
@@ -2159,7 +2183,7 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: 8,
     border: "1px solid rgba(59,130,246,0.45)",
     background: "rgba(59,130,246,0.18)",
-    color: "#93C5FD",
+    color: "var(--brand-primary)",
     padding: "0 10px",
     fontWeight: 700,
     cursor: "pointer",
@@ -2438,7 +2462,7 @@ const styles: Record<string, CSSProperties> = {
     color: "var(--muted-foreground)",
   },
   galleryLink: {
-    color: "#93C5FD",
+    color: "var(--brand-primary)",
     textDecoration: "none",
     fontSize: 13,
     lineHeight: 1.5,

@@ -930,7 +930,7 @@ const styles: Record<string, CSSProperties> = {
   linkButton: {
     border: "none",
     background: "transparent",
-    color: "#93C5FD",
+    color: "var(--brand-primary)",
     fontSize: 13,
     fontWeight: 700,
     cursor: "pointer",

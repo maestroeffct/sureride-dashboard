@@ -239,43 +239,56 @@ const styles = {
     flexWrap: "wrap",
   },
 
+  // Icon-only action button — tooltip shown via `title` attribute on hover
   actionBtn: {
+    width: 32,
+    height: 32,
     borderRadius: 8,
     border: "1px solid var(--glass-10)",
     background: "var(--glass-06)",
-    color: "var(--foreground)",
-    padding: "6px 10px",
-    fontSize: 12,
-    fontWeight: 600,
+    color: "var(--fg-70)",
     textDecoration: "none",
     cursor: "pointer",
     display: "inline-flex",
     alignItems: "center",
-    gap: 6,
+    justifyContent: "center",
+    flexShrink: 0,
   },
 
   activateBtn: {
-    border: "1px solid rgba(34,197,94,0.4)",
-    background: "rgba(34,197,94,0.16)",
+    border: "1px solid rgba(34,197,94,0.35)",
+    background: "rgba(34,197,94,0.12)",
     color: "#86EFAC",
   },
 
   suspendBtn: {
-    border: "1px solid rgba(239,68,68,0.4)",
-    background: "rgba(239,68,68,0.16)",
+    border: "1px solid rgba(239,68,68,0.35)",
+    background: "rgba(239,68,68,0.12)",
     color: "#FCA5A5",
   },
 
   verifyBtn: {
-    border: "1px solid rgba(59,130,246,0.45)",
-    background: "rgba(59,130,246,0.16)",
-    color: "#93C5FD",
+    border: "1px solid color-mix(in srgb, var(--brand-primary) 40%, transparent)",
+    background: "color-mix(in srgb, var(--brand-primary) 12%, transparent)",
+    color: "var(--brand-primary)",
   },
 
   resetPasswordBtn: {
-    border: "1px solid rgba(245,158,11,0.4)",
-    background: "rgba(245,158,11,0.16)",
+    border: "1px solid rgba(245,158,11,0.35)",
+    background: "rgba(245,158,11,0.12)",
     color: "#FCD34D",
+  },
+
+  kycApproveBtn: {
+    border: "1px solid rgba(34,197,94,0.35)",
+    background: "rgba(34,197,94,0.12)",
+    color: "#86EFAC",
+  },
+
+  kycRejectBtn: {
+    border: "1px solid rgba(239,68,68,0.35)",
+    background: "rgba(239,68,68,0.12)",
+    color: "#FCA5A5",
   },
 
   modalOverlay: {
@@ -379,18 +392,6 @@ const styles = {
     fontSize: 13,
     fontWeight: 700,
     cursor: "pointer",
-  },
-
-  kycApproveBtn: {
-    border: "1px solid rgba(34,197,94,0.4)",
-    background: "rgba(34,197,94,0.16)",
-    color: "#86EFAC",
-  },
-
-  kycRejectBtn: {
-    border: "1px solid rgba(239,68,68,0.4)",
-    background: "rgba(239,68,68,0.16)",
-    color: "#FCA5A5",
   },
 
   empty: {

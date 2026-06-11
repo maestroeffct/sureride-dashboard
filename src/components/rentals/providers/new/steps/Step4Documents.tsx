@@ -182,7 +182,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   link: {
-    color: "#3B82F6",
+    color: "var(--brand-primary)",
     cursor: "pointer",
     fontSize: 13,
   },

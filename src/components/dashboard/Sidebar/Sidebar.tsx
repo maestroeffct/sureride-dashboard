@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { sidebarMenus } from "@/src/config/sidebar";
 import { SidebarModule, SidebarItem } from "@/src/types/sidebar";
 import React, { useEffect, useMemo, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, LayoutGrid } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLayoutUI } from "@/src/hooks/useLayoutUI";
 
@@ -19,8 +19,14 @@ export default function Sidebar({
   collapsed?: boolean;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const menu = sidebarMenus[module];
   const { isMobile, setSidebarCollapsed } = useLayoutUI();
+
+  const handleSwitchModule = () => {
+    localStorage.removeItem("sureride_active_module");
+    router.push("/modules");
+  };
 
   const sidebarStyle: React.CSSProperties = isMobile
     ? {
@@ -77,6 +83,20 @@ export default function Sidebar({
               />
             )
           )}
+        </div>
+
+        {/* Switch Module footer */}
+        <div
+          style={{
+            ...styles.footer,
+            pointerEvents: collapsed ? "none" : "auto",
+            opacity: collapsed ? 0 : 1,
+          }}
+        >
+          <button style={styles.switchBtn} onClick={handleSwitchModule}>
+            <LayoutGrid size={16} />
+            <span>Switch Module</span>
+          </button>
         </div>
       </aside>
     </>
@@ -259,6 +279,8 @@ const styles: {
   item: React.CSSProperties;
   groupButton: React.CSSProperties;
   childItem: React.CSSProperties;
+  footer: React.CSSProperties;
+  switchBtn: React.CSSProperties;
 } = {
   sidebar: {
     width: 260,
@@ -342,5 +364,28 @@ const styles: {
     cursor: "pointer",
     transition:
       "background-color 160ms ease, color 160ms ease, transform 160ms ease",
+  },
+
+  footer: {
+    flexShrink: 0,
+    padding: "10px 16px 14px",
+    borderTop: "1px solid var(--sidebar-border)",
+    transition: "opacity 180ms ease",
+  },
+
+  switchBtn: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: 10,
+    border: "1px solid var(--sidebar-border)",
+    background: "transparent",
+    color: "var(--sidebar-item-fg-muted)",
+    fontSize: 13,
+    fontWeight: 500,
+    cursor: "pointer",
+    transition: "background 160ms, color 160ms",
   },
 };
