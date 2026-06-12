@@ -238,3 +238,27 @@ export async function sendPushTest(payload: PushTestPayload) {
     body: JSON.stringify(payload),
   });
 }
+
+// ── Firebase OTP config validator ────────────────────────────────────────
+
+export type FirebaseValidatePayload = {
+  projectId?: string;
+  serviceAccountJson: string;
+};
+
+export type FirebaseValidateResult = {
+  ok: boolean;
+  projectId: string;
+  clientEmail?: string;
+  detail?: string;
+};
+
+export async function validateFirebaseOtpConfig(payload: FirebaseValidatePayload) {
+  return apiRequest<FirebaseValidateResult>(
+    "/admin/platform/settings/firebase-otp/test",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}

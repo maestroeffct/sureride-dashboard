@@ -32,6 +32,7 @@ import {
   listPlatformSettingsDraft,
   savePlatformSettingsDraft,
   sendPlatformTestMail,
+  validateFirebaseOtpConfig as validateFirebaseOtpConfigApi,
   type PlatformSettingsSection,
 } from "@/src/lib/platformSettingsDraftApi";
 
@@ -294,6 +295,7 @@ type FormState = {
   firebaseAuthDomain: string;
   firebaseAppId: string;
   firebaseSenderId: string;
+  firebaseServiceAccountJson: string;
 
   recaptchaEnabled: boolean;
   recaptchaSiteKey: string;
@@ -362,6 +364,7 @@ const INITIAL_STATE: FormState = {
   firebaseAuthDomain: "",
   firebaseAppId: "",
   firebaseSenderId: "",
+  firebaseServiceAccountJson: "",
 
   recaptchaEnabled: false,
   recaptchaSiteKey: "",
@@ -504,6 +507,7 @@ export default function ThirdPartyConfigurationPage() {
   const [savingSection, setSavingSection] = useState<PlatformSettingsSection | null>(null);
   const [testMailTo, setTestMailTo] = useState("");
   const [sendingTestMail, setSendingTestMail] = useState(false);
+  const [validatingFirebase, setValidatingFirebase] = useState(false);
   const parameterLibrary = useMemo(
     () => parameterLibraryFromMeta(paymentMeta),
     [paymentMeta],
@@ -693,6 +697,31 @@ export default function ThirdPartyConfigurationPage() {
       toast.error(getErrorMessage(error));
     } finally {
       setSendingTestMail(false);
+    }
+  };
+
+  const handleValidateFirebase = async () => {
+    if (!form.firebaseServiceAccountJson.trim()) {
+      toast.error("Paste your Service Account JSON first");
+      return;
+    }
+    try {
+      setValidatingFirebase(true);
+      const result = await validateFirebaseOtpConfigApi({
+        projectId: form.firebaseProjectId,
+        serviceAccountJson: form.firebaseServiceAccountJson,
+      });
+      if (result.ok) {
+        toast.success(
+          `Valid — project "${result.projectId}"${result.clientEmail ? ` · ${result.clientEmail}` : ""}`,
+        );
+      } else {
+        toast.error(result.detail || "Validation failed");
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setValidatingFirebase(false);
     }
   };
 
@@ -2776,6 +2805,71 @@ export default function ThirdPartyConfigurationPage() {
             />
           </Field>
 
+          {/* ── Service Account JSON (server-side verification) ─────────────
+              Required for the backend to verify Firebase ID tokens. The five
+              fields above are PUBLIC config sent to mobile clients; this one
+              never leaves the server. */}
+          <div
+            style={{
+              border: "1px solid var(--input-border)",
+              background: "color-mix(in srgb, var(--brand-primary) 4%, transparent)",
+              borderRadius: 12,
+              padding: "14px 16px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}
+          >
+            <div>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>
+                Service Account JSON (server-side verification)
+              </p>
+              <p
+                style={{
+                  margin: "4px 0 0",
+                  fontSize: 12,
+                  color: "var(--muted-foreground)",
+                  lineHeight: 1.55,
+                }}
+              >
+                Required to verify ID tokens server-side. Download from{" "}
+                <strong>Firebase Console → Project Settings → Service Accounts → Generate new private key</strong>.
+                Paste the full JSON contents here — it never leaves the server.
+              </p>
+            </div>
+            <textarea
+              style={{
+                ...styles.input,
+                minHeight: 140,
+                fontFamily: "monospace",
+                fontSize: 12,
+                resize: "vertical",
+                padding: "10px 12px",
+              }}
+              value={form.firebaseServiceAccountJson}
+              onChange={(event) =>
+                set("firebaseServiceAccountJson", event.target.value)
+              }
+              placeholder={`{\n  "type": "service_account",\n  "project_id": "sureride001",\n  "private_key_id": "...",\n  "private_key": "-----BEGIN PRIVATE KEY-----\\n...",\n  ...\n}`}
+            />
+            <button
+              type="button"
+              style={{
+                ...styles.secondaryBtn,
+                alignSelf: "flex-start",
+              }}
+              disabled={
+                !form.firebaseServiceAccountJson.trim() ||
+                validatingFirebase
+              }
+              onClick={() => void handleValidateFirebase()}
+            >
+              {validatingFirebase
+                ? "Validating…"
+                : "Validate Service Account"}
+            </button>
+          </div>
+
           <div style={styles.actionsInlineEnd}>
             <button
               type="button"
@@ -2789,6 +2883,7 @@ export default function ThirdPartyConfigurationPage() {
                   firebaseAuthDomain: INITIAL_STATE.firebaseAuthDomain,
                   firebaseAppId: INITIAL_STATE.firebaseAppId,
                   firebaseSenderId: INITIAL_STATE.firebaseSenderId,
+                  firebaseServiceAccountJson: INITIAL_STATE.firebaseServiceAccountJson,
                 }))
               }
             >
@@ -2805,6 +2900,7 @@ export default function ThirdPartyConfigurationPage() {
                   firebaseAuthDomain: form.firebaseAuthDomain,
                   firebaseAppId: form.firebaseAppId,
                   firebaseSenderId: form.firebaseSenderId,
+                  firebaseServiceAccountJson: form.firebaseServiceAccountJson,
                 })
               }
               disabled={savingSection === "firebase-otp"}
