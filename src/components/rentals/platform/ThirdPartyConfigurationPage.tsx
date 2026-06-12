@@ -280,6 +280,10 @@ type FormState = {
   mailEmailId: string;
   mailEncryption: string;
   mailPassword: string;
+  // Mailgun-specific HTTP API mode
+  mailUseApi: boolean;
+  mailDomain: string;
+  mailRegion: "us" | "eu";
 
   mapEnabled: boolean;
   mapApiKey: string;
@@ -345,6 +349,9 @@ const INITIAL_STATE: FormState = {
   mailEmailId: "",
   mailEncryption: "tls",
   mailPassword: "",
+  mailUseApi: false,
+  mailDomain: "",
+  mailRegion: "us",
 
   mapEnabled: true,
   mapApiKey: "",
@@ -677,6 +684,9 @@ export default function ThirdPartyConfigurationPage() {
         mailEmailId: form.mailEmailId,
         mailEncryption: form.mailEncryption,
         mailPassword: form.mailPassword,
+        mailUseApi: form.mailUseApi,
+        mailDomain: form.mailDomain,
+        mailRegion: form.mailRegion,
       });
       toast.success("Test email sent successfully");
     } catch (error) {
@@ -1877,6 +1887,82 @@ export default function ThirdPartyConfigurationPage() {
             })}
           </div>
 
+          {/* ── Mailgun HTTP API toggle ───────────────────────────────────
+              Most cloud hosts (Railway, Vercel) firewall outbound SMTP. The
+              API mode talks HTTPS instead and avoids those issues entirely. */}
+          {form.mailProvider === "mailgun" && (
+            <div
+              style={{
+                border: "1px solid var(--input-border)",
+                background: form.mailUseApi
+                  ? "color-mix(in srgb, var(--brand-primary) 6%, transparent)"
+                  : "var(--surface-2)",
+                borderRadius: 12,
+                padding: "14px 16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+              }}
+            >
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={form.mailUseApi}
+                  onChange={(event) => set("mailUseApi", event.target.checked)}
+                  style={{ accentColor: "var(--brand-primary)" }}
+                />
+                <span style={{ fontSize: 14, fontWeight: 600 }}>
+                  Use Mailgun HTTP API instead of SMTP
+                </span>
+              </label>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 12,
+                  color: "var(--muted-foreground)",
+                  lineHeight: 1.55,
+                }}
+              >
+                Recommended when running on Railway/Vercel/Heroku — outbound
+                SMTP (port 587/465) is often blocked. The API uses HTTPS (port
+                443) which always works. Set <strong>Password</strong> below
+                to your Mailgun Private API Key.
+              </p>
+
+              {form.mailUseApi && (
+                <div style={styles.grid2}>
+                  <Field label="Mailgun sending domain *">
+                    <input
+                      style={styles.input}
+                      value={form.mailDomain}
+                      onChange={(event) => set("mailDomain", event.target.value)}
+                      placeholder="e.g. mg.sureride.com"
+                    />
+                  </Field>
+                  <Field label="Region">
+                    <select
+                      style={styles.input}
+                      value={form.mailRegion}
+                      onChange={(event) =>
+                        set("mailRegion", event.target.value as "us" | "eu")
+                      }
+                    >
+                      <option value="us">US (api.mailgun.net)</option>
+                      <option value="eu">EU (api.eu.mailgun.net)</option>
+                    </select>
+                  </Field>
+                </div>
+              )}
+            </div>
+          )}
+
           <Field label="Mailer name">
             <input
               style={styles.input}
@@ -1886,25 +1972,46 @@ export default function ThirdPartyConfigurationPage() {
           </Field>
 
           <div style={styles.grid3}>
-            <Field label="Host">
+            <Field
+              label={
+                form.mailProvider === "mailgun" && form.mailUseApi
+                  ? "Host (ignored in API mode)"
+                  : "Host"
+              }
+            >
               <input
                 style={styles.input}
                 value={form.mailHost}
                 onChange={(event) => set("mailHost", event.target.value)}
+                disabled={form.mailProvider === "mailgun" && form.mailUseApi}
               />
             </Field>
-            <Field label="Driver">
+            <Field
+              label={
+                form.mailProvider === "mailgun" && form.mailUseApi
+                  ? "Driver (ignored in API mode)"
+                  : "Driver"
+              }
+            >
               <input
                 style={styles.input}
                 value={form.mailDriver}
                 onChange={(event) => set("mailDriver", event.target.value)}
+                disabled={form.mailProvider === "mailgun" && form.mailUseApi}
               />
             </Field>
-            <Field label="Port">
+            <Field
+              label={
+                form.mailProvider === "mailgun" && form.mailUseApi
+                  ? "Port (ignored in API mode)"
+                  : "Port"
+              }
+            >
               <input
                 style={styles.input}
                 value={form.mailPort}
                 onChange={(event) => set("mailPort", event.target.value)}
+                disabled={form.mailProvider === "mailgun" && form.mailUseApi}
               />
             </Field>
           </div>
@@ -1959,6 +2066,9 @@ export default function ThirdPartyConfigurationPage() {
                   mailEmailId: INITIAL_STATE.mailEmailId,
                   mailEncryption: INITIAL_STATE.mailEncryption,
                   mailPassword: INITIAL_STATE.mailPassword,
+                  mailUseApi: INITIAL_STATE.mailUseApi,
+                  mailDomain: INITIAL_STATE.mailDomain,
+                  mailRegion: INITIAL_STATE.mailRegion,
                 }))
               }
             >
@@ -1979,6 +2089,9 @@ export default function ThirdPartyConfigurationPage() {
                   mailEmailId: form.mailEmailId,
                   mailEncryption: form.mailEncryption,
                   mailPassword: form.mailPassword,
+                  mailUseApi: form.mailUseApi,
+                  mailDomain: form.mailDomain,
+                  mailRegion: form.mailRegion,
                 })
               }
               disabled={savingSection === "mail-config"}
