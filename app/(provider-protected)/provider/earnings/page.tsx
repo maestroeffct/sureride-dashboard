@@ -20,6 +20,7 @@ import {
   type ProviderEarningsOverview,
   type ProviderPayoutAccount,
 } from "@/src/lib/providerApi";
+import VerificationBanner from "@/src/components/provider/VerificationBanner";
 
 /* ── Helpers ── */
 
@@ -234,6 +235,7 @@ export default function ProviderEarningsPage() {
 
   return (
     <div style={s.page}>
+      <VerificationBanner capability="payouts" variant="compact" />
       {/* Header */}
       <div style={s.headerRow}>
         <div>

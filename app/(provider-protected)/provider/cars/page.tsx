@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { Pencil, Search } from "lucide-react";
 import { listProviderCars } from "@/src/lib/providerApi";
 import type { RentalCarRow } from "@/src/types/rentalCar";
+import VerificationBanner from "@/src/components/provider/VerificationBanner";
 
 export default function ProviderCarsPage() {
   const [cars, setCars] = useState<RentalCarRow[]>([]);
@@ -46,6 +47,7 @@ export default function ProviderCarsPage() {
 
   return (
     <div style={styles.page}>
+      <VerificationBanner capability="listing" variant="compact" />
       <div style={styles.header}>
         <div>
           <h1 style={styles.title}>Fleet Inventory</h1>

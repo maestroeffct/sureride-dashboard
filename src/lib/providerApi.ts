@@ -793,3 +793,72 @@ export function listProviderBookings(params: {
     meta: response.meta,
   }));
 }
+
+// ── Verification status ─────────────────────────────────────────────────────
+
+export type ProviderVerificationStatus = {
+  canListCars: boolean;
+  canReceivePayouts: boolean;
+  isAdminVerified: boolean;
+  providerStatus: string;
+  requirements: {
+    basicProfile: { done: boolean; missing: string[] };
+    documents: {
+      done: boolean;
+      uploaded: Array<{ type: string; status: string }>;
+      missing: string[];
+    };
+    bankAccount: { done: boolean; verified: boolean };
+  };
+  blockerMessage: string | null;
+};
+
+export async function getProviderVerificationStatus() {
+  return providerApiRequest<ProviderVerificationStatus>(
+    "/provider/verification-status",
+  );
+}
+
+// ── Provider documents (KYB uploads) ───────────────────────────────────────
+
+export type ProviderDocType = "CAC" | "NIN" | "ID_CARD" | "ADDRESS_PROOF";
+export type ProviderDocStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export type ProviderDocument = {
+  id: string;
+  type: ProviderDocType;
+  url: string;
+  status: ProviderDocStatus;
+  rejectionReason?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+};
+
+export async function listProviderDocuments() {
+  return providerApiRequest<{ items: ProviderDocument[] }>(
+    "/provider/documents",
+  );
+}
+
+export async function uploadProviderDocument(
+  type: ProviderDocType,
+  file: File,
+) {
+  const form = new FormData();
+  form.append("type", type);
+  form.append("file", file);
+  return providerApiRequest<{ message: string; document: ProviderDocument }>(
+    "/provider/documents",
+    {
+      method: "POST",
+      body: form,
+    },
+  );
+}
+
+export async function deleteProviderDocument(docId: string) {
+  return providerApiRequest<{ deleted: true }>(
+    `/provider/documents/${docId}`,
+    { method: "DELETE" },
+  );
+}

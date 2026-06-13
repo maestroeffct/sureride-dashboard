@@ -10,6 +10,7 @@ import {
   type ProviderDashboardStats,
   type ProviderProfile,
 } from "@/src/lib/providerApi";
+import VerificationBanner from "@/src/components/provider/VerificationBanner";
 
 const emptyStats: ProviderDashboardStats = {
   totalCars: 0,
@@ -94,6 +95,7 @@ export default function ProviderOverviewPage() {
 
   return (
     <div style={styles.page}>
+      <VerificationBanner capability="any" variant="full" />
       <section style={styles.hero}>
         <div style={styles.heroContent}>
           <p style={styles.eyebrow}>Provider Console</p>
