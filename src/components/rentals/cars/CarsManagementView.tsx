@@ -7,6 +7,7 @@ import {
   Check,
   ChevronDown,
   Download,
+  Eye,
   Flag,
   RotateCcw,
   Search,
@@ -25,6 +26,7 @@ import {
 import { bookingsTableTheme } from "@/src/components/rentals/table/sharedTableStyles";
 import type { DashboardCarStatus, RentalCarRow } from "@/src/types/rentalCar";
 import ReasonModal, { type ReasonModalConfig } from "./ReasonModal";
+import CarDetailModal from "./CarDetailModal";
 
 type ViewMode = "all" | "pending" | "flagged";
 
@@ -40,6 +42,8 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
   const [exportOpen, setExportOpen] = useState(false);
   const [total, setTotal] = useState(0);
   const [modal, setModal] = useState<ModalState>(null);
+  // Quick-look modal for moderators reviewing a pending car.
+  const [detailCarId, setDetailCarId] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -240,6 +244,15 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
         <div style={styles.actions}>
           <button
             type="button"
+            style={{ ...styles.actionBtn, ...styles.viewBtn }}
+            onClick={() => setDetailCarId(car.id)}
+            title="View car details"
+          >
+            <Eye size={15} />
+            <span>View</span>
+          </button>
+          <button
+            type="button"
             style={{ ...styles.actionBtn, ...styles.approveBtn }}
             onClick={() => handleApprove(car)}
             disabled={Boolean(isBusy)}
@@ -267,6 +280,15 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
         <div style={styles.actions}>
           <button
             type="button"
+            style={{ ...styles.actionBtn, ...styles.viewBtn }}
+            onClick={() => setDetailCarId(car.id)}
+            title="View car details"
+          >
+            <Eye size={15} />
+            <span>View</span>
+          </button>
+          <button
+            type="button"
             style={{ ...styles.actionBtn, ...styles.restoreBtn }}
             onClick={() => handleUnflag(car)}
             disabled={Boolean(isBusy)}
@@ -281,6 +303,15 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
 
     return (
       <div style={styles.actions}>
+        <button
+          type="button"
+          style={{ ...styles.actionBtn, ...styles.viewBtn }}
+          onClick={() => setDetailCarId(car.id)}
+          title="View car details"
+        >
+          <Eye size={15} />
+          <span>View</span>
+        </button>
         <button
           type="button"
           style={{ ...styles.actionBtn, ...styles.flagBtn }}
@@ -325,6 +356,12 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
         {...modal.config}
         onConfirm={modal.onConfirm}
         onCancel={closeModal}
+      />
+    )}
+    {detailCarId && (
+      <CarDetailModal
+        carId={detailCarId}
+        onClose={() => setDetailCarId(null)}
       />
     )}
     <div style={styles.page}>
@@ -652,6 +689,11 @@ const styles: Record<string, React.CSSProperties> = {
     display: "inline-flex",
     alignItems: "center",
     gap: 6,
+  },
+  viewBtn: {
+    background: "rgba(148,163,184,0.16)",
+    color: "#CBD5E1",
+    border: "1px solid rgba(148,163,184,0.22)",
   },
   approveBtn: {
     background: "rgba(34,197,94,0.16)",

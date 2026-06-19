@@ -255,6 +255,35 @@ const styles = {
 
   iconBtn: bookingsTableTheme.iconBtn,
 
+  menu: {
+    position: "absolute",
+    top: "100%",
+    right: 0,
+    marginTop: 6,
+    minWidth: 180,
+    background: "var(--surface-1)",
+    border: "1px solid var(--input-border)",
+    borderRadius: 10,
+    boxShadow: "0 12px 28px rgba(0,0,0,0.35)",
+    overflow: "hidden",
+    zIndex: 50,
+    display: "flex",
+    flexDirection: "column",
+  },
+  menuItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "10px 12px",
+    border: "none",
+    background: "transparent",
+    color: "var(--foreground)",
+    cursor: "pointer",
+    fontSize: 13,
+    textAlign: "left",
+    width: "100%",
+  },
+
   empty: {
     ...bookingsTableTheme.emptyCell,
     padding: 44,

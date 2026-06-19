@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Eye,
   MoreHorizontal,
@@ -8,6 +9,9 @@ import {
   Filter,
   ChevronDown,
   Search,
+  Copy,
+  Mail,
+  Phone,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import type { ProviderRequestStatus } from "@/src/types/rentalProvider";
@@ -39,7 +43,41 @@ type UnifiedRequestRow = {
 };
 
 export default function ProviderRequestsPage() {
+  const router = useRouter();
   const [tab, setTab] = useState<ProviderRequestStatus>("PENDING");
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!openMenuId) return;
+    const onClick = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setOpenMenuId(null);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [openMenuId]);
+
+  const handleView = (r: UnifiedRequestRow) => {
+    if (r.source === "admin") {
+      // Admin onboarding row IS a provider — link straight to its detail page
+      router.push(`/rentals/providers/${r.id}`);
+    } else {
+      // Public signup — search the providers list by email since the request
+      // ID isn't a provider ID
+      router.push(`/rentals/providers?q=${encodeURIComponent(r.contactEmail)}`);
+    }
+  };
+
+  const handleCopy = async (label: string, value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(`${label} copied`);
+    } catch {
+      toast.error(`Could not copy ${label.toLowerCase()}`);
+    }
+    setOpenMenuId(null);
+  };
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState<UnifiedRequestRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -325,33 +363,95 @@ export default function ProviderRequestsPage() {
                     </td>
 
                     <td style={styles.tdRight}>
-                      {tab === "PENDING" ? (
-                        <div style={styles.actions}>
+                      <div style={{ ...styles.actions, position: "relative" }}>
+                        {/* Eye — admin-source rows always have a provider ID.
+                            Public signups only have one once approved. */}
+                        {(tab !== "PENDING" || r.source === "admin") && (
                           <button
-                            style={styles.approveBtn}
-                            disabled={processingId === `${r.source}-${r.id}`}
-                            onClick={() => handleApprove(r)}
+                            style={styles.iconBtn}
+                            title="View provider"
+                            onClick={() => handleView(r)}
                           >
-                            Approve
-                          </button>
-                          <button
-                            style={styles.rejectBtn}
-                            disabled={processingId === `${r.source}-${r.id}`}
-                            onClick={() => handleReject(r)}
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      ) : (
-                        <div style={styles.actions}>
-                          <button style={styles.iconBtn} title="View">
                             <Eye size={16} />
                           </button>
-                          <button style={styles.iconBtn} title="More">
+                        )}
+
+                        {/* More — only on Approved/Rejected tabs */}
+                        {tab !== "PENDING" && (
+                          <button
+                            style={styles.iconBtn}
+                            title="More actions"
+                            onClick={() =>
+                              setOpenMenuId(
+                                openMenuId === `${r.source}-${r.id}`
+                                  ? null
+                                  : `${r.source}-${r.id}`,
+                              )
+                            }
+                          >
                             <MoreHorizontal size={16} />
                           </button>
-                        </div>
-                      )}
+                        )}
+
+                        {/* PENDING tab also gets Approve/Reject inline */}
+                        {tab === "PENDING" && (
+                          <>
+                            <button
+                              style={styles.approveBtn}
+                              disabled={processingId === `${r.source}-${r.id}`}
+                              onClick={() => handleApprove(r)}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              style={styles.rejectBtn}
+                              disabled={processingId === `${r.source}-${r.id}`}
+                              onClick={() => handleReject(r)}
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )}
+
+                        {openMenuId === `${r.source}-${r.id}` && (
+                          <div ref={menuRef} style={styles.menu}>
+                            {(tab !== "PENDING" || r.source === "admin") && (
+                              <button
+                                style={styles.menuItem}
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  handleView(r);
+                                }}
+                              >
+                                <Eye size={14} />
+                                <span>View provider</span>
+                              </button>
+                            )}
+                            <button
+                              style={styles.menuItem}
+                              onClick={() =>
+                                handleCopy("Email", r.contactEmail)
+                              }
+                            >
+                              <Mail size={14} />
+                              <span>Copy email</span>
+                              <Copy size={12} style={{ marginLeft: "auto", opacity: 0.45 }} />
+                            </button>
+                            {r.contactPhone && r.contactPhone !== "-" && (
+                              <button
+                                style={styles.menuItem}
+                                onClick={() =>
+                                  handleCopy("Phone", r.contactPhone!)
+                                }
+                              >
+                                <Phone size={14} />
+                                <span>Copy phone</span>
+                                <Copy size={12} style={{ marginLeft: "auto", opacity: 0.45 }} />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </td>
                   </Row>
                 ))

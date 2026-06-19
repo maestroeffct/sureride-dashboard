@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { z } from "zod";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -16,12 +17,16 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import {
+  createStripeFinancialConnectionsSession,
   deleteProviderDocument,
   getProviderPayoutAccount,
   getProviderVerificationStatus,
+  listProviderBanks,
   listProviderDocuments,
   upsertProviderPayoutAccount,
   uploadProviderDocument,
+  verifyProviderBankAccount,
+  type BankOption,
   type ProviderDocStatus,
   type ProviderDocType,
   type ProviderDocument,
@@ -393,6 +398,72 @@ function DocStatusPill({ status }: { status: ProviderDocStatus }) {
   );
 }
 
+// Per-currency account-number rules. Currencies share digit-length and
+// sometimes character-set, so we keep the regex declarative.
+const ACCOUNT_NUMBER_RULES: Record<
+  string,
+  { regex: RegExp; message: string; maxLength: number; placeholder: string }
+> = {
+  NGN: {
+    regex: /^\d{10}$/,
+    message: "Nigerian accounts are exactly 10 digits",
+    maxLength: 10,
+    placeholder: "10-digit NUBAN",
+  },
+  USD: {
+    // US ACH bank account numbers are typically 4–17 digits.
+    regex: /^\d{4,17}$/,
+    message: "US accounts are 4–17 digits",
+    maxLength: 17,
+    placeholder: "4–17 digit account number",
+  },
+  GBP: {
+    regex: /^\d{8}$/,
+    message: "UK accounts are exactly 8 digits",
+    maxLength: 8,
+    placeholder: "8-digit account number",
+  },
+  EUR: {
+    // IBAN format — letters + digits, up to 34 chars.
+    regex: /^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/,
+    message: "Enter a valid IBAN (e.g. DE89370400440532013000)",
+    maxLength: 34,
+    placeholder: "IBAN (e.g. DE89370400440532013000)",
+  },
+};
+
+type BankForm = {
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
+  currency: string;
+};
+
+function buildBankSchema(currency: string) {
+  const rule = ACCOUNT_NUMBER_RULES[currency] ?? ACCOUNT_NUMBER_RULES.NGN;
+  return z.object({
+    bankName: z
+      .string()
+      .trim()
+      .min(2, "Bank name is required")
+      .max(80, "Bank name is too long"),
+    accountNumber: z
+      .string()
+      .trim()
+      .regex(rule.regex, rule.message),
+    accountName: z
+      .string()
+      .trim()
+      .min(2, "Account name is required")
+      .max(120, "Account name is too long")
+      .regex(
+        /^[A-Za-z][A-Za-z\s'.-]+$/,
+        "Use letters, spaces, apostrophes and hyphens only",
+      ),
+    currency: z.string().min(3),
+  });
+}
+
 function BankAccountSection({
   account,
   onSaved,
@@ -401,14 +472,146 @@ function BankAccountSection({
   onSaved: () => void;
 }) {
   const [bankName, setBankName] = useState(account?.bankName ?? "");
+  const [bankCode, setBankCode] = useState("");
   const [accountNumber, setAccountNumber] = useState(account?.accountNumber ?? "");
   const [accountName, setAccountName] = useState(account?.accountName ?? "");
   const [currency, setCurrency] = useState(account?.currency ?? "NGN");
   const [saving, setSaving] = useState(false);
+  const [touched, setTouched] = useState<Partial<Record<keyof BankForm, boolean>>>({});
+
+  // ── External-verification state ────────────────────────────────────────
+  // - NGN: live Paystack resolve once bank + 10 digits are set
+  // - USD: Stripe Financial Connections session/linked-account roundtrip
+  // - GBP/EUR: TrueLayer COP / VOP name-match call
+  const [banks, setBanks] = useState<BankOption[]>([]);
+  const [banksLoading, setBanksLoading] = useState(false);
+  const [resolving, setResolving] = useState(false);
+  const [nameVerified, setNameVerified] = useState<boolean>(
+    Boolean(account?.isVerified),
+  );
+  const [verifyMethod, setVerifyMethod] = useState<string | null>(null);
+
+  // Extra inputs used only by some currencies — kept in dedicated state so
+  // they don't pollute the BankForm schema for other currencies.
+  const [sortCode, setSortCode] = useState("");
+  const [iban, setIban] = useState("");
+
+  // Load the bank list when NGN is selected.
+  useEffect(() => {
+    if (currency !== "NGN") {
+      setBanks([]);
+      return;
+    }
+    let cancelled = false;
+    setBanksLoading(true);
+    listProviderBanks("NGN")
+      .then((res) => {
+        if (!cancelled) setBanks(res.banks);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          // Don't toast — falls back to free-text bank name input.
+          setBanks([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setBanksLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currency]);
+
+  // Auto-resolve NGN account name once user picks a bank + types 10 digits.
+  useEffect(() => {
+    if (currency !== "NGN") return;
+    if (!bankCode || !/^\d{10}$/.test(accountNumber)) {
+      setNameVerified(false);
+      return;
+    }
+    let cancelled = false;
+    setResolving(true);
+    setNameVerified(false);
+    verifyProviderBankAccount({
+      currency: "NGN",
+      bankCode,
+      accountNumber,
+    })
+      .then((res) => {
+        if (cancelled) return;
+        if (res.method === "paystack" && res.matched) {
+          setAccountName(res.accountName.toUpperCase());
+          setNameVerified(true);
+          setVerifyMethod("paystack");
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "Couldn't verify the account — double-check the number",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setResolving(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currency, bankCode, accountNumber]);
+
+  // Reset the bankCode/name/iban whenever the currency changes.
+  useEffect(() => {
+    setBankCode("");
+    setBankName(account?.currency === currency ? account.bankName ?? "" : "");
+    setAccountName(account?.currency === currency ? account.accountName ?? "" : "");
+    setAccountNumber(
+      account?.currency === currency ? account.accountNumber ?? "" : "",
+    );
+    setSortCode("");
+    setIban("");
+    setNameVerified(false);
+    setVerifyMethod(null);
+    setTouched({});
+  }, [currency, account]);
+
+  const rule = ACCOUNT_NUMBER_RULES[currency] ?? ACCOUNT_NUMBER_RULES.NGN;
+
+  const errors = useMemo(() => {
+    const parsed = buildBankSchema(currency).safeParse({
+      bankName,
+      accountNumber,
+      accountName,
+      currency,
+    });
+    if (parsed.success) return {} as Partial<Record<keyof BankForm, string>>;
+    const out: Partial<Record<keyof BankForm, string>> = {};
+    for (const issue of parsed.error.issues) {
+      const key = issue.path[0] as keyof BankForm;
+      if (!out[key]) out[key] = issue.message;
+    }
+    return out;
+  }, [bankName, accountNumber, accountName, currency]);
+
+  const formValid = Object.keys(errors).length === 0;
 
   const handleSave = async () => {
-    if (!bankName.trim() || !accountNumber.trim() || !accountName.trim()) {
-      toast.error("Fill in all bank fields");
+    if (!formValid) {
+      setTouched({
+        bankName: true,
+        accountNumber: true,
+        accountName: true,
+        currency: true,
+      });
+      const first = Object.values(errors)[0];
+      toast.error(first ?? "Please fix the highlighted fields");
+      return;
+    }
+    // Require name verification for NGN — block manual submission of an
+    // unverified account, so we don't queue payouts to a wrong NUBAN.
+    if (currency === "NGN" && !nameVerified) {
+      toast.error("Pick a bank and enter the account number to verify");
       return;
     }
     try {
@@ -416,7 +619,7 @@ function BankAccountSection({
       await upsertProviderPayoutAccount({
         bankName: bankName.trim(),
         accountNumber: accountNumber.trim(),
-        accountName: accountName.trim(),
+        accountName: accountName.trim().toUpperCase(),
         currency,
       });
       toast.success("Bank account saved — awaiting admin verification");
@@ -425,6 +628,113 @@ function BankAccountSection({
       toast.error(err instanceof Error ? err.message : "Save failed");
     } finally {
       setSaving(false);
+    }
+  };
+
+  // ── USD: Stripe Financial Connections ──────────────────────────────────
+  const handleConnectStripe = async () => {
+    try {
+      setResolving(true);
+      const session = await createStripeFinancialConnectionsSession({
+        fullName: accountName.trim() || undefined,
+      });
+      // Lazy-load Stripe.js only when the user triggers Connect.
+      const Stripe = (await import("@stripe/stripe-js")).loadStripe;
+      const pk = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+      if (!pk) {
+        toast.error(
+          "Stripe not configured (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY missing)",
+        );
+        return;
+      }
+      const stripe = await Stripe(pk);
+      if (!stripe) throw new Error("Stripe.js failed to load");
+
+      const result = await stripe.collectFinancialConnectionsAccounts({
+        clientSecret: session.clientSecret,
+      });
+      if (result.error) throw new Error(result.error.message);
+
+      const linked =
+        result.financialConnectionsSession?.accounts?.[0]?.id ?? null;
+      if (!linked) {
+        toast.error("No account was connected");
+        return;
+      }
+
+      const verify = await verifyProviderBankAccount({
+        currency: "USD",
+        linkedAccountId: linked,
+      });
+      if (verify.method === "stripe-financial-connections") {
+        setBankName(verify.bankName);
+        setAccountName(verify.accountName);
+        setAccountNumber(`••••${verify.accountNumberLast4}`);
+        setNameVerified(true);
+        setVerifyMethod("stripe-financial-connections");
+        toast.success("Bank connected via Stripe");
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Stripe connection failed",
+      );
+    } finally {
+      setResolving(false);
+    }
+  };
+
+  // ── GBP / EUR: TrueLayer COP / VOP ─────────────────────────────────────
+  const handleVerifyTrueLayer = async () => {
+    const candidateName = accountName.trim();
+    if (candidateName.length < 2) {
+      toast.error("Enter the account holder's full name first");
+      return;
+    }
+    try {
+      setResolving(true);
+      const verify =
+        currency === "GBP"
+          ? await verifyProviderBankAccount({
+              currency: "GBP",
+              sortCode,
+              accountNumber,
+              candidateName,
+            })
+          : await verifyProviderBankAccount({
+              currency: "EUR",
+              iban,
+              candidateName,
+            });
+
+      if (
+        verify.method === "truelayer-cop" ||
+        verify.method === "truelayer-vop"
+      ) {
+        if (verify.matched) {
+          setNameVerified(true);
+          setVerifyMethod(verify.method);
+          toast.success("Name match confirmed");
+        } else if (verify.closeMatch && verify.canonicalName) {
+          // Surface the bank's canonical name and let the user accept it.
+          setAccountName(verify.canonicalName);
+          setNameVerified(true);
+          setVerifyMethod(verify.method);
+          toast.success(
+            `Close match — using "${verify.canonicalName}" from the bank`,
+          );
+        } else {
+          setNameVerified(false);
+          toast.error(
+            verify.reason || "Account holder name does not match the bank's records",
+          );
+        }
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Verification failed",
+      );
+    } finally {
+      setResolving(false);
     }
   };
 
@@ -458,35 +768,6 @@ function BankAccountSection({
       </div>
 
       <div style={s.grid2}>
-        <Field label="Bank Name">
-          <input
-            style={s.input}
-            value={bankName}
-            onChange={(e) => setBankName(e.target.value)}
-            placeholder="e.g. Access Bank"
-            disabled={verified}
-          />
-        </Field>
-        <Field label="Account Number">
-          <input
-            style={s.input}
-            value={accountNumber}
-            onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ""))}
-            placeholder="10-digit account number"
-            inputMode="numeric"
-            maxLength={10}
-            disabled={verified}
-          />
-        </Field>
-        <Field label="Account Name">
-          <input
-            style={s.input}
-            value={accountName}
-            onChange={(e) => setAccountName(e.target.value)}
-            placeholder="As it appears on the account"
-            disabled={verified}
-          />
-        </Field>
         <Field label="Currency">
           <select
             style={s.input}
@@ -496,20 +777,291 @@ function BankAccountSection({
           >
             <option value="NGN">NGN — Nigerian Naira</option>
             <option value="USD">USD — US Dollar</option>
+            <option value="GBP">GBP — British Pound</option>
+            <option value="EUR">EUR — Euro (IBAN)</option>
           </select>
         </Field>
+
+        {/* ── NGN: Paystack bank list + live resolve ── */}
+        {currency === "NGN" && (
+          <>
+            <Field label="Bank">
+              <select
+                style={{
+                  ...s.input,
+                  ...(touched.bankName && errors.bankName ? s.inputError : {}),
+                }}
+                value={bankCode}
+                onChange={(e) => {
+                  const code = e.target.value;
+                  setBankCode(code);
+                  const found = banks.find((b) => b.code === code);
+                  if (found) setBankName(found.name);
+                }}
+                onBlur={() =>
+                  setTouched((t) => ({ ...t, bankName: true }))
+                }
+                disabled={verified || banksLoading}
+              >
+                <option value="">
+                  {banksLoading ? "Loading banks…" : "Select your bank"}
+                </option>
+                {banks.map((b) => (
+                  <option key={b.code} value={b.code}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+              {touched.bankName && errors.bankName && (
+                <span style={s.errText}>{errors.bankName}</span>
+              )}
+            </Field>
+            <Field label="Account Number">
+              <input
+                style={{
+                  ...s.input,
+                  ...(touched.accountNumber && errors.accountNumber
+                    ? s.inputError
+                    : {}),
+                }}
+                value={accountNumber}
+                onChange={(e) =>
+                  setAccountNumber(e.target.value.replace(/\D/g, ""))
+                }
+                onBlur={() =>
+                  setTouched((t) => ({ ...t, accountNumber: true }))
+                }
+                placeholder="10-digit NUBAN"
+                inputMode="numeric"
+                maxLength={10}
+                disabled={verified}
+              />
+              {touched.accountNumber && errors.accountNumber && (
+                <span style={s.errText}>{errors.accountNumber}</span>
+              )}
+            </Field>
+            <Field label="Account Name (verified)">
+              <input
+                style={{
+                  ...s.input,
+                  background: "rgba(34,197,94,0.08)",
+                  cursor: "not-allowed",
+                }}
+                value={resolving ? "Verifying…" : accountName}
+                placeholder="Auto-filled after entering account number"
+                readOnly
+                disabled
+              />
+              {nameVerified && (
+                <span style={s.helperOk}>
+                  ✓ Confirmed by Paystack
+                </span>
+              )}
+            </Field>
+          </>
+        )}
+
+        {/* ── USD: Stripe Financial Connections ── */}
+        {currency === "USD" && (
+          <>
+            <Field label="Bank">
+              <input
+                style={s.input}
+                value={bankName}
+                placeholder="Connect your bank to fill"
+                readOnly
+                disabled
+              />
+            </Field>
+            <Field label="Account Number">
+              <input
+                style={s.input}
+                value={accountNumber}
+                placeholder="••••XXXX"
+                readOnly
+                disabled
+              />
+            </Field>
+            <Field label="Account Holder Name">
+              <input
+                style={s.input}
+                value={accountName}
+                placeholder="Filled from Stripe"
+                readOnly
+                disabled
+              />
+              {nameVerified && (
+                <span style={s.helperOk}>
+                  ✓ Linked via Stripe Financial Connections
+                </span>
+              )}
+            </Field>
+          </>
+        )}
+
+        {/* ── GBP: TrueLayer COP — sort code + account number ── */}
+        {currency === "GBP" && (
+          <>
+            <Field label="Bank Name">
+              <input
+                style={s.input}
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                placeholder="e.g. Barclays"
+                disabled={verified}
+              />
+            </Field>
+            <Field label="Sort Code">
+              <input
+                style={s.input}
+                value={sortCode}
+                onChange={(e) =>
+                  setSortCode(e.target.value.replace(/\D/g, ""))
+                }
+                placeholder="6 digits"
+                inputMode="numeric"
+                maxLength={6}
+                disabled={verified}
+              />
+            </Field>
+            <Field label="Account Number">
+              <input
+                style={s.input}
+                value={accountNumber}
+                onChange={(e) =>
+                  setAccountNumber(e.target.value.replace(/\D/g, ""))
+                }
+                placeholder="8 digits"
+                inputMode="numeric"
+                maxLength={8}
+                disabled={verified}
+              />
+            </Field>
+            <Field label="Account Holder Name">
+              <input
+                style={s.input}
+                value={accountName}
+                onChange={(e) => setAccountName(e.target.value)}
+                placeholder="As it appears on the account"
+                disabled={verified}
+              />
+              {nameVerified && (
+                <span style={s.helperOk}>
+                  ✓ Confirmed via TrueLayer Confirmation of Payee
+                </span>
+              )}
+            </Field>
+          </>
+        )}
+
+        {/* ── EUR: TrueLayer VOP — IBAN ── */}
+        {currency === "EUR" && (
+          <>
+            <Field label="Bank Name">
+              <input
+                style={s.input}
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                placeholder="e.g. Deutsche Bank"
+                disabled={verified}
+              />
+            </Field>
+            <Field label="IBAN">
+              <input
+                style={s.input}
+                value={iban}
+                onChange={(e) =>
+                  setIban(
+                    e.target.value
+                      .toUpperCase()
+                      .replace(/[^A-Z0-9]/g, ""),
+                  )
+                }
+                placeholder="DE89370400440532013000"
+                maxLength={34}
+                disabled={verified}
+              />
+            </Field>
+            <Field label="Account Holder Name">
+              <input
+                style={s.input}
+                value={accountName}
+                onChange={(e) => setAccountName(e.target.value)}
+                placeholder="As it appears on the account"
+                disabled={verified}
+              />
+              {nameVerified && (
+                <span style={s.helperOk}>
+                  ✓ Confirmed via TrueLayer Verification of Payee
+                </span>
+              )}
+            </Field>
+          </>
+        )}
       </div>
 
       {!verified && (
         <div style={s.bankActions}>
+          {currency === "USD" && !nameVerified && (
+            <button
+              style={{ ...s.saveBtn, background: "#635bff" }}
+              onClick={handleConnectStripe}
+              disabled={resolving}
+            >
+              {resolving ? "Connecting…" : "Connect bank via Stripe"}
+            </button>
+          )}
+          {(currency === "GBP" || currency === "EUR") && !nameVerified && (
+            <button
+              style={{ ...s.saveBtn, background: "#1f6feb" }}
+              onClick={handleVerifyTrueLayer}
+              disabled={
+                resolving ||
+                (currency === "GBP"
+                  ? !/^\d{6}$/.test(sortCode) ||
+                    !/^\d{8}$/.test(accountNumber) ||
+                    accountName.trim().length < 2
+                  : !/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(iban) ||
+                    accountName.trim().length < 2)
+              }
+            >
+              {resolving ? "Verifying…" : "Verify with TrueLayer"}
+            </button>
+          )}
           <button
-            style={s.saveBtn}
+            style={{
+              ...s.saveBtn,
+              opacity:
+                !formValid ||
+                saving ||
+                (currency === "NGN" && !nameVerified) ||
+                (currency === "USD" && !nameVerified)
+                  ? 0.5
+                  : 1,
+              cursor:
+                !formValid || saving ? "not-allowed" : "pointer",
+            }}
             onClick={handleSave}
-            disabled={saving}
+            disabled={
+              saving ||
+              !formValid ||
+              (currency === "NGN" && !nameVerified) ||
+              (currency === "USD" && !nameVerified)
+            }
           >
-            {saving ? "Saving…" : hasAccount ? "Update Account" : "Save Bank Account"}
+            {saving
+              ? "Saving…"
+              : hasAccount
+                ? "Update Account"
+                : "Save Bank Account"}
           </button>
         </div>
+      )}
+      {verifyMethod && nameVerified && !verified && (
+        <p style={s.helperOk}>
+          Verified via <strong>{verifyMethod}</strong>. Save to submit for
+          admin payout approval.
+        </p>
       )}
 
       {verified && (
@@ -763,6 +1315,21 @@ const s: Record<string, CSSProperties> = {
     background: "var(--input-bg, var(--surface-2))",
     color: "var(--foreground)", fontSize: 14, outline: "none",
     width: "100%", boxSizing: "border-box",
+  },
+  inputError: {
+    borderColor: "#ef4444",
+    boxShadow: "0 0 0 2px rgba(239,68,68,0.18)",
+  },
+  errText: {
+    fontSize: 12,
+    color: "#f87171",
+    marginTop: 4,
+  },
+  helperOk: {
+    fontSize: 12,
+    color: "#86efac",
+    marginTop: 4,
+    display: "block",
   },
 
   bankActions: { display: "flex", justifyContent: "flex-end", paddingTop: 4 },

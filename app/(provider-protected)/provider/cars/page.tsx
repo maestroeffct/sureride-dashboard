@@ -7,12 +7,14 @@ import { Pencil, Search } from "lucide-react";
 import { listProviderCars } from "@/src/lib/providerApi";
 import type { RentalCarRow } from "@/src/types/rentalCar";
 import VerificationBanner from "@/src/components/provider/VerificationBanner";
+import { useProviderVerification } from "@/src/hooks/useProviderVerification";
 
 export default function ProviderCarsPage() {
   const [cars, setCars] = useState<RentalCarRow[]>([]);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
+  const verification = useProviderVerification();
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -56,9 +58,23 @@ export default function ProviderCarsPage() {
           </p>
         </div>
 
-        <Link href="/provider/cars/new" style={styles.addButton}>
-          Add Car
-        </Link>
+        {verification.canListCars ? (
+          <Link href="/provider/cars/new" style={styles.addButton}>
+            Add Car
+          </Link>
+        ) : (
+          <Link
+            href="/provider/verification"
+            style={{
+              ...styles.addButton,
+              background: "#ef4444",
+              cursor: "pointer",
+            }}
+            title="Verify your business first"
+          >
+            Verify business to add cars
+          </Link>
+        )}
       </div>
 
       <div style={styles.filters}>

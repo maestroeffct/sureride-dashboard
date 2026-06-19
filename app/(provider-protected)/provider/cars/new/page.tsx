@@ -11,11 +11,16 @@ import {
   listProviderCarMetaModels,
   listProviderFeatureOptions,
   listProviderLocations,
+  submitProviderCar,
   uploadProviderCarImages,
   type ProviderCarBrandOption,
   type ProviderCarModelOption,
   type ProviderCreateCarPayload,
 } from "@/src/lib/providerApi";
+import { currencyForCountryCode } from "@/src/lib/currencyForCountry";
+import { MIN_DAILY_RATE, MIN_HOURLY_RATE } from "@/src/lib/rateLimits";
+import { useProviderVerification } from "@/src/hooks/useProviderVerification";
+import { ShieldAlert } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -72,6 +77,7 @@ const CSV_HEADERS = ["brand", "model", "category", "year", "seats", "bags", "tra
 
 export default function ProviderAddCarPage() {
   const router = useRouter();
+  const verification = useProviderVerification();
   const [activeStep, setActiveStep] = useState<StepKey>("vehicle");
   const [form, setForm] = useState<CarForm>(INITIAL);
   const [selectedFeatureIds, setSelectedFeatureIds] = useState<string[]>([]);
@@ -82,7 +88,9 @@ export default function ProviderAddCarPage() {
   const [csvOpen, setCsvOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
-  const [locations, setLocations] = useState<Array<{ id: string; name: string; address: string }>>([]);
+  const [locations, setLocations] = useState<
+    Array<{ id: string; name: string; address: string; countryCode: string }>
+  >([]);
   const [brands, setBrands] = useState<ProviderCarBrandOption[]>([]);
   const [models, setModels] = useState<ProviderCarModelOption[]>([]);
   const [featureOptions, setFeatureOptions] = useState<Array<{ id: string; name: string; category: string }>>([]);
@@ -96,7 +104,14 @@ export default function ProviderAddCarPage() {
           listProviderCarMetaModels(),
           listProviderFeatureOptions(),
         ]);
-        setLocations(locationRows.map((r) => ({ id: r.id, name: r.name, address: r.address })));
+        setLocations(
+          locationRows.map((r) => ({
+            id: r.id,
+            name: r.name,
+            address: r.address,
+            countryCode: r.countryCode,
+          })),
+        );
         setBrands(brandsRes.items);
         setModels(modelsRes.items);
         setFeatureOptions(featuresRes.items.map((i) => ({ id: i.id, name: i.name, category: i.category })));
@@ -135,8 +150,21 @@ export default function ProviderAddCarPage() {
     setSelectedFeatureIds((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
 
   // ── Image drag-drop ────────────────────────────────────────────────────────
+  // Backend (provider.cars.upload.ts) enforces 5MB per file; mirror that here
+  // so users get an instant error instead of a generic 413 from the server.
+  const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
   const addImages = useCallback((files: File[]) => {
-    const valid = files.filter((f) => f.type.startsWith("image/"));
+    const images = files.filter((f) => f.type.startsWith("image/"));
+    if (images.length < files.length) {
+      toast.error("Some files were skipped — only images are allowed");
+    }
+    const tooLarge = images.filter((f) => f.size > MAX_IMAGE_BYTES);
+    if (tooLarge.length) {
+      toast.error(
+        `Each image must be 5MB or smaller — skipped ${tooLarge.length} oversized file${tooLarge.length === 1 ? "" : "s"}`,
+      );
+    }
+    const valid = images.filter((f) => f.size <= MAX_IMAGE_BYTES);
     if (!valid.length) return;
     setImageFiles((p) => [...p, ...valid]);
     setImagePreviews((p) => [...p, ...valid.map((f) => URL.createObjectURL(f))]);
@@ -176,6 +204,37 @@ export default function ProviderAddCarPage() {
   // ── Save ───────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (saving) return;
+
+    // Pre-flight checks — surface specific messages instead of generic
+    // "Failed to create car" toasts later.
+    const missing: string[] = [];
+    if (!form.locationId) missing.push("location");
+    if (!form.brand.trim()) missing.push("brand");
+    if (!form.model.trim()) missing.push("model");
+    if (!form.year.trim()) missing.push("year");
+    if (!form.bags.trim()) missing.push("bag capacity");
+    if (missing.length) {
+      toast.error(`Please fill in: ${missing.join(", ")}`);
+      return;
+    }
+
+    const daily = Number(form.dailyRate);
+    if (!Number.isFinite(daily) || daily < MIN_DAILY_RATE) {
+      toast.error(
+        `Daily rate must be at least ${MIN_DAILY_RATE.toLocaleString()} to publish`,
+      );
+      return;
+    }
+    if (form.hourlyRate) {
+      const hourly = Number(form.hourlyRate);
+      if (!Number.isFinite(hourly) || hourly < MIN_HOURLY_RATE) {
+        toast.error(
+          `Hourly rate must be at least ${MIN_HOURLY_RATE.toLocaleString()} or left blank`,
+        );
+        return;
+      }
+    }
+
     try {
       setSaving(true);
       const payload: ProviderCreateCarPayload = {
@@ -189,14 +248,21 @@ export default function ProviderAddCarPage() {
         hasAC: form.hasAC,
         transmission: form.transmission,
         mileagePolicy: form.mileagePolicy,
-        dailyRate: Number(form.dailyRate),
+        dailyRate: daily,
         hourlyRate: form.hourlyRate ? Number(form.hourlyRate) : null,
       };
       const res = await createProviderCar(payload);
       const carId = res.car.id;
       if (selectedFeatureIds.length) await attachProviderCarFeatures(carId, selectedFeatureIds);
       if (imageFiles.length) await uploadProviderCarImages(carId, imageFiles);
-      toast.success("Car listing created successfully!");
+      // Auto-submit the brand-new car to PENDING_APPROVAL so admins see it
+      // immediately in the moderation queue (no "draft limbo").
+      try {
+        await submitProviderCar(carId);
+      } catch {
+        // Ignore submit failures — provider can resubmit from the car list.
+      }
+      toast.success("Car listing created and submitted for approval!");
       router.push("/provider/cars");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to create car");
@@ -205,10 +271,45 @@ export default function ProviderAddCarPage() {
     }
   };
 
-  if (loading) {
+  if (loading || verification.loading) {
     return (
       <div style={s.gateLoader}>
         <div style={s.gateSpinner} />
+      </div>
+    );
+  }
+
+  // Hard gate: you must be a verified provider before listing cars. Mirrors
+  // the backend `assertProviderCanListCars` check.
+  if (!verification.canListCars) {
+    return (
+      <div style={s.gateWrap}>
+        <div style={s.gateCard}>
+          <div style={s.gateIcon}>
+            <ShieldAlert size={28} />
+          </div>
+          <h1 style={s.gateTitle}>Verify your business first</h1>
+          <p style={s.gateBody}>
+            {verification.status?.blockerMessage ??
+              "Finish your business verification (CAC, government ID, admin review) before listing cars."}
+          </p>
+          <div style={s.gateActions}>
+            <button
+              type="button"
+              style={s.gatePrimary}
+              onClick={() => router.push("/provider/verification")}
+            >
+              Open Verification Center
+            </button>
+            <button
+              type="button"
+              style={s.gateSecondary}
+              onClick={() => router.push("/provider")}
+            >
+              Back to dashboard
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -273,6 +374,9 @@ export default function ProviderAddCarPage() {
                 groupedFeatures={groupedFeatures}
                 selectedFeatureIds={selectedFeatureIds}
                 toggleFeature={toggleFeature}
+                currency={currencyForCountryCode(
+                  locations.find((l) => l.id === form.locationId)?.countryCode,
+                )}
               />
             )}
             {activeStep === "photos" && (
@@ -571,40 +675,48 @@ function StepSpecs({ form, set }: { form: CarForm; set: <K extends keyof CarForm
 // ── Step 3: Pricing & Features ────────────────────────────────────────────────
 
 function StepPricingFeatures({
-  form, set, groupedFeatures, selectedFeatureIds, toggleFeature,
+  form, set, groupedFeatures, selectedFeatureIds, toggleFeature, currency,
 }: {
   form: CarForm;
   set: <K extends keyof CarForm>(k: K, v: CarForm[K]) => void;
   groupedFeatures: [string, Array<{ id: string; name: string }>][];
   selectedFeatureIds: string[];
   toggleFeature: (id: string) => void;
+  currency: { code: string; symbol: string };
 }) {
   return (
     <div style={f.wrapper}>
       <StepHeader title="Pricing & Features" desc="Set daily and hourly rates, then add available amenities." />
 
+      <p style={{ fontSize: 12, color: "#475569", margin: "0 0 12px" }}>
+        Currency auto-set from your fleet location:{" "}
+        <strong>{currency.code}</strong>. Minimum daily rate{" "}
+        {currency.symbol}{MIN_DAILY_RATE.toLocaleString()}, minimum hourly{" "}
+        {currency.symbol}{MIN_HOURLY_RATE.toLocaleString()}.
+      </p>
+
       <div style={f.grid2}>
-        <Field label="Daily Rate (₦) *">
+        <Field label={`Daily Rate (${currency.code}) *`}>
           <div style={f.inputPrefixed}>
-            <span style={f.prefix}>₦</span>
+            <span style={f.prefix}>{currency.symbol}</span>
             <input
               style={{ ...f.input, paddingLeft: 34 }}
               type="number"
-              min="0"
-              placeholder="15,000"
+              min={MIN_DAILY_RATE}
+              placeholder={`${MIN_DAILY_RATE.toLocaleString()}+`}
               value={form.dailyRate}
               onChange={(e) => set("dailyRate", e.target.value)}
             />
           </div>
         </Field>
-        <Field label="Hourly Rate (₦)">
+        <Field label={`Hourly Rate (${currency.code})`}>
           <div style={f.inputPrefixed}>
-            <span style={f.prefix}>₦</span>
+            <span style={f.prefix}>{currency.symbol}</span>
             <input
               style={{ ...f.input, paddingLeft: 34 }}
               type="number"
-              min="0"
-              placeholder="Optional"
+              min={MIN_HOURLY_RATE}
+              placeholder={`${MIN_HOURLY_RATE.toLocaleString()}+ (optional)`}
               value={form.hourlyRate}
               onChange={(e) => set("hourlyRate", e.target.value)}
             />
@@ -612,7 +724,7 @@ function StepPricingFeatures({
         </Field>
       </div>
 
-      {groupedFeatures.length > 0 && (
+      {groupedFeatures.length > 0 ? (
         <div style={f.featuresBlock}>
           <p style={f.featuresSectionLabel}>Available Features</p>
           <div style={f.featuresCols}>
@@ -633,6 +745,14 @@ function StepPricingFeatures({
               </div>
             ))}
           </div>
+        </div>
+      ) : (
+        <div style={f.featuresBlock}>
+          <p style={f.featuresSectionLabel}>Available Features</p>
+          <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>
+            No features available yet. You can still publish the car — admin
+            will add common features (GPS, child seat, etc.) shortly.
+          </p>
         </div>
       )}
     </div>
@@ -1001,6 +1121,61 @@ const s: Record<string, CSSProperties> = {
     border: "3px solid var(--input-border)",
     borderTopColor: "var(--brand-primary)",
     animation: "spin 0.8s linear infinite",
+  },
+  gateWrap: {
+    minHeight: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 40,
+  },
+  gateCard: {
+    maxWidth: 480,
+    background: "var(--surface-1, #0b1220)",
+    border: "1px solid var(--input-border)",
+    borderRadius: 20,
+    padding: 32,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    textAlign: "center",
+    gap: 14,
+  },
+  gateIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    background: "rgba(239,68,68,0.15)",
+    color: "#fca5a5",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  gateTitle: { margin: 0, fontSize: 22, fontWeight: 800 },
+  gateBody: {
+    margin: 0,
+    fontSize: 14,
+    color: "var(--muted-foreground, #94a3b8)",
+    maxWidth: 380,
+  },
+  gateActions: { display: "flex", gap: 10, marginTop: 6, flexWrap: "wrap" },
+  gatePrimary: {
+    padding: "11px 18px",
+    borderRadius: 12,
+    border: "none",
+    background: "var(--brand-primary)",
+    color: "#fff",
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  gateSecondary: {
+    padding: "11px 18px",
+    borderRadius: 12,
+    border: "1px solid var(--input-border)",
+    background: "transparent",
+    color: "var(--foreground)",
+    fontWeight: 600,
+    cursor: "pointer",
   },
   header: {
     padding: "20px 28px 0",

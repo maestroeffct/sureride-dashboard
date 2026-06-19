@@ -91,6 +91,15 @@ export type ProviderProfile = {
   logoUrl?: string | null;
   commissionRate?: number | null;
   mustChangePassword?: boolean;
+  /**
+   * Session context for the logged-in user. Owner sessions have staffId=null
+   * and role="OWNER". Staff sessions populate both with the staff's role.
+   */
+  session?: {
+    staffId: string | null;
+    role: string;
+    isOwner: boolean;
+  };
   tempPasswordExpiresAt?: string | null;
   payoutAccount?: {
     bankName?: string | null;
@@ -103,6 +112,7 @@ export type ProviderProfile = {
     cars: number;
     locations: number;
     documents: number;
+    insurancePackages?: number;
   };
 };
 
@@ -343,15 +353,26 @@ async function providerApiRequest<T = any>(
     : await response.text();
 
   if (!response.ok) {
-    const message =
-      typeof data === "object" &&
-      data &&
-      "message" in data &&
-      typeof (data as { message?: unknown }).message === "string"
-        ? (data as { message: string }).message
+    // Surface field-level zod errors when the server returns them, so the
+    // user sees "Daily rate must be at least ₦5000" instead of generic
+    // "Validation failed" or undefined.
+    const obj = (typeof data === "object" && data) || {};
+    const baseMessage =
+      "message" in obj && typeof (obj as { message?: unknown }).message === "string"
+        ? (obj as { message: string }).message
         : "Something went wrong";
 
-    throw new Error(message);
+    const fieldErrors = (obj as { errors?: Array<{ field?: string; message?: string }> })
+      .errors;
+    if (Array.isArray(fieldErrors) && fieldErrors.length) {
+      const first = fieldErrors[0];
+      const friendly = first?.message || baseMessage;
+      throw new Error(
+        first?.field ? `${first.field}: ${friendly}` : friendly,
+      );
+    }
+
+    throw new Error(baseMessage);
   }
 
   return data as T;
@@ -861,4 +882,207 @@ export async function deleteProviderDocument(docId: string) {
     `/provider/documents/${docId}`,
     { method: "DELETE" },
   );
+}
+
+/* ── Bank verification (Paystack / Stripe FC / TrueLayer) ── */
+
+export type BankOption = { name: string; code: string };
+
+export type BankVerifyRequest =
+  | {
+      currency: "NGN";
+      bankCode: string;
+      accountNumber: string;
+    }
+  | {
+      currency: "USD";
+      linkedAccountId: string;
+    }
+  | {
+      currency: "GBP";
+      sortCode: string;
+      accountNumber: string;
+      candidateName: string;
+    }
+  | {
+      currency: "EUR";
+      iban: string;
+      candidateName: string;
+    };
+
+export type BankVerifyResponse =
+  | { method: "paystack"; matched: true; accountName: string }
+  | {
+      method: "stripe-financial-connections";
+      matched: boolean;
+      bankName: string;
+      accountName: string;
+      accountNumberLast4: string;
+      currency: string;
+    }
+  | {
+      method: "truelayer-cop" | "truelayer-vop";
+      matched: boolean;
+      closeMatch: boolean;
+      canonicalName?: string;
+      reason?: string;
+    };
+
+export function listProviderBanks(currency: string) {
+  return providerApiRequest<{ currency: string; banks: BankOption[] }>(
+    `/provider/banks?currency=${encodeURIComponent(currency)}`,
+  );
+}
+
+export function verifyProviderBankAccount(body: BankVerifyRequest) {
+  return providerApiRequest<BankVerifyResponse>("/provider/banks/verify", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function createStripeFinancialConnectionsSession(payload: {
+  email?: string;
+  fullName?: string;
+}) {
+  return providerApiRequest<{ clientSecret: string; sessionId: string }>(
+    "/provider/banks/stripe/session",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+/* ── Staff management (OWNER only) ── */
+
+export type ProviderStaffRole =
+  | "OWNER"
+  | "FLEET_MANAGER"
+  | "OPERATIONS"
+  | "FINANCE"
+  | "CUSTOMER_SERVICE";
+
+export type ProviderStaffStatus = "PENDING" | "ACTIVE" | "SUSPENDED";
+
+export type ProviderStaffMember = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  role: ProviderStaffRole;
+  status: ProviderStaffStatus;
+  invitedAt: string;
+  acceptedAt: string | null;
+};
+
+export function listProviderStaff() {
+  return providerApiRequest<ProviderStaffMember[]>("/provider/staff");
+}
+
+export function inviteProviderStaff(payload: {
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  role: Exclude<ProviderStaffRole, "OWNER">;
+}) {
+  return providerApiRequest<ProviderStaffMember>("/provider/staff", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function resendProviderStaffInvite(staffId: string) {
+  return providerApiRequest<{ resent: true }>(
+    `/provider/staff/${staffId}/resend`,
+    { method: "POST" },
+  );
+}
+
+export function updateProviderStaffRole(
+  staffId: string,
+  role: Exclude<ProviderStaffRole, "OWNER">,
+) {
+  return providerApiRequest<{ id: string; role: ProviderStaffRole }>(
+    `/provider/staff/${staffId}/role`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    },
+  );
+}
+
+export function updateProviderStaffStatus(
+  staffId: string,
+  status: Extract<ProviderStaffStatus, "ACTIVE" | "SUSPENDED">,
+) {
+  return providerApiRequest<{ id: string; status: ProviderStaffStatus }>(
+    `/provider/staff/${staffId}/status`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    },
+  );
+}
+
+export function deleteProviderStaff(staffId: string) {
+  return providerApiRequest<{ deleted: true }>(`/provider/staff/${staffId}`, {
+    method: "DELETE",
+  });
+}
+
+/* ── Staff invite acceptance (public — uses token) ── */
+
+export type ProviderInvitePreview = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  role: ProviderStaffRole;
+  providerName: string;
+};
+
+export async function getProviderInvitePreview(token: string) {
+  const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
+  const res = await fetch(
+    `${base}/provider/auth/accept-invite/${encodeURIComponent(token)}`,
+    { cache: "no-store" },
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.message || `Failed to load invite (${res.status})`);
+  }
+  return data as ProviderInvitePreview;
+}
+
+export async function acceptProviderInvite(payload: {
+  token: string;
+  password: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+}) {
+  const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
+  const res = await fetch(`${base}/provider/auth/accept-invite`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.message || `Failed to accept invite (${res.status})`);
+  }
+  return data as {
+    message: string;
+    token: string;
+    staff: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      role: ProviderStaffRole;
+    };
+  };
 }

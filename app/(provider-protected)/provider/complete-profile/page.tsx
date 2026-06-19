@@ -1,24 +1,68 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { z } from "zod";
 import {
   getProviderProfile,
   updateProviderProfile,
   type ProviderProfile,
 } from "@/src/lib/providerApi";
-import { useCountryDialCodes } from "@/src/hooks/useCountryDialCodes";
+import CountryDialPicker from "@/src/components/common/CountryDialPicker";
 import Image from "next/image";
 import logoIcon from "@/src/assets/logo_icon.png";
 
-// ── Required fields for a "complete" profile ─────────────────────────────────
-function isComplete(f: ProfileForm): boolean {
-  return !!(
-    f.phone.trim() &&
-    f.contactPersonName.trim() &&
-    f.businessAddress.trim()
-  );
+// ── Zod schema (client) ──────────────────────────────────────────────────────
+// Phone is the *local* part (digits only, no '+'). Dial code lives on its own.
+// Address requires 10+ characters and at least one space — a single word like
+// "Lagos" isn't a real business address.
+const PHONE_DIGITS = /^[0-9]{7,15}$/;
+const NAME_RE = /^[A-Za-z][A-Za-z\s'.-]{1,}$/;
+
+const CompleteProfileSchema = z.object({
+  phone: z
+    .string()
+    .trim()
+    .regex(PHONE_DIGITS, "Enter 7–15 digits — no spaces, no symbols"),
+  contactPersonName: z
+    .string()
+    .trim()
+    .min(2, "Enter the full name (at least 2 characters)")
+    .max(120, "Name is too long")
+    .regex(NAME_RE, "Use letters, spaces, apostrophes and hyphens only"),
+  contactPersonRole: z.string().trim().max(80).optional(),
+  contactPersonPhone: z
+    .string()
+    .trim()
+    .optional()
+    .refine(
+      (v) => !v || PHONE_DIGITS.test(v),
+      "Enter 7–15 digits — no spaces, no symbols",
+    ),
+  businessAddress: z
+    .string()
+    .trim()
+    .min(10, "Business address must be at least 10 characters")
+    .max(255, "Address is too long")
+    .refine(
+      (v) => v.includes(" "),
+      "Address should include street, city and state",
+    ),
+  dialCode: z.string(),
+});
+
+type FormErrors = Partial<Record<keyof ProfileForm, string>>;
+
+function validateForm(form: ProfileForm): FormErrors {
+  const parsed = CompleteProfileSchema.safeParse(form);
+  if (parsed.success) return {};
+  const errs: FormErrors = {};
+  for (const issue of parsed.error.issues) {
+    const key = issue.path[0] as keyof ProfileForm;
+    if (!errs[key]) errs[key] = issue.message;
+  }
+  return errs;
 }
 
 type ProfileForm = {
@@ -36,7 +80,9 @@ const EMPTY: ProfileForm = {
   contactPersonRole: "",
   contactPersonPhone: "",
   businessAddress: "",
-  dialCode: "+1",
+  // Default to Nigeria — primary market. Picker is searchable so users
+  // anywhere else can swap in 2 keystrokes.
+  dialCode: "+234",
 };
 
 // ── Progress steps indicator ──────────────────────────────────────────────────
@@ -48,23 +94,48 @@ const FIELDS: { key: keyof ProfileForm; label: string; required?: boolean }[] = 
 
 export default function CompleteProviderProfilePage() {
   const router = useRouter();
-  const { countries } = useCountryDialCodes();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [providerName, setProviderName] = useState("");
+  const [isOwner, setIsOwner] = useState(false);
   const [form, setForm] = useState<ProfileForm>(EMPTY);
+  // Field-level errors. Show only after the user has interacted with that
+  // field (touched) — avoids screaming at users before they've typed.
+  const [touched, setTouched] = useState<Partial<Record<keyof ProfileForm, boolean>>>({});
 
   useEffect(() => {
     getProviderProfile()
       .then((p: ProviderProfile) => {
         setProviderName(p.name ?? "");
+        const ownerSession = p.session?.isOwner ?? true;
+        setIsOwner(ownerSession);
+
+        // Split a stored E.164-ish phone into (dialCode, localDigits) so the
+        // user doesn't see "+234" twice on the form.
+        const stored = (p.phone ?? "").trim();
+        let dialCode = "+234";
+        let localPhone = stored;
+        if (stored.startsWith("+")) {
+          // Match the longest prefix that looks like a dial code (1–4 digits).
+          const m = stored.match(/^(\+\d{1,4})(\d*)$/);
+          if (m) {
+            dialCode = m[1];
+            localPhone = m[2];
+          } else {
+            localPhone = "";
+          }
+        }
+
         setForm({
-          phone: p.phone ?? "",
+          phone: localPhone,
           contactPersonName: p.contactPersonName ?? "",
-          contactPersonRole: p.contactPersonRole ?? "",
+          // Owners always show as "Owner / Director" — locked
+          contactPersonRole: ownerSession
+            ? "Owner / Director"
+            : p.contactPersonRole ?? "",
           contactPersonPhone: p.contactPersonPhone ?? "",
           businessAddress: p.businessAddress ?? "",
-          dialCode: "+1",
+          dialCode,
         });
       })
       .catch(() => {
@@ -76,14 +147,28 @@ export default function CompleteProviderProfilePage() {
   const set = (k: keyof ProfileForm, v: string) =>
     setForm((prev) => ({ ...prev, [k]: v }));
 
+  // Live-compute errors so the button can be disabled atomically with the
+  // schema, not just on non-emptiness.
+  const errors = useMemo(() => validateForm(form), [form]);
+  const formValid = Object.keys(errors).length === 0;
+
   const handleSave = async () => {
-    if (!isComplete(form)) {
-      toast.error("Please fill in all required fields");
+    if (!formValid) {
+      // Mark every field touched so the inline errors show up.
+      setTouched({
+        phone: true,
+        contactPersonName: true,
+        contactPersonRole: true,
+        contactPersonPhone: true,
+        businessAddress: true,
+        dialCode: true,
+      });
+      const firstError = Object.values(errors)[0];
+      toast.error(firstError ?? "Please fix the highlighted fields");
       return;
     }
 
-    const rawPhone = form.phone.trim();
-    const fullPhone = rawPhone.startsWith("+") ? rawPhone : `${form.dialCode}${rawPhone}`;
+    const fullPhone = `${form.dialCode}${form.phone.trim()}`;
 
     try {
       setSaving(true);
@@ -103,9 +188,10 @@ export default function CompleteProviderProfilePage() {
     }
   };
 
-  // Count how many required fields are done
+  // Count how many required fields *validate* (not just non-empty) so the
+  // progress bar reflects real correctness.
   const filledCount = FIELDS.filter(
-    (f) => f.required && (form[f.key] as string).trim().length > 0,
+    (f) => f.required && !errors[f.key],
   ).length;
   const requiredCount = FIELDS.filter((f) => f.required).length;
   const progressPct = (filledCount / requiredCount) * 100;
@@ -194,25 +280,29 @@ export default function CompleteProviderProfilePage() {
               Business phone <span style={s.required}>*</span>
             </label>
             <div style={s.phoneRow}>
-              <select
+              <CountryDialPicker
                 value={form.dialCode}
-                onChange={(e) => set("dialCode", e.target.value)}
-                style={{ ...s.input, width: 110, flexShrink: 0 }}
-              >
-                {countries.map((c) => (
-                  <option key={c.code} value={c.dialCode}>
-                    {c.dialCode} {c.code}
-                  </option>
-                ))}
-              </select>
+                onChange={(dialCode) => set("dialCode", dialCode)}
+                width={130}
+              />
               <input
-                style={s.input}
+                style={{
+                  ...s.input,
+                  ...(touched.phone && errors.phone ? s.inputError : {}),
+                }}
                 type="tel"
+                inputMode="numeric"
                 placeholder="8012345678"
                 value={form.phone}
-                onChange={(e) => set("phone", e.target.value.replace(/[^0-9+]/g, ""))}
+                onChange={(e) =>
+                  set("phone", e.target.value.replace(/[^0-9]/g, ""))
+                }
+                onBlur={() => setTouched((t) => ({ ...t, phone: true }))}
               />
             </div>
+            {touched.phone && errors.phone && (
+              <span style={s.errText}>{errors.phone}</span>
+            )}
           </div>
 
           {/* Contact person name */}
@@ -221,57 +311,91 @@ export default function CompleteProviderProfilePage() {
               Primary contact name <span style={s.required}>*</span>
             </label>
             <input
-              style={s.input}
+              style={{
+                ...s.input,
+                ...(touched.contactPersonName && errors.contactPersonName
+                  ? s.inputError
+                  : {}),
+              }}
               placeholder="Full name of the person managing this account"
               value={form.contactPersonName}
               onChange={(e) => set("contactPersonName", e.target.value)}
+              onBlur={() =>
+                setTouched((t) => ({ ...t, contactPersonName: true }))
+              }
             />
+            {touched.contactPersonName && errors.contactPersonName && (
+              <span style={s.errText}>{errors.contactPersonName}</span>
+            )}
           </div>
 
           {/* Contact role (optional) */}
           <div style={s.fieldGroup}>
             <label style={s.label}>Contact role / title</label>
-            <select
-              style={s.input}
-              value={form.contactPersonRole}
-              onChange={(e) => set("contactPersonRole", e.target.value)}
-            >
-              <option value="">Select a role (optional)</option>
-              <option value="Owner / Director">Owner / Director</option>
-              <option value="General Manager">General Manager</option>
-              <option value="Operations Manager">Operations Manager</option>
-              <option value="Fleet Manager">Fleet Manager</option>
-              <option value="Finance Manager">Finance Manager</option>
-              <option value="Customer Service Manager">Customer Service Manager</option>
-              <option value="HR Manager">HR Manager</option>
-              <option value="Marketing Manager">Marketing Manager</option>
-              <option value="Logistics Coordinator">Logistics Coordinator</option>
-              <option value="Other">Other</option>
-            </select>
+            {isOwner ? (
+              <input
+                style={{ ...s.input, background: "#f3f4f6", cursor: "not-allowed" }}
+                value="Owner / Director"
+                disabled
+                readOnly
+                title="This account is the business owner and cannot change role."
+              />
+            ) : (
+              <select
+                style={s.input}
+                value={form.contactPersonRole}
+                onChange={(e) => set("contactPersonRole", e.target.value)}
+              >
+                <option value="">Select a role (optional)</option>
+                <option value="General Manager">General Manager</option>
+                <option value="Operations Manager">Operations Manager</option>
+                <option value="Fleet Manager">Fleet Manager</option>
+                <option value="Finance Manager">Finance Manager</option>
+                <option value="Customer Service Manager">Customer Service Manager</option>
+                <option value="HR Manager">HR Manager</option>
+                <option value="Marketing Manager">Marketing Manager</option>
+                <option value="Logistics Coordinator">Logistics Coordinator</option>
+                <option value="Other">Other</option>
+              </select>
+            )}
           </div>
 
           {/* Business address */}
           <div style={s.fieldGroup}>
             <label style={s.label}>
               Business address <span style={s.required}>*</span>
+              <span style={s.helperHint}>
+                {" "}— minimum 10 characters
+              </span>
             </label>
             <input
-              style={s.input}
+              style={{
+                ...s.input,
+                ...(touched.businessAddress && errors.businessAddress
+                  ? s.inputError
+                  : {}),
+              }}
               placeholder="Street, City, State, Country"
               value={form.businessAddress}
               onChange={(e) => set("businessAddress", e.target.value)}
+              onBlur={() =>
+                setTouched((t) => ({ ...t, businessAddress: true }))
+              }
             />
+            {touched.businessAddress && errors.businessAddress && (
+              <span style={s.errText}>{errors.businessAddress}</span>
+            )}
           </div>
 
           {/* Submit */}
           <button
             style={{
               ...s.submitBtn,
-              opacity: !isComplete(form) || saving ? 0.5 : 1,
-              cursor: !isComplete(form) || saving ? "not-allowed" : "pointer",
+              opacity: !formValid || saving ? 0.5 : 1,
+              cursor: !formValid || saving ? "not-allowed" : "pointer",
             }}
             onClick={handleSave}
-            disabled={!isComplete(form) || saving}
+            disabled={!formValid || saving}
           >
             {saving ? "Saving…" : "Complete Profile & Go to Dashboard →"}
           </button>
@@ -475,6 +599,20 @@ const s: Record<string, CSSProperties> = {
     color: "var(--input-fg)",
     fontSize: 14,
     outline: "none",
+  },
+  inputError: {
+    borderColor: "#dc2626",
+    boxShadow: "0 0 0 2px rgba(220,38,38,0.18)",
+  },
+  errText: {
+    color: "#f87171",
+    fontSize: 12,
+    marginTop: 4,
+  },
+  helperHint: {
+    color: "var(--muted, #94a3b8)",
+    fontSize: 11,
+    fontWeight: 400,
   },
   phoneRow: {
     display: "flex",

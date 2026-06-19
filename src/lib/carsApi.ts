@@ -150,6 +150,10 @@ export function createAdminCar(payload: CreateAdminCarPayload) {
   });
 }
 
+export async function getAdminCarDetail(carId: string) {
+  return apiRequest<RawCarApi>(`/admin/cars/${carId}`);
+}
+
 export function listAdminCarFeatureOptions(providerId?: string) {
   const query = makeQuery({
     providerId,

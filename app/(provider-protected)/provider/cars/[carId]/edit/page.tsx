@@ -20,7 +20,10 @@ import {
   type ProviderCarDetail,
   type ProviderCarBrandOption,
   type ProviderCarModelOption,
+  type ProviderLocation,
 } from "@/src/lib/providerApi";
+import { currencyForCountryCode } from "@/src/lib/currencyForCountry";
+import { MIN_DAILY_RATE, MIN_HOURLY_RATE } from "@/src/lib/rateLimits";
 
 type FormState = {
   locationId: string;
@@ -43,7 +46,9 @@ export default function ProviderEditCarPage() {
 
   const [car, setCar] = useState<ProviderCarDetail | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
-  const [locations, setLocations] = useState<Array<{ id: string; name: string; address: string }>>([]);
+  const [locations, setLocations] = useState<
+    Array<{ id: string; name: string; address: string; countryCode: string }>
+  >([]);
   const [brands, setBrands] = useState<ProviderCarBrandOption[]>([]);
   const [models, setModels] = useState<ProviderCarModelOption[]>([]);
   const [featureOptions, setFeatureOptions] = useState<Array<{ id: string; name: string; category: string }>>([]);
@@ -83,7 +88,14 @@ export default function ProviderEditCarPage() {
           hasAC: carData.hasAC ?? true,
         });
         setSelectedFeatureIds(carData.features.map((f) => f.featureId));
-        setLocations(locationRows.map((row) => ({ id: row.id, name: row.name, address: row.address })));
+        setLocations(
+          locationRows.map((row: ProviderLocation) => ({
+            id: row.id,
+            name: row.name,
+            address: row.address,
+            countryCode: row.countryCode,
+          })),
+        );
         setBrands(brandsResponse.items);
         setModels(modelsResponse.items);
         setFeatureOptions(featureResponse.items.map((item) => ({ id: item.id, name: item.name, category: item.category })));
@@ -125,9 +137,21 @@ export default function ProviderEditCarPage() {
 
   const handleNewImages = (files: FileList | null) => {
     if (!files) return;
-    const arr = Array.from(files);
-    setNewImageFiles(arr);
-    setNewImagePreviews(arr.map((f) => URL.createObjectURL(f)));
+    const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+    const all = Array.from(files);
+    const images = all.filter((f) => f.type.startsWith("image/"));
+    if (images.length < all.length) {
+      toast.error("Some files were skipped — only images are allowed");
+    }
+    const tooLarge = images.filter((f) => f.size > MAX_IMAGE_BYTES);
+    if (tooLarge.length) {
+      toast.error(
+        `Each image must be 5MB or smaller — skipped ${tooLarge.length} oversized file${tooLarge.length === 1 ? "" : "s"}`,
+      );
+    }
+    const valid = images.filter((f) => f.size <= MAX_IMAGE_BYTES);
+    setNewImageFiles(valid);
+    setNewImagePreviews(valid.map((f) => URL.createObjectURL(f)));
   };
 
   const handleDeleteImage = async (imageId: string) => {
@@ -149,9 +173,31 @@ export default function ProviderEditCarPage() {
 
   const onSave = async () => {
     if (!form) return;
-    if (!form.locationId || !form.brand || !form.model || !form.dailyRate) {
-      toast.error("Complete required fields: location, brand, model, daily rate");
+    const missing: string[] = [];
+    if (!form.locationId) missing.push("location");
+    if (!form.brand) missing.push("brand");
+    if (!form.model) missing.push("model");
+    if (!form.dailyRate) missing.push("daily rate");
+    if (missing.length) {
+      toast.error(`Please fill in: ${missing.join(", ")}`);
       return;
+    }
+
+    const daily = Number(form.dailyRate);
+    if (!Number.isFinite(daily) || daily < MIN_DAILY_RATE) {
+      toast.error(
+        `Daily rate must be at least ${MIN_DAILY_RATE.toLocaleString()} to publish`,
+      );
+      return;
+    }
+    if (form.hourlyRate) {
+      const hourly = Number(form.hourlyRate);
+      if (!Number.isFinite(hourly) || hourly < MIN_HOURLY_RATE) {
+        toast.error(
+          `Hourly rate must be at least ${MIN_HOURLY_RATE.toLocaleString()} or left blank`,
+        );
+        return;
+      }
     }
 
     try {
@@ -168,7 +214,7 @@ export default function ProviderEditCarPage() {
         hasAC: form.hasAC,
         transmission: form.transmission,
         mileagePolicy: form.mileagePolicy,
-        dailyRate: Number(form.dailyRate),
+        dailyRate: daily,
         hourlyRate: form.hourlyRate ? Number(form.hourlyRate) : null,
       });
 
@@ -218,6 +264,9 @@ export default function ProviderEditCarPage() {
 
   const isFlagged = car.status === "FLAGGED";
   const isDraftOrRejected = car.status === "DRAFT" || car.status === "REJECTED";
+  const currency = currencyForCountryCode(
+    locations.find((l) => l.id === form.locationId)?.countryCode,
+  );
 
   return (
     <div style={s.page}>
@@ -280,7 +329,11 @@ export default function ProviderEditCarPage() {
                   style={s.deleteImgBtn}
                   onClick={() => handleDeleteImage(img.id)}
                   disabled={deletingImageId === img.id || isFlagged}
-                  title="Delete image"
+                  title={
+                    isFlagged
+                      ? "Contact support to make changes — this car is flagged"
+                      : "Delete this image"
+                  }
                 >
                   <Trash2 size={13} />
                   {deletingImageId === img.id ? "Deleting..." : "Delete"}
@@ -317,6 +370,18 @@ export default function ProviderEditCarPage() {
                   <Image src={src} alt="Preview" fill style={{ objectFit: "cover", borderRadius: 12 }} />
                   <div style={s.newBadge}>New</div>
                 </div>
+                <button
+                  type="button"
+                  style={s.deleteImgBtn}
+                  onClick={() => {
+                    URL.revokeObjectURL(newImagePreviews[idx]);
+                    setNewImageFiles((p) => p.filter((_, i) => i !== idx));
+                    setNewImagePreviews((p) => p.filter((_, i) => i !== idx));
+                  }}
+                  title="Remove this image"
+                >
+                  <Trash2 size={13} /> Remove
+                </button>
               </div>
             ))}
           </div>
@@ -451,26 +516,34 @@ export default function ProviderEditCarPage() {
         </div>
 
         <div style={s.grid2}>
-          <Field label="Daily Rate (NGN) *">
+          <Field label={`Daily Rate (${currency.code}) *`}>
             <input
               style={s.input}
               type="number"
+              min={MIN_DAILY_RATE}
+              placeholder={`${MIN_DAILY_RATE.toLocaleString()}+`}
               value={form.dailyRate}
               onChange={(e) => setField("dailyRate", e.target.value)}
               disabled={isFlagged}
             />
           </Field>
-          <Field label="Hourly Rate (NGN)">
+          <Field label={`Hourly Rate (${currency.code})`}>
             <input
               style={s.input}
               type="number"
+              min={MIN_HOURLY_RATE}
               value={form.hourlyRate}
               onChange={(e) => setField("hourlyRate", e.target.value)}
-              placeholder="Optional"
+              placeholder={`${MIN_HOURLY_RATE.toLocaleString()}+ (optional)`}
               disabled={isFlagged}
             />
           </Field>
         </div>
+        <p style={{ fontSize: 12, color: "#64748b", marginTop: 8 }}>
+          Currency auto-set from this car's fleet location:{" "}
+          <strong>{currency.code}</strong>. Min daily {MIN_DAILY_RATE.toLocaleString()},
+          min hourly {MIN_HOURLY_RATE.toLocaleString()}.
+        </p>
       </div>
 
       {/* Features */}

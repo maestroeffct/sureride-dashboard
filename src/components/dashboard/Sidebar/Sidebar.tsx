@@ -3,24 +3,69 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { sidebarMenus } from "@/src/config/sidebar";
-import { SidebarModule, SidebarItem } from "@/src/types/sidebar";
+import {
+  SidebarModule,
+  SidebarItem,
+  ProviderPortalRole,
+} from "@/src/types/sidebar";
 import React, { useEffect, useMemo, useState } from "react";
-import { ChevronDown, LayoutGrid } from "lucide-react";
+import { ChevronDown, LayoutGrid, Lock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLayoutUI } from "@/src/hooks/useLayoutUI";
 
 const basePath = (path?: string) => path?.split("?")[0] ?? "";
 
+function filterMenuByRole(
+  items: SidebarItem[],
+  role?: ProviderPortalRole,
+): SidebarItem[] {
+  if (!role || role === "OWNER") return items;
+
+  const isAllowed = (item: SidebarItem) =>
+    !item.allowedRoles || item.allowedRoles.includes(role);
+
+  const filtered = items.filter(isAllowed).map((item) => {
+    if (item.children) {
+      return { ...item, children: filterMenuByRole(item.children, role) };
+    }
+    return item;
+  });
+
+  // Drop "section" headers that no longer have a following non-section item.
+  return filtered.filter((item, idx) => {
+    if (item.kind !== "section") return true;
+    const next = filtered.slice(idx + 1).find((it) => it.kind !== "section");
+    return !!next;
+  });
+}
+
 export default function Sidebar({
   module,
   collapsed = false,
+  role,
+  verified = true,
 }: {
   module: SidebarModule;
   collapsed?: boolean;
+  /**
+   * Optional provider-portal role used to filter sidebar entries.
+   * Undefined → no filtering (admin/standard modules).
+   */
+  role?: ProviderPortalRole;
+  /**
+   * Whether the current provider has cleared business verification. When
+   * false, items flagged with `requiresVerification` are rendered as locked.
+   * Default true so admin/other modules aren't affected.
+   */
+  verified?: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const menu = sidebarMenus[module];
+  const rawMenu = sidebarMenus[module];
+  const menu = useMemo(
+    () => filterMenuByRole(rawMenu, role),
+    [rawMenu, role],
+  );
   const { isMobile, setSidebarCollapsed } = useLayoutUI();
 
   const handleSwitchModule = () => {
@@ -77,6 +122,7 @@ export default function Sidebar({
             ) : (
               <SidebarItemView
                 key={item.label}
+                verified={verified}
                 item={item}
                 pathname={pathname}
                 module={module}
@@ -107,11 +153,15 @@ function SidebarItemView({
   item,
   pathname,
   module,
+  verified,
 }: {
   item: SidebarItem;
   pathname: string;
   module: SidebarModule;
+  verified: boolean;
 }) {
+  // Locked = requires verification AND provider is not verified yet.
+  const isLocked = !!item.requiresVerification && !verified;
   const { isMobile, setSidebarCollapsed } = useLayoutUI();
   const Icon = item.icon;
 
@@ -237,6 +287,33 @@ function SidebarItemView({
 
   if (!item.path) {
     return null;
+  }
+
+  // Locked: render a non-navigating row with a Lock icon. Clicking it routes
+  // to the Verification Center instead of the underlying destination, so the
+  // user has a clear path to unlock the feature.
+  if (isLocked) {
+    return (
+      <Link
+        href="/provider/verification"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onClick={() => {
+          if (isMobile) setSidebarCollapsed(true);
+        }}
+        title="Verify your business to unlock this section"
+        style={{
+          ...styles.item,
+          opacity: 0.55,
+          background: isHovered ? "rgba(239,68,68,0.08)" : "transparent",
+          color: "var(--sidebar-item-fg-muted)",
+        }}
+      >
+        {Icon && <Icon size={18} />}
+        <span style={{ flex: 1 }}>{item.label}</span>
+        <Lock size={14} />
+      </Link>
+    );
   }
 
   return (

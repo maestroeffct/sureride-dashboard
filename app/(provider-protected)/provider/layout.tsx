@@ -8,7 +8,11 @@ import Sidebar from "@/src/components/dashboard/Sidebar/Sidebar";
 import { RequireProvider } from "@/src/components/auth/RequireProvider";
 import { LayoutUIProvider } from "@/src/providers/LayoutUIProvider";
 import { useLayoutUI } from "@/src/hooks/useLayoutUI";
-import { getProviderProfile, type ProviderProfile } from "@/src/lib/providerApi";
+import {
+  getProviderProfile,
+  getProviderVerificationStatus,
+  type ProviderProfile,
+} from "@/src/lib/providerApi";
 
 // A profile is "complete" when at minimum phone + contact name + address are set.
 function isProfileComplete(p: ProviderProfile): boolean {
@@ -16,12 +20,40 @@ function isProfileComplete(p: ProviderProfile): boolean {
 }
 
 const COMPLETE_PROFILE_PATH = "/provider/complete-profile";
+const VERIFICATION_PATH = "/provider/verification";
+const OVERVIEW_PATH = "/provider";
+const SETTINGS_PATH = "/provider/settings";
+
+// Pages an unverified provider may still access. Everything else redirects
+// to the Verification Center until the business is verified.
+const UNVERIFIED_ALLOWED = new Set<string>([
+  OVERVIEW_PATH,
+  VERIFICATION_PATH,
+  COMPLETE_PROFILE_PATH,
+  SETTINGS_PATH,
+]);
+
+function isUnverifiedAllowed(pathname: string): boolean {
+  if (UNVERIFIED_ALLOWED.has(pathname)) return true;
+  // Sub-routes under settings/verification are also fine (e.g. nested edit pages).
+  if (
+    pathname.startsWith(`${VERIFICATION_PATH}/`) ||
+    pathname.startsWith(`${SETTINGS_PATH}/`)
+  ) {
+    return true;
+  }
+  return false;
+}
 
 function ProviderShell({ children }: { children: React.ReactNode }) {
   const { sidebarCollapsed, isMobile } = useLayoutUI();
   const router = useRouter();
   const pathname = usePathname();
   const [checked, setChecked] = useState(false);
+  const [role, setRole] = useState<
+    "OWNER" | "FLEET_MANAGER" | "OPERATIONS" | "FINANCE" | "CUSTOMER_SERVICE"
+  >("OWNER");
+  const [canListCars, setCanListCars] = useState<boolean>(true);
 
   useEffect(() => {
     // Don't gate the complete-profile page itself
@@ -30,13 +62,28 @@ function ProviderShell({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    getProviderProfile()
-      .then((profile) => {
+    Promise.all([
+      getProviderProfile(),
+      getProviderVerificationStatus().catch(() => null),
+    ])
+      .then(([profile, verification]) => {
+        if (profile.session?.role) {
+          setRole(profile.session.role as typeof role);
+        }
         if (!isProfileComplete(profile)) {
           router.replace(COMPLETE_PROFILE_PATH);
-        } else {
-          setChecked(true);
+          return;
         }
+
+        // Verification gate — block every operational page until verified.
+        const verified = verification?.canListCars ?? false;
+        setCanListCars(verified);
+        if (!verified && !isUnverifiedAllowed(pathname)) {
+          router.replace(VERIFICATION_PATH);
+          return;
+        }
+
+        setChecked(true);
       })
       .catch(() => {
         // If the API fails, allow access (don't hard-block on network errors)
@@ -62,7 +109,12 @@ function ProviderShell({ children }: { children: React.ReactNode }) {
     <div style={styles.wrapper}>
       <Topbar />
       <div style={styles.body}>
-        <Sidebar module="providerRentals" collapsed={sidebarCollapsed} />
+        <Sidebar
+          module="providerRentals"
+          collapsed={sidebarCollapsed}
+          role={role}
+          verified={canListCars}
+        />
         <main style={{ ...styles.main, padding: isMobile ? 16 : 24 }}>
           {children}
         </main>

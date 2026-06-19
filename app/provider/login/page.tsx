@@ -10,6 +10,8 @@ import {
   useState,
 } from "react";
 import toast from "react-hot-toast";
+import { z } from "zod";
+import CountryDialPicker from "@/src/components/common/CountryDialPicker";
 import {
   fetchPublicPlatformConfig,
   type PublicPlatformConfig,
@@ -31,6 +33,26 @@ const initialBrand = {
 
 type AuthMode = "login" | "register" | "forgot" | "reset";
 
+// Mirrors the server-side providerRegisterSchema constraints.
+const RegisterSchema = z.object({
+  businessName: z
+    .string()
+    .trim()
+    .min(2, "Business name must be at least 2 characters")
+    .max(120, "Business name is too long"),
+  email: z.string().trim().email("Enter a valid email"),
+  phone: z
+    .string()
+    .trim()
+    .max(20, "Phone is too long")
+    .optional()
+    .refine((v) => !v || v.length >= 7, "Phone number is too short"),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .max(128, "Password is too long"),
+});
+
 function getMode(value: string | null): AuthMode {
   if (value === "register" || value === "forgot" || value === "reset") {
     return value;
@@ -46,6 +68,9 @@ function ProviderLoginContent() {
   const [businessName, setBusinessName] = useState("");
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
+  // Registered providers pick a country dial code from a searchable picker;
+  // the local number is digits-only and combined at submit time.
+  const [dialCode, setDialCode] = useState("+234");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -134,8 +159,15 @@ function ProviderLoginContent() {
   };
 
   const handleRegister = async () => {
-    if (!businessName || !email || !password) {
-      toast.error("Business name, email, and password are required");
+    const fullPhone = phone ? `${dialCode}${phone}` : "";
+    const parsed = RegisterSchema.safeParse({
+      businessName,
+      email,
+      phone: fullPhone,
+      password,
+    });
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? "Invalid form data");
       return;
     }
 
@@ -146,10 +178,10 @@ function ProviderLoginContent() {
         "provider_register",
       );
       const response = await registerProvider({
-        businessName,
-        email,
-        phone,
-        password,
+        businessName: parsed.data.businessName,
+        email: parsed.data.email,
+        phone: parsed.data.phone,
+        password: parsed.data.password,
         recaptchaToken,
       });
       toast.success(response.message);
@@ -324,11 +356,22 @@ function ProviderLoginContent() {
               </label>
               <label style={styles.field}>
                 <span style={styles.label}>Phone</span>
-                <input
-                  style={styles.input}
-                  value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
-                />
+                <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+                  <CountryDialPicker
+                    value={dialCode}
+                    onChange={setDialCode}
+                  />
+                  <input
+                    style={{ ...styles.input, flex: 1 }}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="801 234 5678"
+                    value={phone}
+                    onChange={(event) =>
+                      setPhone(event.target.value.replace(/[^0-9]/g, ""))
+                    }
+                  />
+                </div>
               </label>
             </>
           )}

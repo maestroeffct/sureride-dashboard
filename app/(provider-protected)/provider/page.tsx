@@ -3,7 +3,15 @@
 import { type CSSProperties, type ReactNode, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { CarFront, CircleDollarSign, MapPin, ShieldCheck, TimerReset } from "lucide-react";
+import {
+  CarFront,
+  CheckCircle2,
+  Circle,
+  CircleDollarSign,
+  MapPin,
+  ShieldCheck,
+  TimerReset,
+} from "lucide-react";
 import {
   getProviderDashboardStats,
   getProviderProfile,
@@ -11,6 +19,10 @@ import {
   type ProviderProfile,
 } from "@/src/lib/providerApi";
 import VerificationBanner from "@/src/components/provider/VerificationBanner";
+import VerificationCelebration from "@/src/components/provider/VerificationCelebration";
+import { useProviderVerification } from "@/src/hooks/useProviderVerification";
+
+const CELEBRATION_FLAG_KEY = "sureride_verification_celebrated";
 
 const emptyStats: ProviderDashboardStats = {
   totalCars: 0,
@@ -36,6 +48,28 @@ export default function ProviderOverviewPage() {
   const [profile, setProfile] = useState<ProviderProfile | null>(null);
   const [stats, setStats] = useState<ProviderDashboardStats>(emptyStats);
   const [loading, setLoading] = useState(true);
+  const [celebrate, setCelebrate] = useState(false);
+  const verification = useProviderVerification();
+
+  // Fire the celebration overlay the *first* time a provider lands on the
+  // dashboard with canListCars=true. We persist a flag in localStorage so we
+  // never show it twice for the same provider/browser.
+  useEffect(() => {
+    if (verification.loading) return;
+    if (!verification.canListCars) return;
+    if (typeof window === "undefined") return;
+    if (window.localStorage.getItem(CELEBRATION_FLAG_KEY) === "1") return;
+    setCelebrate(true);
+  }, [verification.loading, verification.canListCars]);
+
+  const dismissCelebration = () => {
+    setCelebrate(false);
+    try {
+      window.localStorage.setItem(CELEBRATION_FLAG_KEY, "1");
+    } catch {
+      // localStorage can throw in private mode — non-fatal.
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -93,9 +127,113 @@ export default function ProviderOverviewPage() {
     [profile?._count?.locations, stats],
   );
 
+  // Post-verification onboarding only. Verification itself is handled by
+  // the dedicated VerificationBanner / Verification Center, so we don't
+  // duplicate it as a checklist row here.
+  const onboardingSteps = useMemo(() => {
+    const locationsDone = (profile?._count?.locations ?? 0) > 0;
+    const insuranceDone = (profile?._count?.insurancePackages ?? 0) > 0;
+    const carsDone = (profile?._count?.cars ?? 0) > 0;
+    return [
+      {
+        key: "location",
+        title: "Add a business location",
+        body: "Where your fleet is based. You can add more later.",
+        href: "/provider/locations",
+        cta: "Add location",
+        done: locationsDone,
+      },
+      {
+        key: "insurance",
+        title: "Set up an insurance package",
+        body: "Add at least one insurance option so renters can pick coverage.",
+        href: "/provider/insurance",
+        cta: "Add insurance",
+        done: insuranceDone,
+        locked: !locationsDone,
+      },
+      {
+        key: "car",
+        title: "List your first car",
+        body: "Add a car to your fleet. It'll go to admin for review.",
+        href: "/provider/cars/new",
+        cta: "Add car",
+        done: carsDone,
+        locked: !locationsDone,
+      },
+    ];
+  }, [profile]);
+
+  // Only show the post-verification checklist once the provider is verified
+  // AND still has at least one outstanding setup step. Until verification is
+  // approved, the VerificationBanner handles the messaging.
+  const showOnboarding =
+    !loading &&
+    verification.canListCars &&
+    onboardingSteps.some((s) => !s.done);
+
   return (
     <div style={styles.page}>
+      <VerificationCelebration
+        open={celebrate}
+        providerName={profile?.name}
+        onClose={dismissCelebration}
+      />
+
       <VerificationBanner capability="any" variant="full" />
+
+      {showOnboarding && (
+        <section style={styles.checklist}>
+          <div style={styles.checklistHeader}>
+            <h2 style={styles.checklistTitle}>You're in — finish setting up</h2>
+            <p style={styles.checklistSubtitle}>
+              You've been verified. Add a location, set up insurance, then list
+              your first car.
+            </p>
+          </div>
+          <ol style={styles.checklistList}>
+            {onboardingSteps.map((step, idx) => (
+              <li
+                key={step.key}
+                style={{
+                  ...styles.checklistItem,
+                  opacity: step.locked && !step.done ? 0.55 : 1,
+                }}
+              >
+                <div style={styles.checklistIcon}>
+                  {step.done ? (
+                    <CheckCircle2 size={22} color="#16a34a" />
+                  ) : (
+                    <Circle size={22} color="#94a3b8" />
+                  )}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={styles.checklistStepTitle}>
+                    Step {idx + 1}: {step.title}
+                  </div>
+                  <div style={styles.checklistBody}>{step.body}</div>
+                </div>
+                {step.done ? (
+                  <span style={styles.checklistDone}>Done</span>
+                ) : (
+                  <Link
+                    href={step.href}
+                    style={{
+                      ...styles.checklistCta,
+                      ...(step.locked
+                        ? { pointerEvents: "none", background: "#e5e7eb" }
+                        : {}),
+                    }}
+                  >
+                    {step.cta}
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
       <section style={styles.hero}>
         <div style={styles.heroContent}>
           <p style={styles.eyebrow}>Provider Console</p>
@@ -118,9 +256,19 @@ export default function ProviderOverviewPage() {
         </div>
 
         <div style={styles.heroActions}>
-          <Link href="/provider/cars/new" style={styles.primaryButton}>
-            Add Car
-          </Link>
+          {verification.canListCars ? (
+            <Link href="/provider/cars/new" style={styles.primaryButton}>
+              Add Car
+            </Link>
+          ) : (
+            <Link
+              href="/provider/verification"
+              style={{ ...styles.primaryButton, background: "#ef4444" }}
+              title="Verify your business first"
+            >
+              Verify business to add cars
+            </Link>
+          )}
           <Link href="/provider/locations" style={styles.secondaryButton}>
             Manage Locations
           </Link>
@@ -456,6 +604,74 @@ const styles: Record<string, CSSProperties> = {
     flexDirection: "column",
     gap: 22,
     maxWidth: 1360,
+  },
+  checklist: {
+    background:
+      "linear-gradient(160deg, rgba(15,23,42,0.6), rgba(15,118,110,0.12))",
+    border: "1px solid rgba(255,255,255,0.08)",
+    borderRadius: 18,
+    padding: 22,
+    display: "flex",
+    flexDirection: "column",
+    gap: 14,
+    color: "var(--foreground)",
+  },
+  checklistHeader: { display: "flex", flexDirection: "column", gap: 4 },
+  checklistTitle: {
+    margin: 0,
+    fontSize: 18,
+    fontWeight: 700,
+    color: "var(--foreground)",
+  },
+  checklistSubtitle: {
+    margin: 0,
+    color: "var(--muted-foreground, #94a3b8)",
+    fontSize: 13,
+  },
+  checklistList: {
+    listStyle: "none",
+    margin: 0,
+    padding: 0,
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+  },
+  checklistItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: 14,
+    padding: "14px 16px",
+    background: "rgba(15,23,42,0.55)",
+    border: "1px solid rgba(255,255,255,0.06)",
+    borderRadius: 12,
+  },
+  checklistIcon: { display: "flex" },
+  checklistStepTitle: {
+    fontWeight: 600,
+    fontSize: 14,
+    color: "var(--foreground)",
+  },
+  checklistBody: {
+    fontSize: 12,
+    color: "var(--muted-foreground, #94a3b8)",
+    marginTop: 2,
+  },
+  checklistDone: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#86efac",
+    background: "rgba(34,197,94,0.18)",
+    padding: "4px 10px",
+    borderRadius: 999,
+  },
+  checklistCta: {
+    fontSize: 13,
+    fontWeight: 600,
+    color: "#fff",
+    background: "var(--brand-primary, #0f766e)",
+    padding: "8px 14px",
+    borderRadius: 8,
+    textDecoration: "none",
   },
   hero: {
     borderRadius: 28,
