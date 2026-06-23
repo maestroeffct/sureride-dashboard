@@ -152,6 +152,7 @@ export default function ProviderDetailPage() {
                       ? "suspended"
                       : "draft"
               }
+              isVerified={provider.isVerified}
             />
           </div>
           <p style={styles.subtitle}>

@@ -163,6 +163,19 @@ export function useNotifications() {
   }, []);
 
   const fetchNotifications = useCallback(async (isInitial = false) => {
+    // Topbar is shared between admin and provider portals. The admin
+    // notifications endpoint requires an ADMIN token — if there isn't one
+    // in localStorage we'd just spam 401s. Short-circuit silently.
+    if (typeof window !== "undefined") {
+      const adminToken = window.localStorage
+        .getItem("sureride_admin_token")
+        ?.trim();
+      if (!adminToken) {
+        setLoading(false);
+        return;
+      }
+    }
+
     if (isInitial) setLoading(true);
     try {
       const data = await listAdminNotifications({ limit: 30 });

@@ -191,7 +191,10 @@ export default function ProvidersTable({
                   <td style={styles.td}>{p.pendingCars}</td>
 
                   <td style={styles.td}>
-                    <ProviderStatusBadge status={p.status} />
+                    <ProviderStatusBadge
+                      status={p.status}
+                      isVerified={p.isVerified}
+                    />
                   </td>
 
                   <td style={styles.td}>

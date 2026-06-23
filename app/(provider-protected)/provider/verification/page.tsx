@@ -669,7 +669,10 @@ function BankAccountSection({
       if (verify.method === "stripe-financial-connections") {
         setBankName(verify.bankName);
         setAccountName(verify.accountName);
-        setAccountNumber(`••••${verify.accountNumberLast4}`);
+        // Stripe never exposes the full account number — only last4. Store
+        // bare digits so the USD schema regex (/^\d{4,17}$/) passes; the
+        // bullets are added at render time below.
+        setAccountNumber(verify.accountNumberLast4);
         setNameVerified(true);
         setVerifyMethod("stripe-financial-connections");
         toast.success("Bank connected via Stripe");
@@ -876,7 +879,7 @@ function BankAccountSection({
             <Field label="Account Number">
               <input
                 style={s.input}
-                value={accountNumber}
+                value={accountNumber ? `••••${accountNumber}` : ""}
                 placeholder="••••XXXX"
                 readOnly
                 disabled

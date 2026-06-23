@@ -977,8 +977,18 @@ export type ProviderStaffMember = {
   acceptedAt: string | null;
 };
 
-export function listProviderStaff() {
-  return providerApiRequest<ProviderStaffMember[]>("/provider/staff");
+export async function listProviderStaff() {
+  // Defensive: if the backend returns something that isn't an array (e.g.
+  // an HTML 404 page during a botched deploy), fall back to [] so the
+  // dashboard renders the empty state instead of crashing on .map().
+  try {
+    const res = await providerApiRequest<ProviderStaffMember[] | unknown>(
+      "/provider/staff",
+    );
+    return Array.isArray(res) ? (res as ProviderStaffMember[]) : [];
+  } catch {
+    return [];
+  }
 }
 
 export function inviteProviderStaff(payload: {

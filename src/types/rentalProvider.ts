@@ -12,6 +12,7 @@ export interface RentalProvider {
   activeCars: number;
   pendingCars: number;
   status: ProviderStatus;
+  isVerified?: boolean;
   joinedOn: string; // ISO date
 }
 
