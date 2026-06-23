@@ -564,28 +564,40 @@ function StepVehicle({
       />
       <div style={f.grid2}>
         <Field label="Brand *">
-          <input
+          <select
             style={f.input}
-            list="brand-list"
-            placeholder="e.g. Toyota"
             value={form.brand}
-            onChange={(e) => set("brand", e.target.value)}
-          />
-          <datalist id="brand-list">
-            {brands.map((b) => <option key={b.id} value={b.name} />)}
-          </datalist>
+            onChange={(e) => {
+              set("brand", e.target.value);
+              // Clear the model when brand changes — old model may not belong
+              // to the new brand and would silently be wrong.
+              if (form.model) set("model", "");
+            }}
+          >
+            <option value="">Select a brand</option>
+            {brands.map((b) => (
+              <option key={b.id} value={b.name}>
+                {b.name}
+              </option>
+            ))}
+          </select>
         </Field>
         <Field label="Model *">
-          <input
+          <select
             style={f.input}
-            list="model-list"
-            placeholder="e.g. Camry"
             value={form.model}
             onChange={(e) => set("model", e.target.value)}
-          />
-          <datalist id="model-list">
-            {modelOptions.map((m) => <option key={m.id} value={m.name} />)}
-          </datalist>
+            disabled={!form.brand}
+          >
+            <option value="">
+              {form.brand ? "Select a model" : "Select a brand first"}
+            </option>
+            {modelOptions.map((m) => (
+              <option key={m.id} value={m.name}>
+                {m.name}
+              </option>
+            ))}
+          </select>
         </Field>
       </div>
       <div style={f.grid3}>
@@ -666,6 +678,11 @@ function StepSpecs({ form, set }: { form: CarForm; set: <K extends keyof CarForm
             value={form.mileagePolicy}
             onChange={(v) => set("mileagePolicy", v as MileagePolicy)}
           />
+          <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b" }}>
+            {form.mileagePolicy === "UNLIMITED"
+              ? "Renters can drive any distance during the rental period — no extra charges."
+              : "A per-day mileage cap applies; renters pay an overage fee for any extra distance."}
+          </p>
         </Field>
       </div>
     </div>

@@ -7,6 +7,7 @@ import ProvidersTable from "@/src/components/rentals/providers/ProvidersTable";
 import ProvidersFilters from "@/src/components/rentals/providers/ProvidersFilters";
 import { RentalProvider } from "@/src/types/rentalProvider";
 import { listProviders } from "@/src/lib/providersApi";
+import { downloadCsv, downloadPdf } from "@/src/lib/exportTable";
 
 export default function RentalProvidersPage() {
   const [search, setSearch] = useState("");
@@ -59,6 +60,58 @@ export default function RentalProvidersPage() {
     return () => clearTimeout(timeout);
   }, [loadProviders]);
 
+  const exportHeaders = [
+    "Name",
+    "Contact",
+    "Email",
+    "Phone",
+    "City",
+    "Total Cars",
+    "Active Cars",
+    "Pending Cars",
+    "Status",
+    "Verified",
+    "Joined On",
+  ];
+
+  const exportRows = () =>
+    providers.map((p) => [
+      p.name,
+      p.contactPerson,
+      p.email,
+      p.phone,
+      [p.city, p.state].filter(Boolean).join(", "),
+      p.totalCars,
+      p.activeCars,
+      p.pendingCars,
+      p.status,
+      p.isVerified ? "Yes" : "No",
+      new Date(p.joinedOn).toISOString().slice(0, 10),
+    ]);
+
+  const handleExportCsv = () => {
+    if (providers.length === 0) {
+      toast.error("Nothing to export");
+      return;
+    }
+    downloadCsv("sureride-providers", exportHeaders, exportRows());
+    setExportOpen(false);
+  };
+
+  const handleExportPdf = () => {
+    if (providers.length === 0) {
+      toast.error("Nothing to export");
+      return;
+    }
+    downloadPdf(
+      "sureride-providers",
+      "Rental Providers",
+      exportHeaders,
+      exportRows(),
+    );
+    setExportOpen(false);
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <div
@@ -84,16 +137,10 @@ export default function RentalProvidersPage() {
 
             {exportOpen && (
               <div style={styles.exportDropdown}>
-                <button
-                  style={styles.exportItem}
-                  onClick={() => setExportOpen(false)}
-                >
+                <button style={styles.exportItem} onClick={handleExportCsv}>
                   Export CSV
                 </button>
-                <button
-                  style={styles.exportItem}
-                  onClick={() => setExportOpen(false)}
-                >
+                <button style={styles.exportItem} onClick={handleExportPdf}>
                   Export PDF
                 </button>
               </div>

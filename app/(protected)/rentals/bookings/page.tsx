@@ -13,6 +13,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { listAdminBookings, cancelAdminBooking, type AdminBookingRow } from "@/src/lib/adminBookingsApi";
+import { downloadCsv, downloadPdf } from "@/src/lib/exportTable";
 
 type BookingStatus =
   | "Upcoming"
@@ -219,6 +220,60 @@ export default function RentalBookingsPage() {
     return base;
   }, [rows]);
 
+  const exportHeaders = [
+    "Booking ID",
+    "Created",
+    "Customer",
+    "Phone",
+    "Car",
+    "Provider",
+    "Pickup",
+    "Return",
+    "Amount",
+    "Currency",
+    "Payment",
+    "Status",
+  ];
+
+  const exportRows = () =>
+    filtered.map((r) => [
+      r.id,
+      new Date(r.createdAt).toISOString().slice(0, 10),
+      r.customerName,
+      r.customerPhone,
+      r.carName,
+      r.providerName,
+      r.pickupAt,
+      r.returnAt,
+      r.amount,
+      r.currency,
+      r.paymentStatus,
+      r.status,
+    ]);
+
+  const handleExportCsv = () => {
+    if (filtered.length === 0) {
+      window.alert("Nothing to export");
+      return;
+    }
+    downloadCsv("sureride-bookings", exportHeaders, exportRows());
+    setExportOpen(false);
+  };
+
+  const handleExportPdf = () => {
+    if (filtered.length === 0) {
+      window.alert("Nothing to export");
+      return;
+    }
+    downloadPdf(
+      "sureride-bookings",
+      "Rental Bookings",
+      exportHeaders,
+      exportRows(),
+    );
+    setExportOpen(false);
+  };
+
   return (
     <div style={styles.page}>
       {/* HEADER */}
@@ -246,16 +301,10 @@ export default function RentalBookingsPage() {
 
             {exportOpen && (
               <div style={styles.exportDropdown}>
-                <button
-                  style={styles.exportItem}
-                  onClick={() => setExportOpen(false)}
-                >
+                <button style={styles.exportItem} onClick={handleExportCsv}>
                   Export CSV
                 </button>
-                <button
-                  style={styles.exportItem}
-                  onClick={() => setExportOpen(false)}
-                >
+                <button style={styles.exportItem} onClick={handleExportPdf}>
                   Export PDF
                 </button>
               </div>

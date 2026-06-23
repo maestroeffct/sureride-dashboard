@@ -501,6 +501,11 @@ export default function ProviderEditCarPage() {
               <option value="UNLIMITED">Unlimited</option>
               <option value="LIMITED">Limited</option>
             </select>
+            <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b" }}>
+              {form.mileagePolicy === "UNLIMITED"
+                ? "Renters can drive any distance during the rental period — no extra charges."
+                : "A per-day mileage cap applies; renters pay an overage fee for any extra distance."}
+            </p>
           </Field>
           <Field label="Air Conditioning">
             <select

@@ -192,47 +192,6 @@ export const rentalsMenu: SidebarItem[] = [
     ],
   },
   {
-    label: "Platform Settings",
-    icon: sidebarIcons.settings,
-    children: [
-      {
-        label: "3rd Party & Configuration",
-        path: "/rentals/platform/third-party-configuration",
-        icon: sidebarIcons.settings,
-      },
-      {
-        label: "App & Web Settings",
-        path: "/rentals/platform/app-web-settings",
-        icon: sidebarIcons.settings,
-      },
-      {
-        label: "Notification Channels",
-        path: "/rentals/platform/notification-channels",
-        icon: sidebarIcons.pendingProviders,
-      },
-      {
-        label: "Notification Messages",
-        path: "/rentals/platform/notification-messages",
-        icon: sidebarIcons.claims,
-      },
-      {
-        label: "Landing Page Settings",
-        path: "/rentals/platform/landing-page-settings",
-        icon: sidebarIcons.settings,
-      },
-      {
-        label: "Page Meta Data",
-        path: "/rentals/platform/page-meta-data",
-        icon: sidebarIcons.reports,
-      },
-      {
-        label: "Clean Database",
-        path: "/rentals/platform/clean-database",
-        icon: sidebarIcons.claims,
-      },
-    ],
-  },
-  {
     label: "Employee Management",
     icon: sidebarIcons.users,
     children: [
@@ -276,6 +235,47 @@ export const rentalsMenu: SidebarItem[] = [
         label: "Push Notification",
         path: "/rentals/promotions/push-notification",
         icon: sidebarIcons.pendingProviders,
+      },
+    ],
+  },
+  {
+    label: "Platform Settings",
+    icon: sidebarIcons.settings,
+    children: [
+      {
+        label: "3rd Party & Configuration",
+        path: "/rentals/platform/third-party-configuration",
+        icon: sidebarIcons.settings,
+      },
+      {
+        label: "App & Web Settings",
+        path: "/rentals/platform/app-web-settings",
+        icon: sidebarIcons.settings,
+      },
+      {
+        label: "Notification Channels",
+        path: "/rentals/platform/notification-channels",
+        icon: sidebarIcons.pendingProviders,
+      },
+      {
+        label: "Notification Messages",
+        path: "/rentals/platform/notification-messages",
+        icon: sidebarIcons.claims,
+      },
+      {
+        label: "Landing Page Settings",
+        path: "/rentals/platform/landing-page-settings",
+        icon: sidebarIcons.settings,
+      },
+      {
+        label: "Page Meta Data",
+        path: "/rentals/platform/page-meta-data",
+        icon: sidebarIcons.reports,
+      },
+      {
+        label: "Clean Database",
+        path: "/rentals/platform/clean-database",
+        icon: sidebarIcons.claims,
       },
     ],
   },

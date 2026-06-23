@@ -24,6 +24,7 @@ import {
   suspendProvider,
 } from "@/src/lib/providersApi";
 import styles from "./styles";
+import { downloadCsv, downloadPdf } from "@/src/lib/exportTable";
 
 const TABS: ProviderRequestStatus[] = ["PENDING", "APPROVED", "REJECTED"];
 
@@ -169,6 +170,60 @@ export default function ProviderRequestsPage() {
     [query, rows],
   );
 
+  const exportHeaders = [
+    "Business Name",
+    "Type",
+    "Contact",
+    "Email",
+    "Phone",
+    "City",
+    "State",
+    "Source",
+    "Status",
+    "Submitted",
+  ];
+
+  const exportRowsData = () =>
+    filtered.map((r) => [
+      r.businessName,
+      r.businessType ?? "",
+      r.contactName ?? "",
+      r.contactEmail,
+      r.contactPhone ?? "",
+      r.city ?? "",
+      r.state ?? "",
+      r.source,
+      r.status,
+      new Date(r.createdAt).toISOString().slice(0, 10),
+    ]);
+
+  const handleExportCsv = () => {
+    if (filtered.length === 0) {
+      toast.error("Nothing to export");
+      return;
+    }
+    downloadCsv(
+      `sureride-provider-requests-${tab.toLowerCase()}`,
+      exportHeaders,
+      exportRowsData(),
+    );
+    setExportOpen(false);
+  };
+
+  const handleExportPdf = () => {
+    if (filtered.length === 0) {
+      toast.error("Nothing to export");
+      return;
+    }
+    downloadPdf(
+      `sureride-provider-requests-${tab.toLowerCase()}`,
+      `Provider Requests — ${tab}`,
+      exportHeaders,
+      exportRowsData(),
+    );
+    setExportOpen(false);
+  };
+
   const statusStyle = (status: ProviderRequestStatus) => ({
     ...styles.statusPill,
     ...(status === "PENDING"
@@ -252,16 +307,10 @@ export default function ProviderRequestsPage() {
 
             {exportOpen && (
               <div style={styles.exportDropdown}>
-                <button
-                  style={styles.exportItem}
-                  onClick={() => setExportOpen(false)}
-                >
+                <button style={styles.exportItem} onClick={handleExportCsv}>
                   Export CSV
                 </button>
-                <button
-                  style={styles.exportItem}
-                  onClick={() => setExportOpen(false)}
-                >
+                <button style={styles.exportItem} onClick={handleExportPdf}>
                   Export PDF
                 </button>
               </div>
