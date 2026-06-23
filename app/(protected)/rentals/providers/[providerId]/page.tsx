@@ -8,7 +8,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import { ExternalLink, MapPin, Wallet, FileText, CarFront } from "lucide-react";
+import { ExternalLink, MapPin, Wallet, FileText, CarFront, Star } from "lucide-react";
 import toast from "react-hot-toast";
 import ProviderStatusBadge from "@/src/components/rentals/providers/ProviderStatusBadge";
 import ProviderActionsBar from "@/src/components/rentals/providers/ProviderActionsBar";
@@ -205,6 +205,16 @@ export default function ProviderDetailPage() {
           }
           icon={<Wallet size={16} />}
         />
+        <KpiCard
+          label="Rating"
+          value={
+            provider.ratings.reviewCount > 0 &&
+            provider.ratings.averageRating !== null
+              ? `${provider.ratings.averageRating.toFixed(1)} / 5  (${provider.ratings.reviewCount})`
+              : "No reviews"
+          }
+          icon={<Star size={16} />}
+        />
       </section>
 
       <div style={styles.tabs}>
@@ -276,6 +286,94 @@ export default function ProviderDetailPage() {
                 value={provider.payoutAccount ? "Configured" : "Not configured"}
               />
             </div>
+          </section>
+
+          <section style={{ ...styles.card, gridColumn: "1 / -1" }}>
+            <div style={styles.sectionHeader}>
+              <h2 style={styles.cardTitle}>Reviews</h2>
+              <span style={styles.sectionMeta}>
+                {provider.ratings.reviewCount > 0 &&
+                provider.ratings.averageRating !== null
+                  ? `${provider.ratings.averageRating.toFixed(1)} / 5 across ${provider.ratings.reviewCount} reviews`
+                  : "No reviews yet"}
+              </span>
+            </div>
+            {provider.ratings.recent.length === 0 ? (
+              <div style={styles.empty}>
+                No reviews have been left for this provider&rsquo;s cars yet.
+              </div>
+            ) : (
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 12 }}
+              >
+                {provider.ratings.recent.map((rv) => (
+                  <div
+                    key={rv.id}
+                    style={{
+                      padding: 14,
+                      border: "1px solid var(--input-border)",
+                      borderRadius: 10,
+                      background: "var(--card-bg)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 12,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <Star
+                          size={14}
+                          fill="#f59e0b"
+                          color="#f59e0b"
+                        />
+                        <span style={{ fontWeight: 600, fontSize: 14 }}>
+                          {rv.rating} / 5
+                        </span>
+                        <span style={{ color: "#64748b", fontSize: 13 }}>
+                          · {rv.userDisplayName ?? "Anonymous"}
+                        </span>
+                      </div>
+                      <span style={{ color: "#94a3b8", fontSize: 12 }}>
+                        {new Date(rv.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    {rv.car && (
+                      <p
+                        style={{
+                          margin: "6px 0 0",
+                          fontSize: 12,
+                          color: "#64748b",
+                        }}
+                      >
+                        {rv.car.brand} {rv.car.model}
+                      </p>
+                    )}
+                    {rv.comment && (
+                      <p
+                        style={{
+                          margin: "8px 0 0",
+                          fontSize: 13,
+                          lineHeight: 1.5,
+                          color: "var(--text)",
+                        }}
+                      >
+                        &ldquo;{rv.comment}&rdquo;
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
         </div>
       )}

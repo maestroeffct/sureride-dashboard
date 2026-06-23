@@ -108,6 +108,18 @@ export type ProviderDetailApi = {
     documentsCount: number;
     locationsCount: number;
   };
+  ratings: {
+    averageRating: number | null;
+    reviewCount: number;
+    recent: Array<{
+      id: string;
+      rating: number;
+      comment: string | null;
+      userDisplayName: string | null;
+      createdAt: string;
+      car: { id: string; brand: string; model: string } | null;
+    }>;
+  };
 };
 
 function normalizeProviderDetail(data: any): ProviderDetailApi {
@@ -188,6 +200,32 @@ function normalizeProviderDetail(data: any): ProviderDetailApi {
       pendingCars,
       documentsCount,
       locationsCount,
+    },
+    ratings: {
+      averageRating:
+        typeof data?.ratings?.averageRating === "number"
+          ? data.ratings.averageRating
+          : null,
+      reviewCount:
+        typeof data?.ratings?.reviewCount === "number"
+          ? data.ratings.reviewCount
+          : 0,
+      recent: Array.isArray(data?.ratings?.recent)
+        ? data.ratings.recent.map((r: any) => ({
+            id: String(r?.id ?? ""),
+            rating: Number(r?.rating ?? 0),
+            comment: r?.comment ?? null,
+            userDisplayName: r?.userDisplayName ?? null,
+            createdAt: String(r?.createdAt ?? new Date().toISOString()),
+            car: r?.car
+              ? {
+                  id: String(r.car?.id ?? ""),
+                  brand: String(r.car?.brand ?? ""),
+                  model: String(r.car?.model ?? ""),
+                }
+              : null,
+          }))
+        : [],
     },
   };
 }
