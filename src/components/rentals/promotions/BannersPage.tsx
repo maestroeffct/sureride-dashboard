@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import toast from "react-hot-toast";
-import { Plus, Trash2, ExternalLink, Image as ImageIcon, MoveUp, MoveDown } from "lucide-react";
+import { Plus, Trash2, ExternalLink, Image as ImageIcon, MoveUp, MoveDown, Crown } from "lucide-react";
 import {
   listPlatformSettingsDraft,
   savePlatformSettingsDraft,
@@ -54,6 +54,25 @@ function emptyBanner(): Banner {
   };
 }
 
+function limousineBanner(): Banner {
+  // Pre-filled limousine-service promo. Admin still needs to upload the
+  // hero image and confirm the CTA URL before activating in production.
+  const today = new Date().toISOString().slice(0, 10);
+  const later = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return {
+    id: uid(),
+    title: "Ride in style — Limousine service available on request",
+    imageUrl: "",
+    ctaLabel: "Request a limousine",
+    ctaUrl: "/contact?topic=limousine",
+    placement: "HOME_HERO",
+    startDate: today,
+    endDate: later,
+    isActive: false, // Off by default so admin can upload the image first
+    sortOrder: 1,
+  };
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 export default function BannersPage() {
@@ -93,6 +112,17 @@ export default function BannersPage() {
     const next = [...banners, { ...emptyBanner(), sortOrder: banners.length + 1 }];
     void persist(next);
     toast.success("Banner added — fill in the details");
+  };
+
+  const addLimousineBanner = () => {
+    const next = [
+      ...banners,
+      { ...limousineBanner(), sortOrder: banners.length + 1 },
+    ];
+    void persist(next);
+    toast.success(
+      "Limousine banner added — upload the hero image, then activate",
+    );
   };
 
   const updateBanner = (id: string, patch: Partial<Banner>) => {
@@ -144,6 +174,10 @@ export default function BannersPage() {
           </p>
         </div>
         <div style={s.headerActions}>
+          <button style={s.addBtn} onClick={addLimousineBanner}>
+            <Crown size={15} />
+            Limousine Promo
+          </button>
           <button style={s.addBtn} onClick={addBanner}>
             <Plus size={15} />
             New Banner
