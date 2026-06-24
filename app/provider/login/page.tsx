@@ -21,6 +21,7 @@ import {
   loginProvider,
   registerProvider,
   requestProviderPasswordReset,
+  requestProviderRegistrationOtp,
   resetProviderPassword,
 } from "@/src/lib/providerApi";
 import { useIsMobile } from "@/src/hooks/useIsMobile";
@@ -76,6 +77,12 @@ function ProviderLoginContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Provider register is a two-step flow now: first request an email OTP,
+  // then submit register with the code. `awaitingOtp` flips on after the
+  // code is sent so the OTP input + Verify button replace the Register CTA.
+  const [awaitingOtp, setAwaitingOtp] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
   const [platformConfig, setPlatformConfig] = useState<PublicPlatformConfig | null>(
     null,
   );
@@ -108,6 +115,10 @@ function ProviderLoginContent() {
   );
 
   const setMode = (nextMode: AuthMode) => {
+    // Reset the OTP step whenever the auth mode flips so users don't see
+    // a stale "Verify & Create Account" CTA after switching from register.
+    setAwaitingOtp(false);
+    setOtpCode("");
     const params = new URLSearchParams(searchParams.toString());
     if (nextMode === "login") {
       params.delete("mode");
@@ -158,8 +169,47 @@ function ProviderLoginContent() {
     }
   };
 
-  const handleRegister = async () => {
+  // Phase 1: validate the form, then email a 6-digit OTP. We don't submit
+  // the register payload yet — `awaitingOtp` reveals the OTP input.
+  const handleRequestRegisterOtp = async () => {
     const fullPhone = phone ? `${dialCode}${phone}` : "";
+    const parsed = RegisterSchema.safeParse({
+      businessName,
+      email,
+      phone: fullPhone,
+      password,
+    });
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? "Invalid form data");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await requestProviderRegistrationOtp(parsed.data.email);
+      toast.success(response.message);
+      setOtpCode("");
+      setAwaitingOtp(true);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not send verification code",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Phase 2: user has the email code — verify + actually create the
+  // provider record (which the backend gates on the same OTP).
+  const handleVerifyAndRegister = async () => {
+    const fullPhone = phone ? `${dialCode}${phone}` : "";
+    if (!/^\d{6}$/.test(otpCode.trim())) {
+      toast.error("Enter the 6-digit code from your email");
+      return;
+    }
+
     const parsed = RegisterSchema.safeParse({
       businessName,
       email,
@@ -182,16 +232,35 @@ function ProviderLoginContent() {
         email: parsed.data.email,
         phone: parsed.data.phone,
         password: parsed.data.password,
+        otp: otpCode.trim(),
         recaptchaToken,
       });
       toast.success(response.message);
       setBusinessName("");
       setPassword("");
       setPhone("");
+      setOtpCode("");
+      setAwaitingOtp(false);
       setMode("login");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to register provider",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendRegisterOtp = async () => {
+    try {
+      setLoading(true);
+      const response = await requestProviderRegistrationOtp(email);
+      toast.success(response.message);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not resend verification code",
       );
     } finally {
       setLoading(false);
@@ -397,6 +466,42 @@ function ProviderLoginContent() {
             </label>
           )}
 
+          {mode === "register" && awaitingOtp && (
+            <label style={styles.field}>
+              <span style={styles.label}>Email Verification Code</span>
+              <input
+                style={styles.input}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                autoFocus
+                placeholder="6-digit code"
+                value={otpCode}
+                onChange={(e) =>
+                  setOtpCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))
+                }
+              />
+              <button
+                type="button"
+                onClick={handleResendRegisterOtp}
+                disabled={loading}
+                style={{
+                  alignSelf: "flex-start",
+                  marginTop: 6,
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  fontSize: 12,
+                  color: brand.brandColor,
+                  cursor: loading ? "not-allowed" : "pointer",
+                  textDecoration: "underline",
+                }}
+              >
+                Resend code
+              </button>
+            </label>
+          )}
+
           {mode === "reset" && (
             <>
               <label style={styles.field}>
@@ -435,7 +540,9 @@ function ProviderLoginContent() {
             style={{ ...styles.button, background: brand.brandColor }}
             onClick={
               mode === "register"
-                ? handleRegister
+                ? awaitingOtp
+                  ? handleVerifyAndRegister
+                  : handleRequestRegisterOtp
                 : mode === "forgot"
                 ? handleForgotPassword
                 : mode === "reset"
@@ -446,20 +553,48 @@ function ProviderLoginContent() {
           >
             {loading
               ? mode === "register"
-                ? "Submitting..."
+                ? awaitingOtp
+                  ? "Verifying..."
+                  : "Sending code..."
                 : mode === "forgot"
                 ? "Sending..."
                 : mode === "reset"
                   ? "Resetting..."
                   : "Signing In..."
               : mode === "register"
-                ? "Create Provider Account"
+                ? awaitingOtp
+                  ? "Verify & Create Account"
+                  : "Send Verification Code"
                 : mode === "forgot"
                 ? "Send Reset Link"
                 : mode === "reset"
                   ? "Reset Password"
                   : "Sign In"}
           </button>
+
+          {mode === "register" && awaitingOtp && (
+            <button
+              type="button"
+              onClick={() => {
+                setAwaitingOtp(false);
+                setOtpCode("");
+              }}
+              disabled={loading}
+              style={{
+                alignSelf: "center",
+                marginTop: 8,
+                background: "none",
+                border: "none",
+                padding: 0,
+                fontSize: 12,
+                color: "#64748b",
+                cursor: loading ? "not-allowed" : "pointer",
+                textDecoration: "underline",
+              }}
+            >
+              Edit details
+            </button>
+          )}
 
           <div style={styles.footerLinks}>
             {mode === "login" && (

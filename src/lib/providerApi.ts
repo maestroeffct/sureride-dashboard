@@ -71,6 +71,8 @@ export type ProviderRegisterPayload = {
   email: string;
   phone?: string;
   password: string;
+  /** 6-digit email-verification code from /provider/auth/register/request-otp */
+  otp: string;
 };
 
 export type ProviderProfile = {
@@ -450,6 +452,16 @@ export function registerProvider(
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export function requestProviderRegistrationOtp(email: string) {
+  return providerApiRequest<{ message: string; expiresInSeconds: number }>(
+    "/provider/auth/register/request-otp",
+    {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    },
+  );
 }
 
 export function requestProviderPasswordReset(
