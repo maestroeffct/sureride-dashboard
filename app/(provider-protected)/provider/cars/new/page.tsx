@@ -17,7 +17,11 @@ import {
   type ProviderCarModelOption,
   type ProviderCreateCarPayload,
 } from "@/src/lib/providerApi";
-import { currencyForCountryCode } from "@/src/lib/currencyForCountry";
+import {
+  SUPPORTED_CURRENCIES,
+  currencyForCountryCode,
+  currencyForCountryCodeByCurrency,
+} from "@/src/lib/currencyForCountry";
 import { MIN_DAILY_RATE, MIN_HOURLY_RATE } from "@/src/lib/rateLimits";
 import { useProviderVerification } from "@/src/hooks/useProviderVerification";
 import { ShieldAlert } from "lucide-react";
@@ -41,6 +45,9 @@ type CarForm = {
   hasAC: boolean;
   dailyRate: string;
   hourlyRate: string;
+  // Empty string = "auto from location"; once the user picks anything else
+  // we treat it as an explicit override and stop syncing with location.
+  currency: string;
 };
 
 type StepKey = "vehicle" | "specs" | "pricing" | "photos" | "review";
@@ -68,6 +75,7 @@ const INITIAL: CarForm = {
   hasAC: true,
   dailyRate: "",
   hourlyRate: "",
+  currency: "",
 };
 
 type CsvRow = Record<string, string>;
@@ -237,6 +245,11 @@ export default function ProviderAddCarPage() {
 
     try {
       setSaving(true);
+      const effectiveCurrency =
+        form.currency ||
+        currencyForCountryCode(
+          locations.find((l) => l.id === form.locationId)?.countryCode,
+        ).code;
       const payload: ProviderCreateCarPayload = {
         locationId: form.locationId,
         brand: form.brand.trim(),
@@ -250,6 +263,7 @@ export default function ProviderAddCarPage() {
         mileagePolicy: form.mileagePolicy,
         dailyRate: daily,
         hourlyRate: form.hourlyRate ? Number(form.hourlyRate) : null,
+        currency: effectiveCurrency,
       };
       const res = await createProviderCar(payload);
       const carId = res.car.id;
@@ -374,7 +388,7 @@ export default function ProviderAddCarPage() {
                 groupedFeatures={groupedFeatures}
                 selectedFeatureIds={selectedFeatureIds}
                 toggleFeature={toggleFeature}
-                currency={currencyForCountryCode(
+                locationCurrency={currencyForCountryCode(
                   locations.find((l) => l.id === form.locationId)?.countryCode,
                 )}
               />
@@ -692,30 +706,55 @@ function StepSpecs({ form, set }: { form: CarForm; set: <K extends keyof CarForm
 // ── Step 3: Pricing & Features ────────────────────────────────────────────────
 
 function StepPricingFeatures({
-  form, set, groupedFeatures, selectedFeatureIds, toggleFeature, currency,
+  form, set, groupedFeatures, selectedFeatureIds, toggleFeature, locationCurrency,
 }: {
   form: CarForm;
   set: <K extends keyof CarForm>(k: K, v: CarForm[K]) => void;
   groupedFeatures: [string, Array<{ id: string; name: string }>][];
   selectedFeatureIds: string[];
   toggleFeature: (id: string) => void;
-  currency: { code: string; symbol: string };
+  locationCurrency: { code: string; symbol: string };
 }) {
+  // Effective currency: provider-set override wins, else falls back to the
+  // location's currency. Empty `form.currency` means "auto from location".
+  const effective = form.currency
+    ? currencyForCountryCodeByCurrency(form.currency)
+    : locationCurrency;
+  const isOverridden = !!form.currency && form.currency !== locationCurrency.code;
+
   return (
     <div style={f.wrapper}>
       <StepHeader title="Pricing & Features" desc="Set daily and hourly rates, then add available amenities." />
 
+      <div style={f.grid2}>
+        <Field label="Currency">
+          <select
+            style={f.input}
+            value={form.currency || locationCurrency.code}
+            onChange={(e) => set("currency", e.target.value)}
+          >
+            {SUPPORTED_CURRENCIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.code} {c.symbol ? `(${c.symbol})` : ""}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <div />
+      </div>
+
       <p style={{ fontSize: 12, color: "#475569", margin: "0 0 12px" }}>
-        Currency auto-set from your fleet location:{" "}
-        <strong>{currency.code}</strong>. Minimum daily rate{" "}
-        {currency.symbol}{MIN_DAILY_RATE.toLocaleString()}, minimum hourly{" "}
-        {currency.symbol}{MIN_HOURLY_RATE.toLocaleString()}.
+        {isOverridden
+          ? `Charging in ${effective.code} (overrides location default ${locationCurrency.code}).`
+          : `Defaulted to ${effective.code} from your fleet location — change above if you want to charge in a different currency.`}{" "}
+        Minimum daily rate {effective.symbol}{MIN_DAILY_RATE.toLocaleString()},
+        minimum hourly {effective.symbol}{MIN_HOURLY_RATE.toLocaleString()}.
       </p>
 
       <div style={f.grid2}>
-        <Field label={`Daily Rate (${currency.code}) *`}>
+        <Field label={`Daily Rate (${effective.code}) *`}>
           <div style={f.inputPrefixed}>
-            <span style={f.prefix}>{currency.symbol}</span>
+            <span style={f.prefix}>{effective.symbol}</span>
             <input
               style={{ ...f.input, paddingLeft: 34 }}
               type="number"
@@ -726,9 +765,9 @@ function StepPricingFeatures({
             />
           </div>
         </Field>
-        <Field label={`Hourly Rate (${currency.code})`}>
+        <Field label={`Hourly Rate (${effective.code})`}>
           <div style={f.inputPrefixed}>
-            <span style={f.prefix}>{currency.symbol}</span>
+            <span style={f.prefix}>{effective.symbol}</span>
             <input
               style={{ ...f.input, paddingLeft: 34 }}
               type="number"

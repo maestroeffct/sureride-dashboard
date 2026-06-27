@@ -44,3 +44,24 @@ export function currencyForCountryCode(code?: string | null): CurrencyInfo {
     }
   );
 }
+
+// De-duplicated list of currencies the platform supports — derived from the
+// country→currency map so we never drift. Used to populate the currency
+// override dropdown on the provider Add Car form.
+export const SUPPORTED_CURRENCIES: CurrencyInfo[] = (() => {
+  const seen = new Map<string, CurrencyInfo>();
+  for (const info of Object.values(CURRENCY_BY_COUNTRY)) {
+    if (!seen.has(info.code)) seen.set(info.code, info);
+  }
+  return Array.from(seen.values()).sort((a, b) => a.code.localeCompare(b.code));
+})();
+
+export function currencyForCountryCodeByCurrency(code: string): CurrencyInfo {
+  const upper = code.trim().toUpperCase();
+  return (
+    SUPPORTED_CURRENCIES.find((c) => c.code === upper) ?? {
+      code: upper || "NGN",
+      symbol: upper || "₦",
+    }
+  );
+}

@@ -226,6 +226,8 @@ export type ProviderCreateCarPayload = {
   mileagePolicy: string;
   dailyRate: number;
   hourlyRate?: number | null;
+  /** ISO 4217 currency code chosen by the provider for this car. */
+  currency?: string;
 };
 
 export type ProviderCarBrandOption = {

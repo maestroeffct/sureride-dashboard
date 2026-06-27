@@ -22,7 +22,11 @@ import {
   type ProviderCarModelOption,
   type ProviderLocation,
 } from "@/src/lib/providerApi";
-import { currencyForCountryCode } from "@/src/lib/currencyForCountry";
+import {
+  SUPPORTED_CURRENCIES,
+  currencyForCountryCode,
+  currencyForCountryCodeByCurrency,
+} from "@/src/lib/currencyForCountry";
 import { MIN_DAILY_RATE, MIN_HOURLY_RATE } from "@/src/lib/rateLimits";
 
 type FormState = {
@@ -38,6 +42,8 @@ type FormState = {
   dailyRate: string;
   hourlyRate: string;
   hasAC: boolean;
+  // Empty = "inherit from location currency"; any code = explicit override.
+  currency: string;
 };
 
 export default function ProviderEditCarPage() {
@@ -86,6 +92,7 @@ export default function ProviderEditCarPage() {
           dailyRate: String(carData.dailyRate ?? ""),
           hourlyRate: carData.hourlyRate != null ? String(carData.hourlyRate) : "",
           hasAC: carData.hasAC ?? true,
+          currency: (carData as { currency?: string | null }).currency ?? "",
         });
         setSelectedFeatureIds(carData.features.map((f) => f.featureId));
         setLocations(
@@ -216,6 +223,11 @@ export default function ProviderEditCarPage() {
         mileagePolicy: form.mileagePolicy,
         dailyRate: daily,
         hourlyRate: form.hourlyRate ? Number(form.hourlyRate) : null,
+        currency:
+          form.currency ||
+          currencyForCountryCode(
+            locations.find((l) => l.id === form.locationId)?.countryCode,
+          ).code,
       });
 
       await attachProviderCarFeatures(carId, selectedFeatureIds);
@@ -264,9 +276,13 @@ export default function ProviderEditCarPage() {
 
   const isFlagged = car.status === "FLAGGED";
   const isDraftOrRejected = car.status === "DRAFT" || car.status === "REJECTED";
-  const currency = currencyForCountryCode(
+  const locationCurrency = currencyForCountryCode(
     locations.find((l) => l.id === form.locationId)?.countryCode,
   );
+  // Effective currency: provider override wins; falls back to location.
+  const currency = form.currency
+    ? currencyForCountryCodeByCurrency(form.currency)
+    : locationCurrency;
 
   return (
     <div style={s.page}>
@@ -518,6 +534,24 @@ export default function ProviderEditCarPage() {
               <option value="no">No</option>
             </select>
           </Field>
+        </div>
+
+        <div style={s.grid2}>
+          <Field label="Currency">
+            <select
+              style={s.input}
+              value={form.currency || locationCurrency.code}
+              onChange={(e) => setField("currency", e.target.value)}
+              disabled={isFlagged}
+            >
+              {SUPPORTED_CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.code} {c.symbol ? `(${c.symbol})` : ""}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <div />
         </div>
 
         <div style={s.grid2}>
