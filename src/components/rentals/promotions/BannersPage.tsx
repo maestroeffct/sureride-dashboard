@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import toast from "react-hot-toast";
-import { Plus, Trash2, ExternalLink, Image as ImageIcon, MoveUp, MoveDown, Crown } from "lucide-react";
+import { Plus, Trash2, ExternalLink, Image as ImageIcon, MoveUp, MoveDown, Crown, Info } from "lucide-react";
 import {
   listPlatformSettingsDraft,
   savePlatformSettingsDraft,
@@ -192,6 +192,47 @@ export default function BannersPage() {
         </div>
       </div>
 
+      {/* CTA URL guidance — mobile app uses Linking.openURL, which requires a
+          full URL scheme. Relative paths like "/contact" silently no-op, so
+          surface the rules here before admins paste one in. */}
+      <div style={s.infoCard}>
+        <div style={s.infoHeader}>
+          <Info size={15} />
+          <span>CTA URL formats — what works in the mobile app</span>
+        </div>
+        <p style={s.infoBody}>
+          The CTA URL must include a scheme. Plain paths like{" "}
+          <code style={s.code}>/contact?topic=limousine</code> won&rsquo;t open
+          anything in the app. Use one of:
+        </p>
+        <ul style={s.infoList}>
+          <li>
+            <strong>Web link</strong> —{" "}
+            <code style={s.code}>https://surerideautoservices.com/contact?topic=limousine</code>
+          </li>
+          <li>
+            <strong>Phone call</strong> — <code style={s.code}>tel:+2348012345678</code>
+          </li>
+          <li>
+            <strong>Email</strong> —{" "}
+            <code style={s.code}>mailto:hello@surerideautoservices.com?subject=Limousine</code>
+          </li>
+          <li>
+            <strong>WhatsApp</strong> —{" "}
+            <code style={s.code}>https://wa.me/2348012345678?text=Hi%2C%20I%27d%20like%20a%20limousine</code>
+          </li>
+          <li>
+            <strong>App deep link</strong> —{" "}
+            <code style={s.code}>sureride://contact?topic=limousine</code>{" "}
+            (requires the scheme + handler to be wired in the app).
+          </li>
+        </ul>
+        <p style={{ ...s.infoBody, marginTop: 8, marginBottom: 0 }}>
+          Leave CTA URL empty and the banner becomes purely decorative — no
+          tap target.
+        </p>
+      </div>
+
       {banners.length === 0 ? (
         <div style={s.empty}>
           No banners yet. Click <strong>New Banner</strong> to add one.
@@ -360,6 +401,46 @@ const s: Record<string, CSSProperties> = {
   saveBtn: { padding: "9px 22px", borderRadius: 10, border: "none", background: "var(--brand-primary)", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 700 },
 
   empty: { padding: 40, textAlign: "center", border: "1px dashed var(--input-border)", borderRadius: 14, color: "var(--muted-foreground)", fontSize: 13 },
+
+  infoCard: {
+    background: "rgba(18,117,197,0.06)",
+    border: "1px solid rgba(18,117,197,0.25)",
+    borderRadius: 12,
+    padding: "14px 18px",
+    color: "var(--foreground)",
+  },
+  infoHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    fontSize: 13,
+    fontWeight: 700,
+    color: "var(--brand-primary)",
+    marginBottom: 6,
+  },
+  infoBody: {
+    margin: "4px 0 8px",
+    fontSize: 13,
+    color: "var(--muted-foreground)",
+    lineHeight: 1.5,
+  },
+  infoList: {
+    margin: "0 0 0 18px",
+    padding: 0,
+    fontSize: 13,
+    color: "var(--muted-foreground)",
+    lineHeight: 1.8,
+  },
+  code: {
+    background: "var(--surface-2)",
+    border: "1px solid var(--input-border)",
+    borderRadius: 4,
+    padding: "1px 6px",
+    fontSize: 12,
+    color: "var(--foreground)",
+    fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+    whiteSpace: "nowrap",
+  } as CSSProperties,
 
   list: { display: "flex", flexDirection: "column", gap: 14 },
   card: { background: "var(--surface-1)", border: "1px solid var(--input-border)", borderRadius: 14, padding: 16, display: "flex", gap: 16 },
