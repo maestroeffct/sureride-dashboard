@@ -12,12 +12,6 @@ export const rentalsMenu: SidebarItem[] = [
     icon: sidebarIcons.overview,
   },
   {
-    label: "Bookings",
-    path: "/rentals/bookings",
-    icon: sidebarIcons.bookings,
-  },
-
-  {
     kind: "section",
     label: "FINANCE & PAYOUTS",
   },
@@ -103,9 +97,9 @@ export const rentalsMenu: SidebarItem[] = [
         icon: sidebarIcons.pendingProviders,
       },
       {
-        label: "Flagged Cars",
-        path: "/rentals/cars/flagged",
-        icon: sidebarIcons.flaggedCars,
+        label: "Bookings",
+        path: "/rentals/bookings",
+        icon: sidebarIcons.bookings,
       },
       {
         label: "Rentals",

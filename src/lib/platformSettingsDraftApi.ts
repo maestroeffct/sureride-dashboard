@@ -24,7 +24,8 @@ export type PlatformSettingsSection =
   | "promo-campaigns"
   | "promo-cashback"
   | "promo-banners"
-  | "promo-push-history";
+  | "promo-push-history"
+  | "fleet-availability";
 
 export type PlatformSettingsPayload = Record<string, unknown>;
 
