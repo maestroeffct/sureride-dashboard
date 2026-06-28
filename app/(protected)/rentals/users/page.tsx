@@ -18,6 +18,9 @@ import {
   Search,
   ShieldCheck,
   Trash2,
+  Users as UsersIcon,
+  UserCheck,
+  Clock,
   XCircle,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -34,6 +37,7 @@ import type {
   UserKycStatus,
   UserProfileStatus,
 } from "@/src/types/adminUser";
+import AddUserModal from "@/src/components/rentals/users/AddUserModal";
 import styles from "./styles";
 
 const PROFILE_STATUS_OPTIONS: UserProfileStatus[] = [
@@ -105,6 +109,7 @@ export default function UsersManagementPage() {
   const [exportOpen, setExportOpen] = useState(false);
   const [resetTarget, setResetTarget] = useState<AdminUser | null>(null);
   const [sendResetEmail, setSendResetEmail] = useState(true);
+  const [addOpen, setAddOpen] = useState(false);
 
   // Close the open kebab menu when clicking outside or pressing Escape.
   useEffect(() => {
@@ -200,6 +205,20 @@ export default function UsersManagementPage() {
     });
     return arr;
   }, [filteredRows, sortKey, sortDir]);
+
+  // KPI counts derived from the unfiltered `rows` so the tiles always reflect
+  // the dataset, not the current filter view.
+  const kpiCounts = useMemo(() => {
+    let active = 0;
+    let pending = 0;
+    let authenticated = 0;
+    for (const u of rows) {
+      if (u.isActive) active += 1;
+      if (u.profileStatus === "PENDING_VERIFICATION") pending += 1;
+      if (u.profileStatus === "VERIFIED") authenticated += 1;
+    }
+    return { total: rows.length, active, pending, authenticated };
+  }, [rows]);
 
   const totalRows = sortedRows.length;
   const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
@@ -409,10 +428,41 @@ export default function UsersManagementPage() {
             )}
           </div>
 
-          <Link href="/rentals/users/new" style={styles.actionBtn}>
+          <button
+            type="button"
+            style={styles.actionBtn}
+            onClick={() => setAddOpen(true)}
+          >
             Add User
-          </Link>
+          </button>
         </div>
+      </div>
+
+      <div style={kpiGrid}>
+        <UserKpiCard
+          label="Total Users"
+          value={kpiCounts.total}
+          hint="All users in database"
+          icon={<UsersIcon size={16} />}
+        />
+        <UserKpiCard
+          label="Active"
+          value={kpiCounts.active}
+          hint="Currently active users"
+          icon={<CheckCircleAlt size={16} />}
+        />
+        <UserKpiCard
+          label="Authenticated"
+          value={kpiCounts.authenticated}
+          hint="Profile fully verified"
+          icon={<UserCheck size={16} />}
+        />
+        <UserKpiCard
+          label="Pending Review"
+          value={kpiCounts.pending}
+          hint="KYC awaiting admin"
+          icon={<Clock size={16} />}
+        />
       </div>
 
       <div style={styles.filtersRow}>
@@ -790,7 +840,37 @@ export default function UsersManagementPage() {
           </div>
         </div>
       ) : null}
+
+      <AddUserModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onCreated={() => void loadUsers()}
+      />
     </div>
+  );
+}
+
+// ── KPI tile ────────────────────────────────────────────────────────────────
+function UserKpiCard({
+  label,
+  value,
+  hint,
+  icon,
+}: {
+  label: string;
+  value: number;
+  hint: string;
+  icon: React.ReactNode;
+}) {
+  return (
+    <article style={kpiCard}>
+      <div style={kpiCardHeader}>
+        <span style={kpiCardLabel}>{label}</span>
+        <span style={kpiCardIcon}>{icon}</span>
+      </div>
+      <strong style={kpiCardValue}>{value}</strong>
+      <span style={kpiCardHint}>{hint}</span>
+    </article>
   );
 }
 
@@ -940,3 +1020,52 @@ const pagerLabel: CSSPropertiesShort = {
 // Local alias so we don't have to import CSSProperties from react in this file
 // (it's already imported via the top-of-file styles barrel).
 type CSSPropertiesShort = React.CSSProperties;
+
+// KPI tile styles — token-only (no gradients) so they sit cleanly next to the
+// rest of the admin design system.
+const kpiGrid: CSSPropertiesShort = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: 14,
+};
+const kpiCard: CSSPropertiesShort = {
+  background: "var(--surface-1)",
+  border: "1px solid var(--input-border)",
+  borderRadius: 14,
+  padding: "16px 18px",
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+};
+const kpiCardHeader: CSSPropertiesShort = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+};
+const kpiCardLabel: CSSPropertiesShort = {
+  fontSize: 12,
+  fontWeight: 600,
+  color: "var(--muted-foreground)",
+  textTransform: "uppercase",
+  letterSpacing: 0.4,
+};
+const kpiCardIcon: CSSPropertiesShort = {
+  display: "inline-flex",
+  width: 28,
+  height: 28,
+  borderRadius: 8,
+  background: "var(--surface-2)",
+  color: "var(--brand-primary)",
+  alignItems: "center",
+  justifyContent: "center",
+};
+const kpiCardValue: CSSPropertiesShort = {
+  fontSize: 28,
+  fontWeight: 700,
+  color: "var(--foreground)",
+  lineHeight: 1.1,
+};
+const kpiCardHint: CSSPropertiesShort = {
+  fontSize: 12,
+  color: "var(--muted-foreground)",
+};

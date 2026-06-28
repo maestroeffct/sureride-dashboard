@@ -313,6 +313,7 @@ type FormState = {
   storageCloudinaryApiKey: string;
   storageCloudinaryApiSecret: string;
   storageCloudinaryFolder: string;
+  storageCloudinaryUploadPreset: string;
 
   socialGoogleEnabled: boolean;
   socialGoogleCallbackUrl: string;
@@ -382,6 +383,7 @@ const INITIAL_STATE: FormState = {
   storageCloudinaryApiKey: "",
   storageCloudinaryApiSecret: "",
   storageCloudinaryFolder: "",
+  storageCloudinaryUploadPreset: "",
 
   socialGoogleEnabled: false,
   socialGoogleCallbackUrl: "",
@@ -2566,6 +2568,29 @@ export default function ThirdPartyConfigurationPage() {
                   }
                 />
               </Field>
+              <Field label="Upload Preset">
+                <input
+                  style={styles.input}
+                  value={form.storageCloudinaryUploadPreset}
+                  onChange={(event) =>
+                    set("storageCloudinaryUploadPreset", event.target.value)
+                  }
+                  placeholder="e.g. sureride_default (optional)"
+                />
+                <p
+                  style={{
+                    margin: "6px 0 0",
+                    fontSize: 12,
+                    color: "var(--muted-foreground)",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Name of an unsigned upload preset configured in your
+                  Cloudinary dashboard. When set, uploads apply the preset&rsquo;s
+                  transformations, access mode and tags automatically. Leave
+                  empty for signed uploads.
+                </p>
+              </Field>
             </>
           ) : (
             <>
@@ -2638,6 +2663,8 @@ export default function ThirdPartyConfigurationPage() {
                   storageCloudinaryApiSecret:
                     INITIAL_STATE.storageCloudinaryApiSecret,
                   storageCloudinaryFolder: INITIAL_STATE.storageCloudinaryFolder,
+                  storageCloudinaryUploadPreset:
+                    INITIAL_STATE.storageCloudinaryUploadPreset,
                 }))
               }
             >
@@ -2660,6 +2687,7 @@ export default function ThirdPartyConfigurationPage() {
                   storageCloudinaryApiKey: form.storageCloudinaryApiKey,
                   storageCloudinaryApiSecret: form.storageCloudinaryApiSecret,
                   storageCloudinaryFolder: form.storageCloudinaryFolder,
+                  storageCloudinaryUploadPreset: form.storageCloudinaryUploadPreset,
                 })
               }
               disabled={savingSection === "storage-connection"}
