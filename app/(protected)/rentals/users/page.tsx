@@ -5,12 +5,19 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Ban,
   CheckCircle2,
+  CheckCircle as CheckCircleAlt,
   ChevronDown,
+  ChevronUp,
   Download,
   Eye,
   KeyRound,
+  Mail,
+  MoreHorizontal,
+  Pencil,
+  Phone,
   Search,
   ShieldCheck,
+  Trash2,
   XCircle,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -79,10 +86,51 @@ export default function UsersManagementPage() {
   const [profileStatus, setProfileStatus] = useState<UserProfileStatus | "">("");
   const [verifiedFilter, setVerifiedFilter] = useState<"all" | "verified" | "unverified">("all");
   const [activeFilter, setActiveFilter] = useState<"all" | "active" | "suspended">("all");
+  // User Type filter — Authenticated = fully verified user, Guest = not yet.
+  // Lets admin scope the list to onboarding-incomplete accounts when triaging.
+  const [userTypeFilter, setUserTypeFilter] = useState<"all" | "authenticated" | "guest">("all");
+
+  // Sort state — clickable headers cycle the same key asc → desc → asc.
+  type SortKey = "name" | "type" | "joined";
+  const [sortKey, setSortKey] = useState<SortKey>("joined");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  // Pagination — client-side over the loaded page (we already fetch up to 100).
+  const PAGE_SIZE = 20;
+  const [page, setPage] = useState(1);
+
+  // 3-dot action menu — id of the row whose menu is open.
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const [exportOpen, setExportOpen] = useState(false);
   const [resetTarget, setResetTarget] = useState<AdminUser | null>(null);
   const [sendResetEmail, setSendResetEmail] = useState(true);
+
+  // Close the open kebab menu when clicking outside or pressing Escape.
+  useEffect(() => {
+    if (!openMenuId) return;
+    const onClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target?.closest?.("[data-row-menu]") && !target?.closest?.("[data-row-menu-trigger]")) {
+        setOpenMenuId(null);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenMenuId(null);
+    };
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [openMenuId]);
+
+  // Reset to page 1 whenever filters/search change so the user isn't stranded
+  // on page 5 of a now 3-page result set.
+  useEffect(() => {
+    setPage(1);
+  }, [search, profileStatus, verifiedFilter, activeFilter, userTypeFilter]);
 
   const loadUsers = useCallback(async () => {
     try {
@@ -120,11 +168,65 @@ export default function UsersManagementPage() {
     return () => clearTimeout(timeout);
   }, [loadUsers]);
 
+  // Derive the user-type label used in the Type column + filter. Authenticated
+  // = profile fully verified by KYC review. Anything else (incomplete signup,
+  // pending review, rejected) reads as Guest in the admin's mental model.
+  const userTypeOf = (user: AdminUser): "Authenticated" | "Guest" =>
+    user.profileStatus === "VERIFIED" ? "Authenticated" : "Guest";
+
+  const filteredRows = useMemo(() => {
+    if (userTypeFilter === "all") return rows;
+    return rows.filter((u) => userTypeOf(u).toLowerCase() === userTypeFilter);
+  }, [rows, userTypeFilter]);
+
+  const sortedRows = useMemo(() => {
+    const arr = [...filteredRows];
+    arr.sort((a, b) => {
+      let av: string | number = "";
+      let bv: string | number = "";
+      if (sortKey === "name") {
+        av = `${a.firstName} ${a.lastName}`.toLowerCase();
+        bv = `${b.firstName} ${b.lastName}`.toLowerCase();
+      } else if (sortKey === "type") {
+        av = userTypeOf(a);
+        bv = userTypeOf(b);
+      } else {
+        av = new Date(a.createdAt).getTime();
+        bv = new Date(b.createdAt).getTime();
+      }
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return arr;
+  }, [filteredRows, sortKey, sortDir]);
+
+  const totalRows = sortedRows.length;
+  const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pagedRows = useMemo(
+    () => sortedRows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
+    [sortedRows, safePage],
+  );
+  const rangeFrom = totalRows === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const rangeTo = Math.min(totalRows, safePage * PAGE_SIZE);
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
   const downloadableRows = useMemo(
     () =>
-      rows.map((user) => ({
+      sortedRows.map((user) => ({
         id: user.id,
         name: `${user.firstName} ${user.lastName}`.trim(),
+        type: userTypeOf(user),
+        verified: user.isVerified ? "Verified" : "Unverified",
         email: user.email,
         phone: `${user.phoneCountry}${user.phoneNumber}`,
         nationality: user.nationality,
@@ -132,13 +234,15 @@ export default function UsersManagementPage() {
         kycStatus: normalizeKycStatusText(getKycStatus(user)),
         joinedOn: new Date(user.createdAt).toISOString(),
       })),
-    [rows],
+    [sortedRows],
   );
 
   const exportCsv = () => {
     const header = [
       "ID",
       "Name",
+      "Type",
+      "Verified",
       "Email",
       "Phone No",
       "Nationality",
@@ -151,6 +255,8 @@ export default function UsersManagementPage() {
       [
         row.id,
         row.name,
+        row.type,
+        row.verified,
         row.email,
         row.phone,
         row.nationality,
@@ -365,6 +471,20 @@ export default function UsersManagementPage() {
           <option value="active">Active</option>
           <option value="suspended">Suspended</option>
         </select>
+
+        <select
+          value={userTypeFilter}
+          onChange={(e) =>
+            setUserTypeFilter(
+              (e.target.value as "all" | "authenticated" | "guest") || "all",
+            )
+          }
+          style={styles.select}
+        >
+          <option value="all">User Type</option>
+          <option value="authenticated">Authenticated</option>
+          <option value="guest">Guest</option>
+        </select>
       </div>
 
       <div style={styles.card}>
@@ -372,156 +492,200 @@ export default function UsersManagementPage() {
           <table style={styles.table}>
             <thead>
               <tr style={styles.theadRow}>
-                <th style={styles.th}>S/N</th>
-                <th style={styles.th}>Name</th>
-                <th style={styles.th}>Email</th>
-                <th style={styles.th}>Phone No</th>
-                <th style={styles.th}>Nationality</th>
-                <th style={styles.th}>Profile Status</th>
-                <th style={styles.th}>KYC</th>
-                <th style={styles.th}>Joined</th>
-                <th style={styles.thRight}>Action</th>
+                <th
+                  style={{ ...styles.th, cursor: "pointer" }}
+                  onClick={() => toggleSort("name")}
+                >
+                  <SortHeader label="Name" active={sortKey === "name"} dir={sortDir} />
+                </th>
+                <th
+                  style={{ ...styles.th, cursor: "pointer" }}
+                  onClick={() => toggleSort("type")}
+                >
+                  <SortHeader label="Type" active={sortKey === "type"} dir={sortDir} />
+                </th>
+                <th style={styles.th}>Verified</th>
+                <th style={styles.th}>Contact</th>
+                <th
+                  style={{ ...styles.th, cursor: "pointer" }}
+                  onClick={() => toggleSort("joined")}
+                >
+                  <SortHeader label="Joined" active={sortKey === "joined"} dir={sortDir} />
+                </th>
+                <th style={styles.th}>View</th>
+                <th style={styles.thRight}>Actions</th>
               </tr>
             </thead>
 
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={9} style={styles.empty}>
+                  <td colSpan={7} style={styles.empty}>
                     Loading users...
                   </td>
                 </tr>
-              ) : rows.length === 0 ? (
+              ) : pagedRows.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={styles.empty}>
+                  <td colSpan={7} style={styles.empty}>
                     No users found.
                   </td>
                 </tr>
               ) : (
-                rows.map((user, index) => {
+                pagedRows.map((user) => {
                   const kycStatus = getKycStatus(user);
-                  const activeBusy = processingId === `${user.id}:active`;
-                  const verifyBusy = processingId === `${user.id}:verify`;
-                  const resetBusy = processingId === `${user.id}:reset-password`;
-                  const approveKycBusy = processingId === `${user.id}:kyc-approve`;
-                  const rejectKycBusy = processingId === `${user.id}:kyc-reject`;
-                  const kycBusy = approveKycBusy || rejectKycBusy;
+                  const type = userTypeOf(user);
+                  const menuOpen = openMenuId === user.id;
+                  const anyBusy =
+                    processingId === `${user.id}:active` ||
+                    processingId === `${user.id}:verify` ||
+                    processingId === `${user.id}:reset-password` ||
+                    processingId === `${user.id}:kyc-approve` ||
+                    processingId === `${user.id}:kyc-reject`;
 
                   return (
                     <tr key={user.id} style={styles.tr}>
-                      <td style={styles.td}>{index + 1}</td>
-                      <td style={styles.td}>{user.firstName} {user.lastName}</td>
-                      <td style={styles.td}>{user.email}</td>
-                      <td style={styles.td}>{user.phoneCountry}{user.phoneNumber}</td>
-                      <td style={styles.td}>{user.nationality || "-"}</td>
+                      <td style={styles.td}>
+                        <strong style={{ fontWeight: 600 }}>
+                          {user.firstName} {user.lastName}
+                        </strong>
+                      </td>
 
                       <td style={styles.td}>
                         <span
-                          style={{
-                            ...styles.statusPill,
-                            ...profilePillStyle(user.profileStatus),
-                          }}
+                          style={
+                            type === "Authenticated"
+                              ? typePillAuthenticated
+                              : typePillGuest
+                          }
                         >
-                          {user.profileStatus}
+                          {type}
                         </span>
                       </td>
 
                       <td style={styles.td}>
                         <span
-                          style={{
-                            ...styles.statusPill,
-                            ...kycPillStyle(kycStatus),
-                          }}
+                          style={
+                            user.isVerified
+                              ? verifiedTextYes
+                              : verifiedTextNo
+                          }
                         >
-                          {normalizeKycStatusText(kycStatus)}
+                          {user.isVerified ? "Verified" : "Unverified"}
                         </span>
                       </td>
 
-                      <td style={styles.td}>{new Date(user.createdAt).toLocaleDateString()}</td>
+                      <td style={styles.td}>
+                        <div style={contactStack}>
+                          <span style={contactLine}>
+                            <Mail size={12} /> {user.email}
+                          </span>
+                          {user.phoneNumber ? (
+                            <span style={contactLineMuted}>
+                              <Phone size={12} /> {user.phoneCountry}
+                              {user.phoneNumber}
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
+
+                      <td style={styles.td}>
+                        {new Date(user.createdAt).toLocaleDateString()}
+                      </td>
+
+                      <td style={styles.td}>
+                        <Link
+                          href={`/rentals/users/${user.id}`}
+                          style={styles.actionBtn}
+                          title="View user"
+                        >
+                          <Eye size={15} />
+                        </Link>
+                      </td>
 
                       <td style={styles.tdRight}>
-                        <div style={styles.actions}>
-                          <Link
-                            href={`/rentals/users/${user.id}`}
+                        <div style={{ position: "relative", display: "inline-block" }}>
+                          <button
+                            type="button"
+                            data-row-menu-trigger
                             style={styles.actionBtn}
-                            title="View user"
+                            title="More actions"
+                            disabled={anyBusy}
+                            onClick={() =>
+                              setOpenMenuId(menuOpen ? null : user.id)
+                            }
                           >
-                            <Eye size={15} />
-                          </Link>
-
-                          <button
-                            type="button"
-                            style={{
-                              ...styles.actionBtn,
-                              ...styles.resetPasswordBtn,
-                              opacity: resetBusy ? 0.5 : 1,
-                            }}
-                            title="Reset password"
-                            onClick={() => { setResetTarget(user); setSendResetEmail(true); }}
-                            disabled={resetBusy}
-                          >
-                            <KeyRound size={15} />
+                            <MoreHorizontal size={15} />
                           </button>
-
-                          {kycStatus === "PENDING_VERIFICATION" && (
-                            <>
+                          {menuOpen ? (
+                            <div data-row-menu style={kebabMenu}>
+                              <Link
+                                href={`/rentals/users/${user.id}`}
+                                style={kebabItem}
+                                onClick={() => setOpenMenuId(null)}
+                              >
+                                <Pencil size={14} /> Edit
+                              </Link>
+                              {!user.isVerified ? (
+                                <button
+                                  type="button"
+                                  style={kebabItem}
+                                  onClick={() => {
+                                    setOpenMenuId(null);
+                                    void handleToggleVerification(user);
+                                  }}
+                                >
+                                  <ShieldCheck size={14} /> Start Verification
+                                </button>
+                              ) : null}
+                              {kycStatus === "PENDING_VERIFICATION" ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    style={kebabItem}
+                                    onClick={() => {
+                                      setOpenMenuId(null);
+                                      void handleApproveKyc(user);
+                                    }}
+                                  >
+                                    <CheckCircleAlt size={14} /> Approve KYC
+                                  </button>
+                                  <button
+                                    type="button"
+                                    style={kebabItem}
+                                    onClick={() => {
+                                      setOpenMenuId(null);
+                                      void handleRejectKyc(user);
+                                    }}
+                                  >
+                                    <XCircle size={14} /> Reject KYC
+                                  </button>
+                                </>
+                              ) : null}
                               <button
                                 type="button"
-                                style={{
-                                  ...styles.actionBtn,
-                                  ...styles.kycApproveBtn,
-                                  opacity: kycBusy ? 0.5 : 1,
+                                style={kebabItem}
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  setResetTarget(user);
+                                  setSendResetEmail(true);
                                 }}
-                                title="Approve KYC"
-                                onClick={() => void handleApproveKyc(user)}
-                                disabled={kycBusy}
                               >
-                                <CheckCircle2 size={15} />
+                                <KeyRound size={14} /> Reset Password
                               </button>
-
+                              <div style={kebabDivider} />
                               <button
                                 type="button"
-                                style={{
-                                  ...styles.actionBtn,
-                                  ...styles.kycRejectBtn,
-                                  opacity: kycBusy ? 0.5 : 1,
+                                style={{ ...kebabItem, ...kebabItemDanger }}
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  void handleToggleActive(user);
                                 }}
-                                title="Reject KYC"
-                                onClick={() => void handleRejectKyc(user)}
-                                disabled={kycBusy}
                               >
-                                <XCircle size={15} />
+                                <Ban size={14} />{" "}
+                                {user.isActive ? "Block User" : "Unblock User"}
                               </button>
-                            </>
-                          )}
-
-                          <button
-                            type="button"
-                            style={{
-                              ...styles.actionBtn,
-                              ...styles.verifyBtn,
-                              opacity: verifyBusy ? 0.5 : 1,
-                            }}
-                            title={user.isVerified ? "Remove verification" : "Mark as verified"}
-                            onClick={() => void handleToggleVerification(user)}
-                            disabled={verifyBusy}
-                          >
-                            <ShieldCheck size={15} />
-                          </button>
-
-                          <button
-                            type="button"
-                            style={{
-                              ...styles.actionBtn,
-                              ...(user.isActive ? styles.suspendBtn : styles.activateBtn),
-                              opacity: activeBusy ? 0.5 : 1,
-                            }}
-                            title={user.isActive ? "Suspend user" : "Activate user"}
-                            onClick={() => void handleToggleActive(user)}
-                            disabled={activeBusy}
-                          >
-                            <Ban size={15} />
-                          </button>
+                            </div>
+                          ) : null}
                         </div>
                       </td>
                     </tr>
@@ -531,6 +695,45 @@ export default function UsersManagementPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Footer: count summary + paginator. Hidden while loading so
+            "Showing 0-0 of 0" doesn't flash before data lands. */}
+        {!loading ? (
+          <div style={footerRow}>
+            <span style={footerCount}>
+              Showing {rangeFrom}-{rangeTo} of {totalRows} users
+            </span>
+            <div style={pagerWrap}>
+              <button
+                type="button"
+                style={{
+                  ...pagerBtn,
+                  opacity: safePage <= 1 ? 0.45 : 1,
+                  cursor: safePage <= 1 ? "default" : "pointer",
+                }}
+                disabled={safePage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Previous
+              </button>
+              <span style={pagerLabel}>
+                Page {safePage} of {totalPages}
+              </span>
+              <button
+                type="button"
+                style={{
+                  ...pagerBtn,
+                  opacity: safePage >= totalPages ? 0.45 : 1,
+                  cursor: safePage >= totalPages ? "default" : "pointer",
+                }}
+                disabled={safePage >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
 
 
@@ -590,3 +793,150 @@ export default function UsersManagementPage() {
     </div>
   );
 }
+
+// ── Sortable column header ──────────────────────────────────────────────────
+function SortHeader({
+  label,
+  active,
+  dir,
+}: {
+  label: string;
+  active: boolean;
+  dir: "asc" | "desc";
+}) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      {label}
+      <span
+        style={{
+          display: "inline-flex",
+          flexDirection: "column",
+          lineHeight: 0.6,
+          opacity: active ? 1 : 0.35,
+        }}
+      >
+        <ChevronUp size={9} strokeWidth={3} color={active && dir === "asc" ? "var(--brand-primary)" : "currentColor"} />
+        <ChevronDown size={9} strokeWidth={3} color={active && dir === "desc" ? "var(--brand-primary)" : "currentColor"} />
+      </span>
+    </span>
+  );
+}
+
+// ── Inline styles used only by the new column layout ────────────────────────
+const typePillBase: CSSPropertiesShort = {
+  display: "inline-block",
+  padding: "3px 10px",
+  borderRadius: 999,
+  fontSize: 12,
+  fontWeight: 600,
+};
+const typePillAuthenticated: CSSPropertiesShort = {
+  ...typePillBase,
+  background: "rgba(34,197,94,0.12)",
+  color: "var(--brand-secondary)",
+};
+const typePillGuest: CSSPropertiesShort = {
+  ...typePillBase,
+  background: "var(--surface-2)",
+  color: "var(--muted-foreground)",
+  border: "1px solid var(--input-border)",
+};
+const verifiedTextYes: CSSPropertiesShort = {
+  color: "var(--brand-secondary)",
+  fontSize: 13,
+  fontWeight: 600,
+};
+const verifiedTextNo: CSSPropertiesShort = {
+  color: "var(--muted-foreground)",
+  fontSize: 13,
+};
+const contactStack: CSSPropertiesShort = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 4,
+};
+const contactLine: CSSPropertiesShort = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  fontSize: 13,
+  color: "var(--foreground)",
+};
+const contactLineMuted: CSSPropertiesShort = {
+  ...contactLine,
+  color: "var(--muted-foreground)",
+  fontSize: 12,
+};
+
+const kebabMenu: CSSPropertiesShort = {
+  position: "absolute",
+  right: 0,
+  top: "calc(100% + 4px)",
+  background: "var(--surface-1)",
+  border: "1px solid var(--input-border)",
+  borderRadius: 10,
+  padding: 6,
+  minWidth: 200,
+  zIndex: 5,
+  boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+  display: "flex",
+  flexDirection: "column",
+  gap: 2,
+};
+const kebabItem: CSSPropertiesShort = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  padding: "8px 10px",
+  borderRadius: 6,
+  background: "transparent",
+  border: "none",
+  cursor: "pointer",
+  color: "var(--foreground)",
+  fontSize: 13,
+  textAlign: "left",
+  textDecoration: "none",
+  width: "100%",
+};
+const kebabItemDanger: CSSPropertiesShort = {
+  color: "#f87171",
+};
+const kebabDivider: CSSPropertiesShort = {
+  height: 1,
+  background: "var(--input-border)",
+  margin: "4px 0",
+};
+
+const footerRow: CSSPropertiesShort = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "14px 18px",
+  borderTop: "1px solid var(--input-border)",
+};
+const footerCount: CSSPropertiesShort = {
+  fontSize: 13,
+  color: "var(--muted-foreground)",
+};
+const pagerWrap: CSSPropertiesShort = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+};
+const pagerBtn: CSSPropertiesShort = {
+  padding: "6px 14px",
+  borderRadius: 8,
+  border: "1px solid var(--input-border)",
+  background: "var(--surface-1)",
+  color: "var(--foreground)",
+  fontSize: 13,
+  fontWeight: 600,
+};
+const pagerLabel: CSSPropertiesShort = {
+  fontSize: 13,
+  color: "var(--muted-foreground)",
+};
+
+// Local alias so we don't have to import CSSProperties from react in this file
+// (it's already imported via the top-of-file styles barrel).
+type CSSPropertiesShort = React.CSSProperties;

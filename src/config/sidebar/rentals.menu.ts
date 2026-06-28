@@ -22,9 +22,35 @@ export const rentalsMenu: SidebarItem[] = [
     label: "FINANCE & PAYOUTS",
   },
   {
-    label: "Finance Overview",
-    path: "/rentals/finance",
+    label: "Finance",
     icon: sidebarIcons.pricing,
+    children: [
+      {
+        label: "Payments",
+        path: "/rentals/finance/payments",
+        icon: sidebarIcons.pricing,
+      },
+      {
+        label: "Invoices",
+        path: "/rentals/finance/invoices",
+        icon: sidebarIcons.pricing,
+      },
+      {
+        label: "Fines",
+        path: "/rentals/finance/fines",
+        icon: sidebarIcons.pricing,
+      },
+      {
+        label: "Expenses",
+        path: "/rentals/finance/expenses",
+        icon: sidebarIcons.pricing,
+      },
+      {
+        label: "Credits",
+        path: "/rentals/finance/credits",
+        icon: sidebarIcons.pricing,
+      },
+    ],
   },
   {
     label: "Provider Payouts",
