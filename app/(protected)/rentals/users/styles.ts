@@ -87,7 +87,8 @@ const styles = {
 
   searchBox: {
     height: 48,
-    width: 420,
+    flex: "1 1 280px",
+    minWidth: 240,
     maxWidth: "100%",
     borderRadius: 12,
     border: "1px solid var(--glass-10)",
@@ -120,13 +121,13 @@ const styles = {
 
   select: {
     height: 44,
-    minWidth: 176,
-    padding: "0 14px",
+    minWidth: 130,
+    padding: "0 12px",
     borderRadius: 12,
     border: "1px solid var(--glass-10)",
     background: "var(--glass-06)",
     color: "var(--foreground)",
-    fontSize: 14,
+    fontSize: 13,
     outline: "none",
   },
 
@@ -135,7 +136,10 @@ const styles = {
 
   table: {
     ...bookingsTableTheme.table,
-    minWidth: 1320,
+    // Sized for the current 7-column layout (Name, Type, Verified, Contact,
+    // Joined, View, Actions). Keep a floor so columns don't squeeze into
+    // unreadable widths on narrow viewports.
+    minWidth: 880,
   },
 
   theadRow: bookingsTableTheme.theadRow,

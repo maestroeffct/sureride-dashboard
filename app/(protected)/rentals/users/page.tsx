@@ -20,6 +20,7 @@ import {
   Trash2,
   Users as UsersIcon,
   UserCheck,
+  UserPlus,
   Clock,
   XCircle,
 } from "lucide-react";
@@ -88,7 +89,6 @@ export default function UsersManagementPage() {
 
   const [search, setSearch] = useState("");
   const [profileStatus, setProfileStatus] = useState<UserProfileStatus | "">("");
-  const [verifiedFilter, setVerifiedFilter] = useState<"all" | "verified" | "unverified">("all");
   const [activeFilter, setActiveFilter] = useState<"all" | "active" | "suspended">("all");
   // User Type filter — Authenticated = fully verified user, Guest = not yet.
   // Lets admin scope the list to onboarding-incomplete accounts when triaging.
@@ -135,7 +135,7 @@ export default function UsersManagementPage() {
   // on page 5 of a now 3-page result set.
   useEffect(() => {
     setPage(1);
-  }, [search, profileStatus, verifiedFilter, activeFilter, userTypeFilter]);
+  }, [search, profileStatus, activeFilter, userTypeFilter]);
 
   const loadUsers = useCallback(async () => {
     try {
@@ -144,10 +144,6 @@ export default function UsersManagementPage() {
       const response = await listAdminUsers({
         q: search.trim() || undefined,
         profileStatus: profileStatus || undefined,
-        isVerified:
-          verifiedFilter === "all"
-            ? undefined
-            : verifiedFilter === "verified",
         isActive:
           activeFilter === "all"
             ? undefined
@@ -163,7 +159,7 @@ export default function UsersManagementPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeFilter, profileStatus, search, verifiedFilter]);
+  }, [activeFilter, profileStatus, search]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -430,10 +426,11 @@ export default function UsersManagementPage() {
 
           <button
             type="button"
-            style={styles.actionBtn}
+            style={addUserBtn}
             onClick={() => setAddOpen(true)}
           >
-            Add User
+            <UserPlus size={15} />
+            <span>Add User</span>
           </button>
         </div>
       </div>
@@ -492,20 +489,6 @@ export default function UsersManagementPage() {
               {status}
             </option>
           ))}
-        </select>
-
-        <select
-          value={verifiedFilter}
-          onChange={(e) =>
-            setVerifiedFilter(
-              (e.target.value as "all" | "verified" | "unverified") || "all",
-            )
-          }
-          style={styles.select}
-        >
-          <option value="all">Verification</option>
-          <option value="verified">Verified</option>
-          <option value="unverified">Unverified</option>
         </select>
 
         <select
@@ -1068,4 +1051,23 @@ const kpiCardValue: CSSPropertiesShort = {
 const kpiCardHint: CSSPropertiesShort = {
   fontSize: 12,
   color: "var(--muted-foreground)",
+};
+
+// Add User — proper text CTA. The earlier `styles.actionBtn` is a 32×32
+// icon-only square, so the label was crammed and unreadable. This mirrors
+// the mint-green primary used elsewhere (Save Working Hours, Banners).
+const addUserBtn: CSSPropertiesShort = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  height: 44,
+  padding: "0 18px",
+  borderRadius: 12,
+  border: "none",
+  background: "var(--brand-secondary)",
+  color: "#022c22",
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: "pointer",
+  whiteSpace: "nowrap",
 };
