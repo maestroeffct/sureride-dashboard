@@ -266,6 +266,11 @@ export const rentalsMenu: SidebarItem[] = [
         path: "/rentals/promotions/push-notification",
         icon: sidebarIcons.pendingProviders,
       },
+      {
+        label: "Limousine Requests",
+        path: "/rentals/promotions/limousine-requests",
+        icon: sidebarIcons.reports,
+      },
     ],
   },
   {

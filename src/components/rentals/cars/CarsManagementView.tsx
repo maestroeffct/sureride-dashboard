@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Ban,
   Check,
@@ -46,7 +47,11 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
   const [detailCarId, setDetailCarId] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
+  // Preselect the status filter from the URL (?status=flagged) so the old
+  // /rentals/cars/flagged links + sidebar deep-links still land scoped.
+  const searchParams = useSearchParams();
+  const initialStatus = mode === "all" ? (searchParams.get("status") ?? "") : "";
+  const [status, setStatus] = useState(initialStatus);
 
   const title =
     mode === "all"
@@ -398,6 +403,32 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
         </div>
       </div>
 
+      {/* Quick status chips — only on the master "all" view. Pending and
+          Flagged dedicated routes already pre-scope, so chips would be
+          redundant there. */}
+      {mode === "all" ? (
+        <div style={chipsRow}>
+          {STATUS_CHIPS.map((c) => {
+            const active = status === c.value;
+            return (
+              <button
+                key={c.value || "all"}
+                type="button"
+                onClick={() => setStatus(c.value)}
+                style={{
+                  ...chipBase,
+                  ...(active
+                    ? c.activeStyle ?? chipActive
+                    : {}),
+                }}
+              >
+                {c.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
       <div style={styles.filtersRow}>
         <div style={styles.searchBox}>
           <input
@@ -411,13 +442,19 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
           </div>
         </div>
 
-        <select value={status} onChange={(e) => setStatus(e.target.value)} style={styles.select}>
-          <option value="">Status</option>
-          <option value="active">Active</option>
-          <option value="pending">Pending</option>
-          <option value="flagged">Flagged</option>
-        </select>
-
+        {mode === "all" ? (
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            style={styles.select}
+          >
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+            <option value="flagged">Flagged</option>
+            <option value="draft">Draft</option>
+          </select>
+        ) : null}
       </div>
 
       <div style={styles.card}>
@@ -730,4 +767,78 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#FCA5A5",
     border: "1px solid rgba(239,68,68,0.22)",
   },
+};
+
+// ── Status filter chips ─────────────────────────────────────────────────────
+// Quick-click filters above the table — same set as the legacy /pending +
+// /flagged routes used to be, but now reachable in one click without leaving
+// All Cars. Flagged keeps its red accent so it stands out in the moderation
+// queue.
+
+const STATUS_CHIPS: Array<{
+  value: string;
+  label: string;
+  activeStyle?: React.CSSProperties;
+}> = [
+  { value: "", label: "All" },
+  {
+    value: "active",
+    label: "Active",
+    activeStyle: {
+      background: "rgba(34,197,94,0.18)",
+      color: "#86EFAC",
+      borderColor: "rgba(34,197,94,0.45)",
+    },
+  },
+  {
+    value: "pending",
+    label: "Pending",
+    activeStyle: {
+      background: "rgba(250,204,21,0.18)",
+      color: "#FDE68A",
+      borderColor: "rgba(250,204,21,0.45)",
+    },
+  },
+  {
+    value: "flagged",
+    label: "Flagged",
+    activeStyle: {
+      background: "rgba(239,68,68,0.18)",
+      color: "#FCA5A5",
+      borderColor: "rgba(239,68,68,0.45)",
+    },
+  },
+  {
+    value: "draft",
+    label: "Draft",
+    activeStyle: {
+      background: "rgba(148,163,184,0.18)",
+      color: "#CBD5E1",
+      borderColor: "rgba(148,163,184,0.45)",
+    },
+  },
+];
+
+const chipsRow: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 8,
+};
+
+const chipBase: React.CSSProperties = {
+  padding: "8px 16px",
+  borderRadius: 999,
+  border: "1px solid var(--input-border)",
+  background: "transparent",
+  color: "var(--muted-foreground)",
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: "pointer",
+  transition: "background 120ms ease, color 120ms ease, border-color 120ms ease",
+};
+
+const chipActive: React.CSSProperties = {
+  background: "var(--surface-2)",
+  color: "var(--foreground)",
+  borderColor: "var(--input-border)",
 };
