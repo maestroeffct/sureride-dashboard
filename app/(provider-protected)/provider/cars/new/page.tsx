@@ -48,6 +48,9 @@ type CarForm = {
   // Empty string = "auto from location"; once the user picks anything else
   // we treat it as an explicit override and stop syncing with location.
   currency: string;
+  // Vehicle registration identifiers — optional at draft time.
+  licensePlate: string;
+  vin: string;
 };
 
 type StepKey = "vehicle" | "specs" | "pricing" | "photos" | "review";
@@ -76,6 +79,8 @@ const INITIAL: CarForm = {
   dailyRate: "",
   hourlyRate: "",
   currency: "",
+  licensePlate: "",
+  vin: "",
 };
 
 type CsvRow = Record<string, string>;
@@ -264,6 +269,8 @@ export default function ProviderAddCarPage() {
         dailyRate: daily,
         hourlyRate: form.hourlyRate ? Number(form.hourlyRate) : null,
         currency: effectiveCurrency,
+        licensePlate: form.licensePlate.trim() || undefined,
+        vin: form.vin.trim() || undefined,
       };
       const res = await createProviderCar(payload);
       const carId = res.car.id;
@@ -638,6 +645,26 @@ function StepVehicle({
             <option value="">Select location</option>
             {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
           </select>
+        </Field>
+      </div>
+      <div style={f.grid2}>
+        <Field label="License Plate Number">
+          <input
+            style={f.input}
+            placeholder="e.g. LSR-123-AB"
+            value={form.licensePlate}
+            onChange={(e) => set("licensePlate", e.target.value.toUpperCase())}
+            maxLength={20}
+          />
+        </Field>
+        <Field label="VIN (Vehicle Identification Number)">
+          <input
+            style={f.input}
+            placeholder="17-character VIN"
+            value={form.vin}
+            onChange={(e) => set("vin", e.target.value.toUpperCase())}
+            maxLength={20}
+          />
         </Field>
       </div>
     </div>

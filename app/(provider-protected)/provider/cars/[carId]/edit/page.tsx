@@ -44,6 +44,8 @@ type FormState = {
   hasAC: boolean;
   // Empty = "inherit from location currency"; any code = explicit override.
   currency: string;
+  licensePlate: string;
+  vin: string;
 };
 
 export default function ProviderEditCarPage() {
@@ -93,6 +95,9 @@ export default function ProviderEditCarPage() {
           hourlyRate: carData.hourlyRate != null ? String(carData.hourlyRate) : "",
           hasAC: carData.hasAC ?? true,
           currency: (carData as { currency?: string | null }).currency ?? "",
+          licensePlate:
+            (carData as { licensePlate?: string | null }).licensePlate ?? "",
+          vin: (carData as { vin?: string | null }).vin ?? "",
         });
         setSelectedFeatureIds(carData.features.map((f) => f.featureId));
         setLocations(
@@ -228,6 +233,8 @@ export default function ProviderEditCarPage() {
           currencyForCountryCode(
             locations.find((l) => l.id === form.locationId)?.countryCode,
           ).code,
+        licensePlate: form.licensePlate.trim() || undefined,
+        vin: form.vin.trim() || undefined,
       });
 
       await attachProviderCarFeatures(carId, selectedFeatureIds);
@@ -463,6 +470,31 @@ export default function ProviderEditCarPage() {
             <datalist id="edit-model-options">
               {modelOptions.map((m) => <option key={m.id} value={m.name} />)}
             </datalist>
+          </Field>
+        </div>
+
+        <div style={s.grid2}>
+          <Field label="License Plate Number">
+            <input
+              style={s.input}
+              placeholder="e.g. LSR-123-AB"
+              value={form.licensePlate}
+              onChange={(e) =>
+                setField("licensePlate", e.target.value.toUpperCase())
+              }
+              disabled={isFlagged}
+              maxLength={20}
+            />
+          </Field>
+          <Field label="VIN (Vehicle Identification Number)">
+            <input
+              style={s.input}
+              placeholder="17-character VIN"
+              value={form.vin}
+              onChange={(e) => setField("vin", e.target.value.toUpperCase())}
+              disabled={isFlagged}
+              maxLength={20}
+            />
           </Field>
         </div>
 

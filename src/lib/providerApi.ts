@@ -228,6 +228,10 @@ export type ProviderCreateCarPayload = {
   hourlyRate?: number | null;
   /** ISO 4217 currency code chosen by the provider for this car. */
   currency?: string;
+  /** Vehicle registration plate (uppercased, trimmed). */
+  licensePlate?: string;
+  /** Vehicle Identification Number (uppercased, trimmed). */
+  vin?: string;
 };
 
 export type ProviderCarBrandOption = {
