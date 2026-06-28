@@ -84,7 +84,7 @@ export const rentalsMenu: SidebarItem[] = [
     ],
   },
   {
-    label: "Cars Management",
+    label: "Fleet Management",
     icon: sidebarIcons.cars,
     children: [
       {
@@ -106,6 +106,16 @@ export const rentalsMenu: SidebarItem[] = [
         label: "Flagged Cars",
         path: "/rentals/cars/flagged",
         icon: sidebarIcons.flaggedCars,
+      },
+      {
+        label: "Rentals",
+        path: "/rentals/fleet/rentals",
+        icon: sidebarIcons.bookings,
+      },
+      {
+        label: "Availability",
+        path: "/rentals/fleet/availability",
+        icon: sidebarIcons.bookings,
       },
     ],
   },
