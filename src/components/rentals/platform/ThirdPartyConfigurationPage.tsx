@@ -1796,6 +1796,7 @@ export default function ThirdPartyConfigurationPage() {
             <button
               type="button"
               onClick={() => setMailInnerTab("config")}
+              className={mailInnerTab === "config" ? undefined : "hover-soft"}
               style={{
                 ...styles.mailInnerTab,
                 ...(mailInnerTab === "config" ? styles.mailInnerTabActive : {}),
@@ -1807,6 +1808,7 @@ export default function ThirdPartyConfigurationPage() {
             <button
               type="button"
               onClick={() => setMailInnerTab("test")}
+              className={mailInnerTab === "test" ? undefined : "hover-soft"}
               style={{
                 ...styles.mailInnerTab,
                 ...(mailInnerTab === "test" ? styles.mailInnerTabActive : {}),
@@ -2970,6 +2972,7 @@ export default function ThirdPartyConfigurationPage() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
+                className={active ? undefined : "hover-soft-pill"}
                 style={{
                   ...styles.tab,
                   ...(active ? styles.tabActive : null),

@@ -249,3 +249,52 @@ input[type="radio"]:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
+
+/* ─── Utility: soft hover + active feedback ────────────────────────────────
+ * Drop-in classes for buttons rendered with inline `style` (most of the
+ * dashboard). Pairs with the existing inline background — the class only
+ * overrides on :hover / :active / :focus-visible so the resting look stays
+ * exactly as the inline style declares.
+ */
+.hover-soft,
+.hover-soft-pill {
+  transition: background-color 140ms ease, color 140ms ease,
+    border-color 140ms ease, transform 120ms ease;
+}
+.hover-soft:hover:not(:disabled),
+.hover-soft-pill:hover:not(:disabled) {
+  background-color: var(--surface-2) !important;
+  color: var(--foreground) !important;
+}
+.hover-soft-pill:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--brand-primary) 32%, transparent) !important;
+}
+.hover-soft:active:not(:disabled),
+.hover-soft-pill:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.hover-soft:focus-visible,
+.hover-soft-pill:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px
+    color-mix(in srgb, var(--brand-primary) 38%, transparent);
+}
+
+/* Icon-only round buttons in the topbar — keep the inline accent intact,
+ * just lift on hover and dim on press. */
+.hover-icon {
+  transition: background-color 140ms ease, color 140ms ease,
+    transform 120ms ease;
+}
+.hover-icon:hover:not(:disabled) {
+  background-color: var(--topbar-icon-active-bg, var(--surface-2)) !important;
+  color: var(--topbar-icon-active-fg, var(--foreground)) !important;
+}
+.hover-icon:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.hover-icon:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px
+    color-mix(in srgb, var(--brand-primary) 38%, transparent);
+}

@@ -1,10 +1,5 @@
-import ComingSoon from "@/src/components/admin/ComingSoon";
+import PaymentsTable from "@/src/components/rentals/finance/PaymentsTable";
 
 export default function FinanceInvoicesPage() {
-  return (
-    <ComingSoon
-      title="Invoices"
-      description="Issued and unpaid invoices to providers and corporate customers. Coming next."
-    />
-  );
+  return <PaymentsTable variant="invoices" />;
 }

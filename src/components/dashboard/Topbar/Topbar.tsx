@@ -232,6 +232,7 @@ export default function Topbar() {
       <div style={{ ...styles.left, gap: isMobile ? 8 : 10 }}>
         {canToggleSidebar && (
           <button
+            className="hover-icon"
             style={{
               ...styles.menuButton,
               ...(sidebarCollapsed ? styles.menuButtonActive : {}),
@@ -271,6 +272,7 @@ export default function Topbar() {
         <div style={styles.profileWrapper} ref={bellRef}>
           <div style={styles.iconGroup}>
             <button
+              className="hover-icon"
               style={styles.iconButton}
               onClick={() => {
                 setBellOpen((v) => !v);
@@ -284,6 +286,7 @@ export default function Topbar() {
             </button>
             {!isMobile && (
               <button
+                className="hover-icon"
                 style={styles.iconButton}
                 onClick={handleSettingsClick}
                 aria-label="Settings"
@@ -310,6 +313,7 @@ export default function Topbar() {
         {/* Theme toggle */}
         <div style={styles.iconGroup}>
           <button
+            className={theme === "light" ? undefined : "hover-icon"}
             style={{
               ...styles.iconButton,
               ...(theme === "light" ? styles.iconActive : {}),
@@ -322,6 +326,7 @@ export default function Topbar() {
           </button>
           <div style={styles.divider} />
           <button
+            className={theme === "dark" ? undefined : "hover-icon"}
             style={{
               ...styles.iconButton,
               ...(theme === "dark" ? styles.iconActive : {}),
@@ -336,7 +341,12 @@ export default function Topbar() {
 
         {/* Profile */}
         <div style={styles.profileWrapper} ref={profileRef}>
-          <button style={styles.profileButton} onClick={() => setOpen((v) => !v)} aria-label="Account menu">
+          <button
+            className="hover-soft"
+            style={styles.profileButton}
+            onClick={() => setOpen((v) => !v)}
+            aria-label="Account menu"
+          >
             <span style={styles.avatar}>{initials}</span>
             {!isMobile && (
               <>
@@ -365,6 +375,7 @@ export default function Topbar() {
               <div style={styles.dropdownDivider} />
 
               <button
+                className="hover-soft"
                 style={styles.dropdownItem}
                 onClick={() => {
                   setOpen(false);
@@ -378,6 +389,7 @@ export default function Topbar() {
                 My Profile
               </button>
               <button
+                className="hover-soft"
                 style={styles.dropdownItem}
                 onClick={() => {
                   setOpen(false);
@@ -391,6 +403,7 @@ export default function Topbar() {
 
               {/* Notification alert controls */}
               <button
+                className="hover-soft"
                 style={styles.dropdownItem}
                 onClick={handleToggleMute}
                 title={muted ? "Unmute notifications" : "Mute notifications"}
@@ -403,7 +416,8 @@ export default function Topbar() {
 
               {browserPerm === "default" && (
                 <button
-                  style={styles.dropdownItem}
+                  className="hover-soft"
+                style={styles.dropdownItem}
                   onClick={handleEnableBrowserNotifications}
                   title="Get OS-level notifications even when this tab is inactive"
                 >
@@ -433,6 +447,7 @@ export default function Topbar() {
               <div style={styles.dropdownDivider} />
 
               <button
+                className="hover-soft"
                 style={{ ...styles.dropdownItem, color: "#ef4444" }}
                 onClick={handleLogout}
               >
