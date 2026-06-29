@@ -284,7 +284,7 @@ export default function ProviderEarningsPage() {
         />
         <KpiCard
           icon={<Wallet size={18} />}
-          tone="#3b82f6"
+          tone="var(--brand-primary)"
           label="Available Balance"
           value={loading ? "…" : fmtMoney(overview?.availableBalance ?? 0)}
           sub="Ready to withdraw"

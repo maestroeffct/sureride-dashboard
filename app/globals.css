@@ -54,20 +54,24 @@ html[data-theme="dark"] {
   --sidebar-border: #1f2937;
   --sidebar-item-fg: #d1d5db;
   --sidebar-item-fg-muted: #9ca3af;
-  --sidebar-item-active-fg: #e5e7eb;
-  --sidebar-item-active-bg: #1e293b;
-  --sidebar-group-open-bg: #0f172a;
+  /* Active sidebar item uses the brand green so the user can see at a
+   * glance which section they're in. */
+  --sidebar-item-active-fg: #022c22;
+  --sidebar-item-active-bg: color-mix(in srgb, var(--brand-primary) 80%, white);
+  --sidebar-group-open-bg: color-mix(in srgb, var(--brand-primary) 10%, transparent);
 
   --input-bg: #01120c;
   --input-border: #1f2937;
   --input-fg: #e5e7eb;
 
   --module-card-bg: linear-gradient(180deg, #0f172a, #020617);
-  /* SureRide is a GREEN brand — primary drives every accent, focus ring,
-   * KPI icon, etc. Blue is kept as a secondary for true info-only signals
-   * (e.g. distinguishing a Contacted vs Confirmed status). */
+  /* SureRide is a GREEN brand. Both primary and secondary are greens — same
+   * family, different weights — so any legacy reference to brand-secondary
+   * still reads as brand-correct. Use --info-blue for true info accents
+   * (Global pill, Booking notifications, etc.) if you need contrast. */
   --brand-primary: #22c55e;
-  --brand-secondary: #1275c5;
+  --brand-secondary: #0a6a4b;
+  --info-blue: #1275c5;
   --control-accent: #22c55e;
   --control-bg: #061b13;
   --control-border: rgba(229, 231, 235, 0.35);
@@ -124,18 +128,21 @@ html[data-theme="light"] {
   --sidebar-border: #e5e7eb;
   --sidebar-item-fg: #1f2937;
   --sidebar-item-fg-muted: #64748b;
-  --sidebar-item-active-fg: #0f172a;
-  --sidebar-item-active-bg: #e2e8f0;
-  --sidebar-group-open-bg: #f1f5f9;
+  /* Light theme — active sidebar still brand green but with darker text. */
+  --sidebar-item-active-fg: #022c22;
+  --sidebar-item-active-bg: color-mix(in srgb, var(--brand-primary) 20%, white);
+  --sidebar-group-open-bg: color-mix(in srgb, var(--brand-primary) 8%, transparent);
 
   --input-bg: #ffffff;
   --input-border: #cbd5e1;
   --input-fg: #0f172a;
 
   --module-card-bg: linear-gradient(180deg, #ffffff, #f8fafc);
-  /* SureRide is a GREEN brand — see dark-theme block above for rationale. */
+  /* SureRide is a GREEN brand — both brand tokens are greens. See dark
+   * theme block above for full rationale. */
   --brand-primary: #22c55e;
-  --brand-secondary: #1275c5;
+  --brand-secondary: #0a6a4b;
+  --info-blue: #1275c5;
   --control-accent: #22c55e;
   --control-bg: #ffffff;
   --control-border: #a3b2c6;

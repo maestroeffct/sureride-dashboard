@@ -400,7 +400,7 @@ const s: Record<string, CSSProperties> = {
     alignSelf: "flex-start",
     padding: "10px 18px",
     borderRadius: 10,
-    background: "var(--brand-primary, #2563eb)",
+    background: "var(--brand-primary, #22c55e)",
     color: "#fff",
     border: "none",
     fontWeight: 600,
@@ -435,7 +435,7 @@ const s: Record<string, CSSProperties> = {
   linkBtn: {
     background: "transparent",
     border: "none",
-    color: "#2563eb",
+    color: "var(--brand-primary)",
     cursor: "pointer",
     fontWeight: 500,
     padding: 0,

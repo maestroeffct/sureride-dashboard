@@ -90,7 +90,7 @@ export default function DashboardPage() {
         value: formatNumber(overview.stats.totalUsers),
         subtext: `${formatNumber(overview.stats.verifiedUsers)} verified accounts`,
         icon: <Users size={18} />,
-        tone: "#2563eb",
+        tone: "var(--brand-primary)",
       },
       {
         label: "Providers",

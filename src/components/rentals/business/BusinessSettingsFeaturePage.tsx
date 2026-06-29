@@ -2101,7 +2101,7 @@ const styles: Record<string, CSSProperties> = {
   switchInput: {
     width: 18,
     height: 18,
-    accentColor: "#3b82f6",
+    accentColor: "var(--brand-primary)",
     cursor: "pointer",
   },
   radioRow: {
@@ -2204,8 +2204,8 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: 10,
     display: "grid",
     placeItems: "center",
-    background: "#1d4ed8",
-    color: "#fff",
+    background: "var(--brand-primary)",
+    color: "#022c22",
     fontWeight: 700,
     fontSize: 16,
   },

@@ -107,7 +107,7 @@ export default function ProviderOverviewPage() {
         value: formatNumber(stats.totalCars),
         subtext: `${formatNumber(stats.activeCars)} approved cars`,
         icon: <CarFront size={18} />,
-        tone: "#2563eb",
+        tone: "var(--brand-primary)",
       },
       {
         label: "Bookings In Motion",
@@ -312,7 +312,7 @@ export default function ProviderOverviewPage() {
           />
           <LineChart
             data={stats.charts.bookingsTrend}
-            color="#2563eb"
+            color="var(--brand-primary)"
             loading={loading}
             valueFormatter={formatNumber}
           />

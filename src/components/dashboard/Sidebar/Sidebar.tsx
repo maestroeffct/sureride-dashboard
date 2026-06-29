@@ -257,7 +257,7 @@ function SidebarItemView({
                         background: active
                           ? "var(--sidebar-item-active-bg)"
                           : hoveredChildPath === child.path
-                            ? "rgba(255,255,255,0.05)"
+                            ? "color-mix(in srgb, var(--brand-primary) 10%, transparent)"
                           : "transparent",
                         color: active
                           ? "var(--sidebar-item-active-fg)"
@@ -331,7 +331,7 @@ function SidebarItemView({
         background: isActive
           ? "var(--sidebar-item-active-bg)"
           : isHovered
-            ? "rgba(255,255,255,0.05)"
+            ? "color-mix(in srgb, var(--brand-primary) 10%, transparent)"
             : "transparent",
         color: isActive
           ? "var(--sidebar-item-active-fg)"
