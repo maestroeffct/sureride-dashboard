@@ -748,9 +748,9 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid rgba(245,158,11,0.22)",
   },
   restoreBtn: {
-    background: "rgba(59,130,246,0.16)",
+    background: "color-mix(in srgb, var(--brand-primary) 16%, transparent)",
     color: "var(--brand-primary)",
-    border: "1px solid rgba(59,130,246,0.22)",
+    border: "1px solid color-mix(in srgb, var(--brand-primary) 28%, transparent)",
   },
   statusActive: {
     background: "rgba(34,197,94,0.14)",

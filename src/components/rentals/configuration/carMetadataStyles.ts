@@ -76,8 +76,8 @@ const styles: Record<string, CSSProperties> = {
     flexWrap: "wrap",
     padding: "14px 16px",
     borderRadius: 16,
-    border: "1px solid rgba(37,99,235,0.22)",
-    background: "linear-gradient(135deg, rgba(37,99,235,0.14), rgba(15,23,42,0.22))",
+    border: "1px solid color-mix(in srgb, var(--brand-primary) 25%, transparent)",
+    background: "linear-gradient(135deg, color-mix(in srgb, var(--brand-primary) 14%, transparent), rgba(15,23,42,0.22))",
     color: "var(--foreground)",
   },
 

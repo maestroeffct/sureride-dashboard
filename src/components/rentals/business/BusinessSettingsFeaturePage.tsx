@@ -2282,8 +2282,8 @@ const styles: Record<string, CSSProperties> = {
   guidelineAction: {
     height: 34,
     borderRadius: 8,
-    border: "1px solid rgba(59,130,246,0.45)",
-    background: "rgba(59,130,246,0.18)",
+    border: "1px solid color-mix(in srgb, var(--brand-primary) 45%, transparent)",
+    background: "color-mix(in srgb, var(--brand-primary) 18%, transparent)",
     color: "var(--brand-primary)",
     padding: "0 10px",
     fontWeight: 700,

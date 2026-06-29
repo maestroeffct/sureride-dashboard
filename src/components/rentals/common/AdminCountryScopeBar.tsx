@@ -316,8 +316,8 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 700,
   },
   scopePillGlobal: {
-    background: "rgba(59,130,246,0.18)",
-    color: "#bfdbfe",
+    background: "color-mix(in srgb, var(--brand-secondary) 18%, transparent)",
+    color: "color-mix(in srgb, var(--brand-secondary) 70%, white)",
   },
   scopePillCountry: {
     background: "rgba(16,185,129,0.18)",

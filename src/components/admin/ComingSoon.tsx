@@ -58,7 +58,7 @@ const s: Record<string, CSSProperties> = {
     width: 56,
     height: 56,
     borderRadius: 14,
-    background: "rgba(18,117,197,0.1)",
+    background: "color-mix(in srgb, var(--brand-primary) 12%, transparent)",
     color: "var(--brand-primary)",
     display: "flex",
     alignItems: "center",

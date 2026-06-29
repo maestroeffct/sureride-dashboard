@@ -3217,8 +3217,8 @@ const styles: Record<string, CSSProperties> = {
   credentialInfoBtn: {
     height: 40,
     borderRadius: 10,
-    border: "1px solid rgba(18,117,197,0.55)",
-    background: "rgba(18,117,197,0.08)",
+    border: "1px solid color-mix(in srgb, var(--brand-primary) 55%, transparent)",
+    background: "color-mix(in srgb, var(--brand-primary) 8%, transparent)",
     color: "#60a5fa",
     padding: "0 14px",
     fontWeight: 700,
@@ -3315,7 +3315,7 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
     gap: 8,
     fontWeight: 700,
-    color: "#1275C5",
+    color: "var(--brand-primary)",
     fontSize: 13,
   },
   providerCardBody: {
@@ -3354,8 +3354,8 @@ const styles: Record<string, CSSProperties> = {
     lineHeight: 1.5,
   },
   gatewayStatusDefault: {
-    borderColor: "rgba(18,117,197,0.4)",
-    background: "rgba(18,117,197,0.15)",
+    borderColor: "color-mix(in srgb, var(--brand-primary) 40%, transparent)",
+    background: "color-mix(in srgb, var(--brand-primary) 15%, transparent)",
     color: "#93c5fd",
   },
   gatewayStatusSuccess: {
@@ -3400,8 +3400,8 @@ const styles: Record<string, CSSProperties> = {
   uploadBtnCompact: {
     height: 34,
     borderRadius: 8,
-    border: "1px solid rgba(18,117,197,0.35)",
-    background: "rgba(18,117,197,0.12)",
+    border: "1px solid color-mix(in srgb, var(--brand-primary) 35%, transparent)",
+    background: "color-mix(in srgb, var(--brand-primary) 12%, transparent)",
     color: "#7cb4f5",
     padding: "0 12px",
     fontSize: 13,
@@ -3434,7 +3434,7 @@ const styles: Record<string, CSSProperties> = {
     pointerEvents: "none",
   },
   accentControl: {
-    accentColor: "#1275C5",
+    accentColor: "var(--brand-primary)",
     cursor: "pointer",
   },
   parameterEditorCard: {
@@ -3763,9 +3763,9 @@ const styles: Record<string, CSSProperties> = {
     cursor: "default",
   },
   mailInnerTabActive: {
-    color: "#1275C5",
-    borderColor: "rgba(18,117,197,0.35)",
-    background: "rgba(18,117,197,0.08)",
+    color: "var(--brand-primary)",
+    borderColor: "color-mix(in srgb, var(--brand-primary) 35%, transparent)",
+    background: "color-mix(in srgb, var(--brand-primary) 8%, transparent)",
   },
   linkBtn: {
     border: "none",
@@ -3790,7 +3790,7 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
     justifyContent: "space-between",
     gap: 10,
-    color: "#1275C5",
+    color: "var(--brand-primary)",
     fontWeight: 700,
     fontSize: 15,
   },
@@ -3870,8 +3870,8 @@ const styles: Record<string, CSSProperties> = {
   primaryBtn: {
     height: 40,
     borderRadius: 8,
-    border: "1px solid rgba(18,117,197,0.45)",
-    background: "#1275C5",
+    border: "1px solid color-mix(in srgb, var(--brand-primary) 45%, transparent)",
+    background: "var(--brand-primary)",
     color: "#FFFFFF",
     padding: "0 16px",
     fontWeight: 700,

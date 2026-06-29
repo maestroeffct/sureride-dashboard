@@ -403,8 +403,8 @@ const s: Record<string, CSSProperties> = {
   empty: { padding: 40, textAlign: "center", border: "1px dashed var(--input-border)", borderRadius: 14, color: "var(--muted-foreground)", fontSize: 13 },
 
   infoCard: {
-    background: "rgba(18,117,197,0.06)",
-    border: "1px solid rgba(18,117,197,0.25)",
+    background: "color-mix(in srgb, var(--brand-primary) 8%, transparent)",
+    border: "1px solid color-mix(in srgb, var(--brand-primary) 28%, transparent)",
     borderRadius: 12,
     padding: "14px 18px",
     color: "var(--foreground)",
