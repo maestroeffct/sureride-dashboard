@@ -63,12 +63,15 @@ html[data-theme="dark"] {
   --input-fg: #e5e7eb;
 
   --module-card-bg: linear-gradient(180deg, #0f172a, #020617);
-  --brand-primary: #1275c5;
-  --brand-secondary: #22c55e;
-  --control-accent: #1275c5;
+  /* SureRide is a GREEN brand — primary drives every accent, focus ring,
+   * KPI icon, etc. Blue is kept as a secondary for true info-only signals
+   * (e.g. distinguishing a Contacted vs Confirmed status). */
+  --brand-primary: #22c55e;
+  --brand-secondary: #1275c5;
+  --control-accent: #22c55e;
   --control-bg: #061b13;
   --control-border: rgba(229, 231, 235, 0.35);
-  --control-border-hover: rgba(18, 117, 197, 0.65);
+  --control-border-hover: rgba(34, 197, 94, 0.65);
   --control-mark: #ffffff;
 }
 
@@ -130,12 +133,13 @@ html[data-theme="light"] {
   --input-fg: #0f172a;
 
   --module-card-bg: linear-gradient(180deg, #ffffff, #f8fafc);
-  --brand-primary: #1275c5;
-  --brand-secondary: #22c55e;
-  --control-accent: #1275c5;
+  /* SureRide is a GREEN brand — see dark-theme block above for rationale. */
+  --brand-primary: #22c55e;
+  --brand-secondary: #1275c5;
+  --control-accent: #22c55e;
   --control-bg: #ffffff;
   --control-border: #a3b2c6;
-  --control-border-hover: #1275c5;
+  --control-border-hover: #22c55e;
   --control-mark: #ffffff;
 }
 

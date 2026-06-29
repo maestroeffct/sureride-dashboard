@@ -3054,9 +3054,9 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 15,
   },
   tabActive: {
-    border: "1px solid rgba(37,99,235,0.45)",
-    background: "#1275C5",
-    color: "#FFFFFF",
+    border: "1px solid color-mix(in srgb, var(--brand-primary) 45%, transparent)",
+    background: "var(--brand-primary)",
+    color: "#022c22",
     fontWeight: 700,
   },
   panel: {

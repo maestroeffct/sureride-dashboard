@@ -92,6 +92,89 @@ function randomId() {
   return Math.random().toString(36).slice(2, 11);
 }
 
+/** Normalise any input into a 7-char #rrggbb hex (or empty). The native
+ * <input type="color"> only accepts that shape, so we coerce before passing
+ * it back to the picker. */
+function normalizeHex(value: string, fallback: string): string {
+  const v = (value || "").trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) return v.toLowerCase();
+  if (/^#[0-9a-fA-F]{3}$/.test(v)) {
+    // Expand 3-digit hex (#abc → #aabbcc).
+    const r = v[1];
+    const g = v[2];
+    const b = v[3];
+    return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+  }
+  return fallback;
+}
+
+function ColorPickerField({
+  value,
+  onChange,
+  fallback,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  fallback: string;
+}) {
+  const normalized = normalizeHex(value, fallback);
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+      }}
+    >
+      <input
+        type="color"
+        value={normalized}
+        onChange={(e) => onChange(e.target.value.toLowerCase())}
+        title="Pick a colour"
+        style={{
+          width: 44,
+          height: 44,
+          padding: 0,
+          borderRadius: 10,
+          border: "1px solid var(--input-border)",
+          background: "transparent",
+          cursor: "pointer",
+          flexShrink: 0,
+        }}
+      />
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={fallback}
+        style={{
+          flex: 1,
+          height: 44,
+          padding: "0 12px",
+          borderRadius: 10,
+          border: "1px solid var(--input-border)",
+          background: "var(--input-bg)",
+          color: "var(--input-fg)",
+          fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+          fontSize: 14,
+          outline: "none",
+        }}
+      />
+      <span
+        aria-hidden="true"
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 8,
+          background: normalized,
+          border: "1px solid var(--input-border)",
+          flexShrink: 0,
+        }}
+      />
+    </div>
+  );
+}
+
 function normalizeGalleryFolder(value: unknown) {
   const text = typeof value === "string" ? value.trim() : "";
   return text || "General";
@@ -1387,22 +1470,22 @@ export default function BusinessSettingsFeaturePage({
         <div style={styles.grid2}>
           {renderField(
             "Brand Color",
-            <input
-              style={styles.input}
+            <ColorPickerField
               value={String(state.brandColor ?? "")}
-              onChange={(e) =>
-                setState((prev) => ({ ...prev, brandColor: e.target.value }))
+              onChange={(v) =>
+                setState((prev) => ({ ...prev, brandColor: v }))
               }
+              fallback="#22c55e"
             />,
           )}
           {renderField(
             "Secondary Color",
-            <input
-              style={styles.input}
+            <ColorPickerField
               value={String(state.secondaryColor ?? "")}
-              onChange={(e) =>
-                setState((prev) => ({ ...prev, secondaryColor: e.target.value }))
+              onChange={(v) =>
+                setState((prev) => ({ ...prev, secondaryColor: v }))
               }
+              fallback="#1275c5"
             />,
           )}
           {renderField(
