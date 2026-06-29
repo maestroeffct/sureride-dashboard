@@ -645,6 +645,24 @@ export default function BusinessSettingsFeaturePage({
         JSON.stringify(state),
       );
 
+      // Instant re-skin: when the admin saves Theme Settings, apply the new
+      // brand/secondary colours to the document's CSS variables on the spot
+      // so they can see the change without reloading. ThemeProvider also
+      // re-applies these on the next mount (e.g. after navigation).
+      if (feature === "theme-settings" && typeof document !== "undefined") {
+        const root = document.documentElement;
+        const brand = normalizeHex(String(state.brandColor ?? ""), "");
+        const secondary = normalizeHex(String(state.secondaryColor ?? ""), "");
+        if (brand) {
+          root.style.setProperty("--brand-primary", brand);
+          root.style.setProperty("--control-accent", brand);
+          root.style.setProperty("--control-border-hover", brand);
+        }
+        if (secondary) {
+          root.style.setProperty("--brand-secondary", secondary);
+        }
+      }
+
       toast.success(
         result.source === "server"
           ? `${title} updated`
