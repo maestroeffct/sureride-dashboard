@@ -1,10 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { ChevronDown, Download } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Building2,
+  CheckCircle2,
+  ChevronDown,
+  Clock,
+  Download,
+  ShieldOff,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import ProvidersTable from "@/src/components/rentals/providers/ProvidersTable";
 import ProvidersFilters from "@/src/components/rentals/providers/ProvidersFilters";
+import KpiCard, { KpiGrid } from "@/src/components/admin/KpiCard";
 import { RentalProvider } from "@/src/types/rentalProvider";
 import { listProviders } from "@/src/lib/providersApi";
 import { downloadCsv, downloadPdf } from "@/src/lib/exportTable";
@@ -98,6 +106,21 @@ export default function RentalProvidersPage() {
     setExportOpen(false);
   };
 
+  // KPI counts derived from the loaded set so they reconcile with what's
+  // on screen. If you flip a status filter the tiles still show the
+  // unfiltered totals — that's intentional, the filter is for the table.
+  const kpiCounts = useMemo(() => {
+    let active = 0;
+    let pending = 0;
+    let suspended = 0;
+    for (const p of providers) {
+      if (p.status === "active") active += 1;
+      else if (p.status === "pending") pending += 1;
+      else if (p.status === "suspended") suspended += 1;
+    }
+    return { total: providers.length, active, pending, suspended };
+  }, [providers]);
+
   const handleExportPdf = () => {
     if (providers.length === 0) {
       toast.error("Nothing to export");
@@ -152,6 +175,37 @@ export default function RentalProvidersPage() {
           </a>
         </div>
       </div>
+
+      <KpiGrid>
+        <KpiCard
+          label="Total Providers"
+          value={kpiCounts.total}
+          subtext="All providers on the platform"
+          icon={<Building2 size={18} />}
+          tone="var(--brand-primary)"
+        />
+        <KpiCard
+          label="Active"
+          value={kpiCounts.active}
+          subtext="Live, accepting bookings"
+          icon={<CheckCircle2 size={18} />}
+          tone="#22c55e"
+        />
+        <KpiCard
+          label="Pending Approval"
+          value={kpiCounts.pending}
+          subtext="Awaiting your review"
+          icon={<Clock size={18} />}
+          tone="#f59e0b"
+        />
+        <KpiCard
+          label="Suspended"
+          value={kpiCounts.suspended}
+          subtext="Hidden from customers"
+          icon={<ShieldOff size={18} />}
+          tone="#ef4444"
+        />
+      </KpiGrid>
 
       <ProvidersFilters
         search={search}

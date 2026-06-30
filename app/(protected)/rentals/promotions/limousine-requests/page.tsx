@@ -10,9 +10,11 @@ import {
   MapPin,
   Phone,
   Search,
+  Send,
   StickyNote,
   Users as UsersIcon,
 } from "lucide-react";
+import KpiCard, { KpiGrid } from "@/src/components/admin/KpiCard";
 import toast from "react-hot-toast";
 import {
   adminListLimousineRequests,
@@ -101,6 +103,37 @@ export default function LimousineRequestsPage() {
           customers, match them with a provider, and update status as you go.
         </p>
       </div>
+
+      <KpiGrid>
+        <KpiCard
+          label="Total Requests"
+          value={rows.length}
+          subtext="All concierge requests"
+          icon={<Crown size={18} />}
+          tone="var(--brand-primary)"
+        />
+        <KpiCard
+          label="New"
+          value={counts.NEW ?? 0}
+          subtext="Awaiting first contact"
+          icon={<Send size={18} />}
+          tone="#22c55e"
+        />
+        <KpiCard
+          label="Contacted"
+          value={counts.CONTACTED ?? 0}
+          subtext="In conversation"
+          icon={<Clock size={18} />}
+          tone="#f59e0b"
+        />
+        <KpiCard
+          label="Confirmed"
+          value={counts.CONFIRMED ?? 0}
+          subtext="Booked, en-route"
+          icon={<CheckCircle2 size={18} />}
+          tone="#7c3aed"
+        />
+      </KpiGrid>
 
       {/* Status tabs */}
       <div style={s.tabsRow}>

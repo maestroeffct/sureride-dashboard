@@ -14,6 +14,12 @@ import {
 } from "lucide-react";
 import { listAdminBookings, cancelAdminBooking, type AdminBookingRow } from "@/src/lib/adminBookingsApi";
 import { downloadCsv, downloadPdf } from "@/src/lib/exportTable";
+import KpiCard, { KpiGrid } from "@/src/components/admin/KpiCard";
+import {
+  CalendarCheck,
+  CalendarClock,
+  AlertTriangle,
+} from "lucide-react";
 
 type BookingStatus =
   | "Upcoming"
@@ -317,6 +323,37 @@ export default function RentalBookingsPage() {
           </button>
         </div>
       </div>
+
+      <KpiGrid>
+        <KpiCard
+          label="Total Bookings"
+          value={counts.All ?? 0}
+          subtext="Across all statuses"
+          icon={<CalendarCheck size={18} />}
+          tone="var(--brand-primary)"
+        />
+        <KpiCard
+          label="Active"
+          value={counts.Active ?? 0}
+          subtext="On the road right now"
+          icon={<CalendarClock size={18} />}
+          tone="#22c55e"
+        />
+        <KpiCard
+          label="Upcoming"
+          value={counts.Upcoming ?? 0}
+          subtext="Future pickups"
+          icon={<CalendarClock size={18} />}
+          tone="#7c3aed"
+        />
+        <KpiCard
+          label="Issue"
+          value={counts.Issue ?? 0}
+          subtext="Need admin attention"
+          icon={<AlertTriangle size={18} />}
+          tone="#ef4444"
+        />
+      </KpiGrid>
 
       {/* STATUS TABS */}
       <div style={styles.tabsRow}>

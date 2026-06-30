@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
-import { Search, RotateCw, Receipt, CreditCard } from "lucide-react";
+import {
+  Search,
+  RotateCw,
+  Receipt,
+  CreditCard,
+  CheckCircle2,
+  Clock,
+  XCircle,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import {
   adminListPaymentTransactions,
@@ -9,6 +17,7 @@ import {
   type PaymentTransactionRow,
 } from "@/src/lib/financeApi";
 import { downloadCsv, downloadPdf } from "@/src/lib/exportTable";
+import KpiCard, { KpiGrid } from "@/src/components/admin/KpiCard";
 
 type Variant = "payments" | "invoices";
 
@@ -157,22 +166,36 @@ export default function PaymentsTable({
       </div>
 
       {/* KPIs */}
-      <div style={s.kpiGrid}>
-        <KpiCard label="Total" value={String(kpis.total)} hint="In current view" />
+      <KpiGrid>
+        <KpiCard
+          label="Total"
+          value={kpis.total}
+          subtext="In current view"
+          icon={<CreditCard size={18} />}
+          tone="var(--brand-primary)"
+        />
         <KpiCard
           label="Succeeded"
-          value={String(kpis.succeeded)}
-          hint={`${kpis.currency} ${kpis.succeededValue.toLocaleString()}`}
-          tone="success"
+          value={kpis.succeeded}
+          subtext={`${kpis.currency} ${kpis.succeededValue.toLocaleString()}`}
+          icon={<CheckCircle2 size={18} />}
+          tone="#22c55e"
         />
-        <KpiCard label="Pending" value={String(kpis.pending)} hint="In-flight" tone="warn" />
+        <KpiCard
+          label="Pending"
+          value={kpis.pending}
+          subtext="In-flight"
+          icon={<Clock size={18} />}
+          tone="#f59e0b"
+        />
         <KpiCard
           label="Failed / Canceled"
-          value={String(kpis.failed)}
-          hint="Need attention"
-          tone="danger"
+          value={kpis.failed}
+          subtext="Need attention"
+          icon={<XCircle size={18} />}
+          tone="#ef4444"
         />
-      </div>
+      </KpiGrid>
 
       {/* Filters + actions */}
       <div style={s.filtersRow}>
@@ -307,34 +330,6 @@ export default function PaymentsTable({
   );
 }
 
-function KpiCard({
-  label,
-  value,
-  hint,
-  tone,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  tone?: "success" | "warn" | "danger";
-}) {
-  const toneAccent =
-    tone === "success"
-      ? "var(--brand-secondary)"
-      : tone === "warn"
-        ? "#FDE68A"
-        : tone === "danger"
-          ? "#FCA5A5"
-          : "var(--foreground)";
-  return (
-    <article style={s.kpiCard}>
-      <span style={s.kpiLabel}>{label}</span>
-      <strong style={{ ...s.kpiValue, color: toneAccent }}>{value}</strong>
-      {hint ? <span style={s.kpiHint}>{hint}</span> : null}
-    </article>
-  );
-}
-
 function fmtAmount(value: number | null | undefined, currency?: string | null) {
   if (value == null) return "—";
   const code = (currency ?? "NGN").toUpperCase();
@@ -397,30 +392,6 @@ const s: Record<string, CSSProperties> = {
     fontSize: 13,
     maxWidth: 720,
   },
-
-  kpiGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-    gap: 14,
-  },
-  kpiCard: {
-    background: "var(--surface-1)",
-    border: "1px solid var(--input-border)",
-    borderRadius: 14,
-    padding: "16px 18px",
-    display: "flex",
-    flexDirection: "column",
-    gap: 6,
-  },
-  kpiLabel: {
-    fontSize: 12,
-    fontWeight: 600,
-    color: "var(--muted-foreground)",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  kpiValue: { fontSize: 26, fontWeight: 700, lineHeight: 1.1 },
-  kpiHint: { fontSize: 12, color: "var(--muted-foreground)" },
 
   filtersRow: {
     display: "flex",
