@@ -52,8 +52,8 @@ html[data-theme="dark"] {
 
   --sidebar-bg: #01120c;
   --sidebar-border: #1f2937;
-  --sidebar-item-fg: #f3f4f6;
-  --sidebar-item-fg-muted: #e5e7eb;
+  --sidebar-item-fg: #ffffff;
+  --sidebar-item-fg-muted: #ffffff;
   /* Active sidebar item uses the brand green so the user can see at a
    * glance which section they're in. */
   --sidebar-item-active-fg: #022c22;
