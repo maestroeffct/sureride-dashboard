@@ -13,7 +13,12 @@ import {
   RotateCcw,
   Search,
   ShieldOff,
+  CarFront,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
 } from "lucide-react";
+import KpiCard, { KpiGrid } from "@/src/components/admin/KpiCard";
 import toast from "react-hot-toast";
 import {
   activateAdminCar,
@@ -98,6 +103,22 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
   }, [loadCars]);
 
   const visibleCars = useMemo(() => cars, [cars]);
+
+  // KPI counts derived from the loaded set. On the "all" view this is
+  // unfiltered totals; on the dedicated pending/flagged routes the loaded
+  // set is already scoped, which is fine — the tiles still reconcile with
+  // the table beneath them.
+  const kpiCounts = useMemo(() => {
+    let active = 0;
+    let pending = 0;
+    let flagged = 0;
+    for (const c of cars) {
+      if (c.dashboardStatus === "active") active += 1;
+      else if (c.dashboardStatus === "pending") pending += 1;
+      else if (c.dashboardStatus === "flagged") flagged += 1;
+    }
+    return { total: cars.length, active, pending, flagged };
+  }, [cars]);
 
   const runAction = async (
     key: string,
@@ -402,6 +423,37 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
           </Link>
         </div>
       </div>
+
+      <KpiGrid>
+        <KpiCard
+          label="Total Cars"
+          value={kpiCounts.total}
+          subtext="Across all providers"
+          icon={<CarFront size={18} />}
+          tone="var(--brand-primary)"
+        />
+        <KpiCard
+          label="Active"
+          value={kpiCounts.active}
+          subtext="Bookable right now"
+          icon={<CheckCircle2 size={18} />}
+          tone="#22c55e"
+        />
+        <KpiCard
+          label="Pending Approval"
+          value={kpiCounts.pending}
+          subtext="Awaiting your review"
+          icon={<Clock size={18} />}
+          tone="#f59e0b"
+        />
+        <KpiCard
+          label="Flagged"
+          value={kpiCounts.flagged}
+          subtext="Need admin attention"
+          icon={<AlertTriangle size={18} />}
+          tone="#ef4444"
+        />
+      </KpiGrid>
 
       {/* Quick status chips — only on the master "all" view. Pending and
           Flagged dedicated routes already pre-scope, so chips would be
