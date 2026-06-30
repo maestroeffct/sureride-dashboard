@@ -240,6 +240,28 @@ export async function sendPushTest(payload: PushTestPayload) {
   });
 }
 
+// ── Device tokens ────────────────────────────────────────────────────────
+// Lists the 100 most-recently-seen FCM tokens so admins can pick a real
+// device for a test push instead of having to paste a token by hand.
+
+export type AdminDeviceToken = {
+  id: string;
+  token: string;
+  tokenPreview: string;
+  platform: "IOS" | "ANDROID" | "WEB";
+  label: string | null;
+  ownerKind: "user" | "provider" | "anon";
+  ownerName: string;
+  ownerEmail: string | null;
+  lastSeenAt: string;
+};
+
+export async function listAdminDeviceTokens() {
+  return apiRequest<{ items: AdminDeviceToken[] }>(
+    "/admin/platform/device-tokens",
+  );
+}
+
 // ── Firebase OTP config validator ────────────────────────────────────────
 
 export type FirebaseValidatePayload = {

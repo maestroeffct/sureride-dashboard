@@ -3,8 +3,21 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import toast from "react-hot-toast";
-import { Send, Users, Building2, Globe, Bell, Check, AlertTriangle } from "lucide-react";
-import { listPlatformSettingsDraft } from "@/src/lib/platformSettingsDraftApi";
+import {
+  Send,
+  Users,
+  Building2,
+  Globe,
+  Bell,
+  Check,
+  AlertTriangle,
+  RotateCw,
+  Trash2,
+} from "lucide-react";
+import {
+  listPlatformSettingsDraft,
+  savePlatformSettingsDraft,
+} from "@/src/lib/platformSettingsDraftApi";
 import {
   sendPromoPush,
   type PromoPushSegment,
@@ -62,6 +75,49 @@ export default function PushNotificationPage() {
   useEffect(() => {
     void loadHistory();
   }, []);
+
+  // Per-row delete — mutates the local history array and persists back to
+  // the promo-push-history platform setting. Soft-fail on the API call so
+  // the optimistic remove still feels snappy.
+  const handleDelete = async (id: string) => {
+    if (!confirm("Remove this entry from the send history? Cannot be undone.")) return;
+    const next = history.filter((h) => h.id !== id);
+    setHistory(next);
+    try {
+      await savePlatformSettingsDraft("promo-push-history", { items: next });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save history");
+    }
+  };
+
+  // Per-row resend — fires the same payload again. Confirms first because
+  // segment broadcasts are expensive (FCM rate limits + user fatigue).
+  const handleResend = async (entry: HistoryEntry) => {
+    if (sending) return;
+    const seg = SEGMENTS.find((s) => s.key === entry.segment);
+    if (!confirm(`Re-send "${entry.title}" to ${seg?.label ?? entry.segment}?`)) {
+      return;
+    }
+    try {
+      setSending(true);
+      const result = await sendPromoPush({
+        title: entry.title,
+        body: entry.body,
+        segment: entry.segment,
+        deepLink: entry.deepLink ?? undefined,
+      });
+      if (result.message) {
+        toast(result.message, { icon: "ℹ️" });
+      } else {
+        toast.success(`Re-sent to ${result.sent} of ${result.totalDevices} devices`);
+      }
+      await loadHistory();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Resend failed");
+    } finally {
+      setSending(false);
+    }
+  };
 
   const handleSend = async () => {
     if (sending) return;
@@ -255,6 +311,58 @@ export default function PushNotificationPage() {
                           ✗ {h.failed} failed
                         </span>
                       )}
+                      <div
+                        style={{
+                          marginLeft: "auto",
+                          display: "inline-flex",
+                          gap: 6,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          className="hover-soft"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            padding: "6px 10px",
+                            borderRadius: 8,
+                            border: "1px solid var(--input-border)",
+                            background: "transparent",
+                            color: "var(--foreground)",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: sending ? "default" : "pointer",
+                            opacity: sending ? 0.55 : 1,
+                          }}
+                          onClick={() => void handleResend(h)}
+                          disabled={sending}
+                          title="Re-send this push to the same segment"
+                        >
+                          <RotateCw size={12} /> Resend
+                        </button>
+                        <button
+                          type="button"
+                          className="hover-soft"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            padding: "6px 10px",
+                            borderRadius: 8,
+                            border: "1px solid rgba(239,68,68,0.4)",
+                            background: "transparent",
+                            color: "#FCA5A5",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                          }}
+                          onClick={() => void handleDelete(h.id)}
+                          title="Remove from history"
+                        >
+                          <Trash2 size={12} /> Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}

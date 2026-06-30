@@ -9,6 +9,8 @@ import {
   savePlatformSettingsDraft,
   sendWebhookTest,
   sendPushTest,
+  listAdminDeviceTokens,
+  type AdminDeviceToken,
   type PlatformSettingsSection,
 } from "@/src/lib/platformSettingsDraftApi";
 
@@ -384,6 +386,30 @@ function PushConfigPanel({
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testToken, setTestToken] = useState("");
+  const [devices, setDevices] = useState<AdminDeviceToken[]>([]);
+  const [devicesLoading, setDevicesLoading] = useState(false);
+
+  // Hydrate the device picker on mount. Soft-fail: if the call dies the
+  // admin can still paste a token manually.
+  useEffect(() => {
+    let mounted = true;
+    setDevicesLoading(true);
+    listAdminDeviceTokens()
+      .then((res) => {
+        if (!mounted) return;
+        setDevices(res.items);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        // Soft-fail — paste-mode still works.
+      })
+      .finally(() => {
+        if (mounted) setDevicesLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleSave = async () => {
     if (saving) return;
@@ -478,21 +504,73 @@ function PushConfigPanel({
         </Field>
       </div>
 
-      <div style={s.testRow}>
-        <input
-          style={{ ...s.input, flex: 1 }}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          marginTop: 6,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: "var(--muted-foreground)",
+            textTransform: "uppercase",
+            letterSpacing: 0.4,
+          }}
+        >
+          Pick a registered device {devices.length > 0 ? `(${devices.length})` : ""}
+        </span>
+        <select
+          style={s.input}
           value={testToken}
           onChange={(e) => setTestToken(e.target.value)}
-          placeholder="Paste a device FCM token to test"
-        />
-        <button
-          style={{ ...s.testBtn, opacity: testing ? 0.5 : 1 }}
-          onClick={handleTest}
-          disabled={testing}
+          disabled={devicesLoading || devices.length === 0}
         >
-          <Send size={13} />
-          {testing ? "Sending…" : "Send Test Push"}
-        </button>
+          <option value="">
+            {devicesLoading
+              ? "Loading devices…"
+              : devices.length === 0
+                ? "No registered devices yet — paste a token below"
+                : "Select a device…"}
+          </option>
+          {devices.map((d) => (
+            <option key={d.id} value={d.token}>
+              {d.ownerName} · {d.platform} · {d.tokenPreview} · last seen{" "}
+              {new Date(d.lastSeenAt).toLocaleDateString()}
+            </option>
+          ))}
+        </select>
+
+        <span
+          style={{
+            fontSize: 11,
+            color: "var(--muted-foreground)",
+            textAlign: "center",
+            opacity: 0.75,
+          }}
+        >
+          — or paste a raw token —
+        </span>
+
+        <div style={s.testRow}>
+          <input
+            style={{ ...s.input, flex: 1 }}
+            value={testToken}
+            onChange={(e) => setTestToken(e.target.value)}
+            placeholder="Paste a device FCM token to test"
+          />
+          <button
+            style={{ ...s.testBtn, opacity: testing ? 0.5 : 1 }}
+            onClick={handleTest}
+            disabled={testing}
+          >
+            <Send size={13} />
+            {testing ? "Sending…" : "Send Test Push"}
+          </button>
+        </div>
       </div>
 
       <div style={s.actionRow}>
