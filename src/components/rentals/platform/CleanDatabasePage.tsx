@@ -3,7 +3,19 @@
 import { useCallback, useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import toast from "react-hot-toast";
-import { AlertTriangle, Clock, KeyRound, UserX, Ban, RefreshCw } from "lucide-react";
+import {
+  AlertTriangle,
+  Clock,
+  KeyRound,
+  UserX,
+  Ban,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  ShieldAlert,
+  Trash2,
+  X,
+} from "lucide-react";
 import {
   listCleanupPreviews,
   runCleanupTask,
@@ -11,6 +23,11 @@ import {
   type CleanupPreview,
   type CleanupTaskId,
 } from "@/src/lib/adminCleanupApi";
+import {
+  listWipeableTables,
+  wipeTables,
+  type WipeableTable,
+} from "@/src/lib/adminMaintenanceApi";
 
 type ActionMeta = {
   id: CleanupTaskId;
@@ -122,6 +139,8 @@ export default function CleanDatabasePage() {
         </button>
       </div>
 
+      <AdvancedWipeSection />
+
       <div style={s.grid}>
         {ACTIONS.map((action) => {
           const preview = previews[action.id];
@@ -193,6 +212,430 @@ export default function CleanDatabasePage() {
     </div>
   );
 }
+
+// ── Advanced: per-table wipe ────────────────────────────────────────────────
+// SUPER_ADMIN-only. Lists every wipeable model with live counts +
+// dependency map. Checking a parent auto-checks + locks every cascaded
+// child so the admin can't miss the blast radius. Two-step confirm: open
+// modal → type WIPE → submit.
+
+function AdvancedWipeSection() {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [denied, setDenied] = useState(false);
+  const [tables, setTables] = useState<WipeableTable[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [confirming, setConfirming] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await listWipeableTables();
+      setTables(res.items);
+      setDenied(false);
+    } catch (e) {
+      // 403 means caller isn't SUPER_ADMIN — hide the section silently.
+      if (e instanceof Error && /SUPER_ADMIN|403/i.test(e.message)) {
+        setDenied(true);
+      } else {
+        toast.error(e instanceof Error ? e.message : "Failed to load tables");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Hydrate on first open so non-super admins don't even hit the endpoint.
+  useEffect(() => {
+    if (open && tables.length === 0 && !denied) void load();
+  }, [open, tables.length, denied, load]);
+
+  // Effective selection — every checked parent expands to include its
+  // cascade tree. Children pulled in this way are "forced": their
+  // checkbox shows checked + locked, removing the parent unlocks them.
+  const effectiveSet = (() => {
+    const out = new Set<string>(selected);
+    for (const name of selected) {
+      const row = tables.find((t) => t.name === name);
+      if (!row) continue;
+      for (const child of row.cascadesTo) out.add(child);
+    }
+    return out;
+  })();
+
+  const forcedSet = (() => {
+    const out = new Set<string>();
+    for (const name of selected) {
+      const row = tables.find((t) => t.name === name);
+      if (!row) continue;
+      for (const child of row.cascadesTo) {
+        if (!selected.has(child)) out.add(child);
+      }
+    }
+    return out;
+  })();
+
+  const toggle = (name: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
+
+  const totalRowsToDelete = tables
+    .filter((t) => effectiveSet.has(t.name))
+    .reduce((sum, t) => sum + t.count, 0);
+
+  const grouped = (() => {
+    const map = new Map<string, WipeableTable[]>();
+    for (const t of tables) {
+      const list = map.get(t.group) ?? [];
+      list.push(t);
+      map.set(t.group, list);
+    }
+    return Array.from(map.entries());
+  })();
+
+  const doWipe = async () => {
+    if (confirmText !== "WIPE") return;
+    setRunning(true);
+    try {
+      const res = await wipeTables(Array.from(selected));
+      toast.success(
+        `Wiped ${res.effectiveTables.length} table${
+          res.effectiveTables.length === 1 ? "" : "s"
+        } — ${res.totalRows.toLocaleString()} rows deleted`,
+      );
+      setSelected(new Set());
+      setConfirming(false);
+      setConfirmText("");
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Wipe failed");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  if (denied) return null;
+
+  return (
+    <section style={advancedSection}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={advancedHeader}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <ShieldAlert size={18} color="#ef4444" />
+          <span style={{ fontWeight: 700, fontSize: 14 }}>
+            Advanced — Per-table wipe
+          </span>
+          <span style={advancedBadge}>SUPER_ADMIN</span>
+        </div>
+        {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+      </button>
+
+      {open ? (
+        <div style={{ padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--muted-foreground)" }}>
+            Wipe entire tables. Checking a parent auto-includes every table the
+            cascade will drop with it. Every action lands in the Audit Log with
+            row counts. Take a backup before running this.
+          </p>
+
+          {loading ? (
+            <div style={s.loadingWrap}>
+              <div style={s.spinner} />
+              <span style={{ color: "var(--muted-foreground)", fontSize: 13 }}>
+                Counting rows…
+              </span>
+            </div>
+          ) : (
+            <>
+              {grouped.map(([group, rows]) => (
+                <div key={group} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: 0.4,
+                      textTransform: "uppercase",
+                      color: "var(--muted-foreground)",
+                    }}
+                  >
+                    {group}
+                  </span>
+                  <div style={tableGrid}>
+                    {rows.map((t) => {
+                      const checked = selected.has(t.name);
+                      const forced = forcedSet.has(t.name);
+                      const isChecked = checked || forced;
+                      return (
+                        <label
+                          key={t.name}
+                          style={{
+                            ...tableRow,
+                            opacity: forced ? 0.92 : 1,
+                            borderColor: isChecked
+                              ? "rgba(239,68,68,0.45)"
+                              : "var(--input-border)",
+                            background: isChecked
+                              ? "rgba(239,68,68,0.08)"
+                              : "var(--surface-1)",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            disabled={forced}
+                            onChange={() => toggle(t.name)}
+                            style={{ accentColor: "#ef4444" }}
+                          />
+                          <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+                            <span style={{ fontSize: 13, fontWeight: 600 }}>
+                              {t.label}
+                            </span>
+                            <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+                              {t.name} · {t.count.toLocaleString()} rows
+                              {forced ? " · linked" : ""}
+                              {t.cascadesTo.length > 0 && !forced
+                                ? ` · cascades to ${t.cascadesTo.length}`
+                                : ""}
+                            </span>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              <div style={advancedFooter}>
+                <div>
+                  {selected.size === 0 ? (
+                    <span style={{ color: "var(--muted-foreground)", fontSize: 13 }}>
+                      Select tables to wipe
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: 13 }}>
+                      <strong>{effectiveSet.size}</strong> table
+                      {effectiveSet.size === 1 ? "" : "s"} selected ·{" "}
+                      <strong style={{ color: "#fca5a5" }}>
+                        {totalRowsToDelete.toLocaleString()} rows
+                      </strong>{" "}
+                      will be deleted
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  style={{
+                    ...s.dangerBtn,
+                    opacity: selected.size === 0 ? 0.5 : 1,
+                  }}
+                  disabled={selected.size === 0}
+                  onClick={() => {
+                    setConfirming(true);
+                    setConfirmText("");
+                  }}
+                >
+                  <Trash2 size={14} /> Wipe Selected
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      ) : null}
+
+      {confirming ? (
+        <div style={modalBackdrop} onClick={() => !running && setConfirming(false)}>
+          <div style={modalCard} onClick={(e) => e.stopPropagation()}>
+            <div style={modalHeader}>
+              <strong style={{ fontSize: 15 }}>Confirm permanent delete</strong>
+              <button
+                type="button"
+                style={s.cancelBtn}
+                onClick={() => setConfirming(false)}
+                disabled={running}
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <div style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
+              <p style={{ margin: 0, fontSize: 13 }}>
+                The following {effectiveSet.size} table
+                {effectiveSet.size === 1 ? "" : "s"} will be wiped — totalling{" "}
+                <strong style={{ color: "#fca5a5" }}>
+                  {totalRowsToDelete.toLocaleString()}
+                </strong>{" "}
+                rows:
+              </p>
+              <div
+                style={{
+                  border: "1px solid var(--input-border)",
+                  borderRadius: 10,
+                  padding: 12,
+                  maxHeight: 200,
+                  overflowY: "auto",
+                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                  fontSize: 12,
+                  background: "var(--surface-1)",
+                }}
+              >
+                {Array.from(effectiveSet)
+                  .sort()
+                  .map((name) => {
+                    const row = tables.find((t) => t.name === name);
+                    return (
+                      <div key={name}>
+                        {name} —{" "}
+                        <span style={{ color: "#fca5a5" }}>
+                          {row?.count.toLocaleString() ?? 0} rows
+                        </span>
+                      </div>
+                    );
+                  })}
+              </div>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--muted-foreground)" }}>
+                Type <strong>WIPE</strong> (uppercase) to confirm.
+              </p>
+              <input
+                type="text"
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                placeholder="WIPE"
+                style={{
+                  height: 40,
+                  padding: "0 12px",
+                  borderRadius: 10,
+                  border: "1px solid var(--input-border)",
+                  background: "var(--input-bg)",
+                  color: "var(--input-fg)",
+                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                  fontSize: 14,
+                  outline: "none",
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                }}
+              />
+            </div>
+            <div style={modalFooter}>
+              <button
+                type="button"
+                style={s.cancelBtn}
+                onClick={() => setConfirming(false)}
+                disabled={running}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                style={{
+                  ...s.dangerBtn,
+                  opacity:
+                    confirmText !== "WIPE" || running ? 0.5 : 1,
+                }}
+                disabled={confirmText !== "WIPE" || running}
+                onClick={doWipe}
+              >
+                {running ? "Wiping…" : "Wipe permanently"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+// Inline styles only for the advanced section so we don't pollute the
+// shared `s` object above. Tokens-only.
+const advancedSection: CSSProperties = {
+  borderRadius: 14,
+  border: "1px solid rgba(239,68,68,0.32)",
+  background: "rgba(239,68,68,0.04)",
+  overflow: "hidden",
+};
+const advancedHeader: CSSProperties = {
+  width: "100%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: "12px 16px",
+  background: "transparent",
+  border: "none",
+  cursor: "pointer",
+  color: "var(--foreground)",
+};
+const advancedBadge: CSSProperties = {
+  padding: "2px 8px",
+  borderRadius: 999,
+  background: "rgba(239,68,68,0.12)",
+  color: "#fca5a5",
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: 0.4,
+  border: "1px solid rgba(239,68,68,0.35)",
+};
+const tableGrid: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+  gap: 8,
+};
+const tableRow: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  padding: "10px 12px",
+  borderRadius: 10,
+  border: "1px solid var(--input-border)",
+  background: "var(--surface-1)",
+  cursor: "pointer",
+};
+const advancedFooter: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  paddingTop: 14,
+  borderTop: "1px solid var(--input-border)",
+};
+const modalBackdrop: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(2,6,23,0.7)",
+  zIndex: 90,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: 24,
+};
+const modalCard: CSSProperties = {
+  width: "100%",
+  maxWidth: 560,
+  background: "var(--surface-1)",
+  border: "1px solid var(--input-border)",
+  borderRadius: 14,
+  boxShadow: "0 24px 60px rgba(0,0,0,0.45)",
+};
+const modalHeader: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "14px 18px",
+  borderBottom: "1px solid var(--input-border)",
+};
+const modalFooter: CSSProperties = {
+  display: "flex",
+  justifyContent: "flex-end",
+  gap: 10,
+  padding: "12px 18px",
+  borderTop: "1px solid var(--input-border)",
+};
 
 function CountsBreakdown({ counts }: { counts: CleanupCounts }) {
   const entries = Object.entries(counts).filter(([key]) => key !== "total");
