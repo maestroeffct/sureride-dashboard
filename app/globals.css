@@ -56,7 +56,7 @@ html[data-theme="dark"] {
   --sidebar-item-fg-muted: #ffffff;
   /* Active sidebar item uses the brand green so the user can see at a
    * glance which section they're in. */
-  --sidebar-item-active-fg: #022c22;
+  --sidebar-item-active-fg: #ffffff;
   --sidebar-item-active-bg: color-mix(in srgb, var(--brand-primary) 80%, white);
   --sidebar-group-open-bg: color-mix(in srgb, var(--brand-primary) 10%, transparent);
 
@@ -129,7 +129,7 @@ html[data-theme="light"] {
   --sidebar-item-fg: #0f172a;
   --sidebar-item-fg-muted: #1f2937;
   /* Light theme — active sidebar still brand green but with darker text. */
-  --sidebar-item-active-fg: #022c22;
+  --sidebar-item-active-fg: #ffffff;
   --sidebar-item-active-bg: color-mix(in srgb, var(--brand-primary) 20%, white);
   --sidebar-group-open-bg: color-mix(in srgb, var(--brand-primary) 8%, transparent);
 
