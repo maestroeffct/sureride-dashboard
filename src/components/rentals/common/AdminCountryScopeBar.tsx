@@ -9,6 +9,10 @@ import {
   isGlobalRegionScope,
 } from "@/src/lib/adminCountryScope";
 import { countryHasRegions, regionsFor } from "@/src/lib/adminRegions";
+import {
+  currencyForCountryCode,
+  SUPPORTED_CURRENCIES,
+} from "@/src/lib/currencyForCountry";
 
 type Props = {
   scope: string;
@@ -236,17 +240,29 @@ export default function AdminCountryScopeBar({
               placeholder="Code"
               maxLength={3}
               value={countryCode}
-              onChange={(event) => setCountryCode(event.target.value.toUpperCase())}
+              onChange={(event) => {
+                const upper = event.target.value.toUpperCase();
+                setCountryCode(upper);
+                // Suggest the currency that matches the country code if the
+                // admin hasn't already picked one. Lets them tab past the
+                // currency field in the common case.
+                if (!countryCurrency && upper.length >= 2) {
+                  setCountryCurrency(currencyForCountryCode(upper).code);
+                }
+              }}
             />
-            <input
+            <select
               style={styles.input}
-              placeholder="Currency (e.g. NGN)"
-              maxLength={3}
               value={countryCurrency}
-              onChange={(event) =>
-                setCountryCurrency(event.target.value.toUpperCase())
-              }
-            />
+              onChange={(event) => setCountryCurrency(event.target.value)}
+            >
+              <option value="">Currency…</option>
+              {SUPPORTED_CURRENCIES.map((currency) => (
+                <option key={currency.code} value={currency.code}>
+                  {currency.code} ({currency.symbol})
+                </option>
+              ))}
+            </select>
             <button
               type="button"
               style={styles.primaryButton}
@@ -275,10 +291,8 @@ export default function AdminCountryScopeBar({
                     </p>
                     {onUpdateCountryCurrency ? (
                       <div style={styles.currencyRow}>
-                        <input
+                        <select
                           style={styles.currencyInput}
-                          placeholder="Currency"
-                          maxLength={3}
                           value={currentDisplayed}
                           onChange={(event) =>
                             setCurrencyDrafts((prev) => ({
@@ -286,7 +300,14 @@ export default function AdminCountryScopeBar({
                               [country.id]: event.target.value.toUpperCase(),
                             }))
                           }
-                        />
+                        >
+                          <option value="">Currency…</option>
+                          {SUPPORTED_CURRENCIES.map((currency) => (
+                            <option key={currency.code} value={currency.code}>
+                              {currency.code} ({currency.symbol})
+                            </option>
+                          ))}
+                        </select>
                         <button
                           type="button"
                           style={styles.currencySaveBtn}
