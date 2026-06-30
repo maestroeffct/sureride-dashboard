@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Edit2, Plus, Search, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { Check, Edit2, Plus, Search, Trash2, X } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   createEmployeeRole,
@@ -10,23 +10,13 @@ import {
   updateEmployeeRole,
 } from "@/src/lib/employeesApi";
 import type { EmployeePermission, EmployeeRole } from "@/src/types/employee";
+import {
+  PERMISSION_MODULES,
+  ROLE_PRESETS,
+  TOTAL_PERMISSION_COUNT,
+  matchPreset,
+} from "@/src/lib/permissionCatalog";
 import styles from "./styles";
-
-const PERMISSION_OPTIONS: EmployeePermission[] = [
-  "employees.read",
-  "employees.create",
-  "employees.update",
-  "employees.suspend",
-  "roles.read",
-  "roles.create",
-  "roles.update",
-  "roles.delete",
-  "providers.manage",
-  "cars.manage",
-  "bookings.manage",
-  "promotions.manage",
-  "settings.manage",
-];
 
 type RoleFormState = {
   name: string;
@@ -96,16 +86,69 @@ export default function EmployeeRolesPage() {
     setOpenModal(true);
   };
 
+  // Permission set is normalized through `recompute` so dependency rules
+  // always hold: turning off X.read auto-removes X.create/update/delete,
+  // and turning on X.create auto-adds X.read.
+  const recompute = (set: EmployeePermission[]): EmployeePermission[] => {
+    const out = new Set<EmployeePermission>(set);
+    // Pass 1: add prerequisites for everything currently in the set.
+    for (const mod of PERMISSION_MODULES) {
+      for (const action of mod.actions) {
+        if (action.requires && out.has(action.key)) out.add(action.requires);
+      }
+    }
+    // Pass 2: remove children whose prerequisite isn't in the set.
+    for (const mod of PERMISSION_MODULES) {
+      for (const action of mod.actions) {
+        if (action.requires && !out.has(action.requires)) out.delete(action.key);
+      }
+    }
+    return Array.from(out);
+  };
+
   const togglePermission = (permission: EmployeePermission) => {
     setForm((prev) => {
       const exists = prev.permissions.includes(permission);
-      return {
-        ...prev,
-        permissions: exists
-          ? prev.permissions.filter((p) => p !== permission)
-          : [...prev.permissions, permission],
-      };
+      const next = exists
+        ? prev.permissions.filter((p) => p !== permission)
+        : [...prev.permissions, permission];
+      return { ...prev, permissions: recompute(next) };
     });
+  };
+
+  const toggleModule = (moduleKey: string, on: boolean) => {
+    const mod = PERMISSION_MODULES.find((m) => m.key === moduleKey);
+    if (!mod) return;
+    setForm((prev) => {
+      const keys = mod.actions.map((a) => a.key);
+      const next = on
+        ? Array.from(new Set([...prev.permissions, ...keys]))
+        : prev.permissions.filter((p) => !keys.includes(p));
+      return { ...prev, permissions: recompute(next) };
+    });
+  };
+
+  const selectAll = () => {
+    setForm((prev) => ({
+      ...prev,
+      permissions: PERMISSION_MODULES.flatMap((m) => m.actions.map((a) => a.key)),
+    }));
+  };
+
+  const clearAll = () => {
+    setForm((prev) => ({ ...prev, permissions: [] }));
+  };
+
+  const applyPreset = (key: string) => {
+    const preset = ROLE_PRESETS.find((p) => p.key === key);
+    if (!preset) return;
+    setForm((prev) => ({
+      ...prev,
+      permissions: recompute([...preset.permissions]),
+      // Auto-fill name + description if blank so admin doesn't have to type.
+      name: prev.name.trim() || preset.label,
+      description: prev.description.trim() || preset.description,
+    }));
   };
 
   const saveRole = async () => {
@@ -287,48 +330,206 @@ export default function EmployeeRolesPage() {
       </div>
 
       {openModal && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalCard}>
-            <h2 style={styles.modalTitle}>{editingRole ? "Edit Role" : "Add Role"}</h2>
-
-            <div style={styles.field}>
-              <label style={styles.label}>Role Name *</label>
-              <input
-                style={styles.input}
-                value={form.name}
-                onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-              />
+        <div
+          style={styles.modalOverlay}
+          onClick={() => !saving && setOpenModal(false)}
+        >
+          <div
+            style={{ ...styles.modalCard, ...m.card }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={m.header}>
+              <h2 style={styles.modalTitle}>
+                {editingRole ? "Edit Role" : "Add Role"}
+              </h2>
+              <button
+                type="button"
+                style={m.closeBtn}
+                onClick={() => setOpenModal(false)}
+                disabled={saving}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
             </div>
 
-            <div style={styles.field}>
-              <label style={styles.label}>Description</label>
-              <textarea
-                style={styles.textArea}
-                value={form.description}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, description: e.target.value }))
-                }
-              />
-            </div>
+            <div style={m.body}>
+              {/* Identity */}
+              <div style={m.grid2}>
+                <div style={styles.field}>
+                  <label style={styles.label}>Role name *</label>
+                  <input
+                    style={styles.input}
+                    value={form.name}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, name: e.target.value }))
+                    }
+                    placeholder="e.g. Operations Manager"
+                  />
+                </div>
+                <div style={styles.field}>
+                  <label style={styles.label}>Description</label>
+                  <input
+                    style={styles.input}
+                    value={form.description}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
+                    placeholder="What does someone with this role do?"
+                  />
+                </div>
+              </div>
 
-            <div style={styles.field}>
-              <label style={styles.label}>Permissions *</label>
-              <div style={styles.permissionGrid}>
-                {PERMISSION_OPTIONS.map((permission) => (
-                  <label key={permission} style={styles.checkboxRow}>
-                    <input
-                      type="checkbox"
-                      checked={form.permissions.includes(permission)}
-                      onChange={() => togglePermission(permission)}
-                    />
-                    {permission}
-                  </label>
-                ))}
+              {/* Preset templates */}
+              <div>
+                <label style={styles.label}>Start from a preset</label>
+                <div style={m.presetRow}>
+                  {ROLE_PRESETS.map((preset) => {
+                    const active = matchPreset(form.permissions)?.key === preset.key;
+                    return (
+                      <button
+                        key={preset.key}
+                        type="button"
+                        onClick={() => applyPreset(preset.key)}
+                        title={preset.description}
+                        style={{
+                          ...m.presetChip,
+                          ...(active ? m.presetChipActive : {}),
+                        }}
+                      >
+                        {preset.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Permissions header with master toggles */}
+              <div style={m.permsHeader}>
+                <div>
+                  <label style={styles.label}>Permissions *</label>
+                  <span style={m.summary}>
+                    {form.permissions.length} of {TOTAL_PERMISSION_COUNT}{" "}
+                    selected across{" "}
+                    {
+                      PERMISSION_MODULES.filter((mod) =>
+                        mod.actions.some((a) =>
+                          form.permissions.includes(a.key),
+                        ),
+                      ).length
+                    }{" "}
+                    module
+                    {PERMISSION_MODULES.filter((mod) =>
+                      mod.actions.some((a) => form.permissions.includes(a.key)),
+                    ).length === 1
+                      ? ""
+                      : "s"}
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    style={m.linkBtn}
+                    onClick={selectAll}
+                  >
+                    Select all
+                  </button>
+                  <span style={{ color: "var(--muted-foreground)" }}>·</span>
+                  <button
+                    type="button"
+                    style={m.linkBtn}
+                    onClick={clearAll}
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+
+              {/* Per-module groups */}
+              <div style={m.modulesWrap}>
+                {PERMISSION_MODULES.map((mod) => {
+                  const allKeys = mod.actions.map((a) => a.key);
+                  const checkedCount = allKeys.filter((k) =>
+                    form.permissions.includes(k),
+                  ).length;
+                  const allOn = checkedCount === allKeys.length;
+                  const someOn = checkedCount > 0 && !allOn;
+                  return (
+                    <div key={mod.key} style={m.moduleCard}>
+                      <div style={m.moduleHead}>
+                        <div>
+                          <strong style={m.moduleTitle}>{mod.label}</strong>
+                          <p style={m.moduleDesc}>{mod.description}</p>
+                        </div>
+                        <button
+                          type="button"
+                          style={{
+                            ...m.moduleToggle,
+                            ...(allOn ? m.moduleToggleAll : {}),
+                          }}
+                          onClick={() => toggleModule(mod.key, !allOn)}
+                        >
+                          {allOn ? "All on" : someOn ? `${checkedCount}/${allKeys.length}` : "All off"}
+                        </button>
+                      </div>
+                      <div style={m.actionGrid}>
+                        {mod.actions.map((action) => {
+                          const checked = form.permissions.includes(action.key);
+                          const requiresMissing =
+                            action.requires &&
+                            !form.permissions.includes(action.requires);
+                          return (
+                            <label
+                              key={action.key}
+                              style={{
+                                ...m.actionRow,
+                                borderColor: checked
+                                  ? "color-mix(in srgb, var(--brand-primary) 45%, transparent)"
+                                  : "var(--input-border)",
+                                background: checked
+                                  ? "color-mix(in srgb, var(--brand-primary) 8%, transparent)"
+                                  : "var(--surface-1)",
+                                opacity: requiresMissing ? 0.55 : 1,
+                              }}
+                              title={action.hint}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                disabled={requiresMissing && !checked}
+                                onChange={() => togglePermission(action.key)}
+                                style={{
+                                  accentColor: "var(--brand-primary)",
+                                  width: 16,
+                                  height: 16,
+                                  flexShrink: 0,
+                                }}
+                              />
+                              <span style={{ display: "flex", flexDirection: "column" }}>
+                                <span style={m.actionLabel}>{action.label}</span>
+                                {action.hint ? (
+                                  <span style={m.actionHint}>{action.hint}</span>
+                                ) : null}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            <div style={styles.modalActions}>
-              <button style={styles.ghostBtn} onClick={() => setOpenModal(false)}>
+            <div style={{ ...styles.modalActions, ...m.footer }}>
+              <button
+                style={styles.ghostBtn}
+                onClick={() => setOpenModal(false)}
+                disabled={saving}
+              >
                 Cancel
               </button>
               <button
@@ -336,7 +537,13 @@ export default function EmployeeRolesPage() {
                 onClick={() => void saveRole()}
                 disabled={saving}
               >
-                {saving ? "Saving..." : "Save Role"}
+                {saving ? (
+                  "Saving..."
+                ) : (
+                  <>
+                    <Check size={14} /> Save Role
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -345,3 +552,164 @@ export default function EmployeeRolesPage() {
     </div>
   );
 }
+
+// Inline styles for the rebuilt modal — token-only so they pick up theme
+// changes. Kept here (not in styles.ts) because they're modal-specific.
+const m: Record<string, CSSProperties> = {
+  card: {
+    width: "100%",
+    maxWidth: 880,
+    maxHeight: "92vh",
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+  },
+  header: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "16px 22px",
+    borderBottom: "1px solid var(--input-border)",
+  },
+  closeBtn: {
+    background: "transparent",
+    border: "none",
+    cursor: "pointer",
+    color: "var(--muted-foreground)",
+    padding: 6,
+    borderRadius: 6,
+  },
+  body: {
+    flex: 1,
+    overflowY: "auto",
+    padding: 22,
+    display: "flex",
+    flexDirection: "column",
+    gap: 18,
+  },
+  footer: {
+    padding: "14px 22px",
+    borderTop: "1px solid var(--input-border)",
+  },
+  grid2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 },
+
+  presetRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 6,
+  },
+  presetChip: {
+    padding: "8px 14px",
+    borderRadius: 999,
+    border: "1px solid var(--input-border)",
+    background: "transparent",
+    color: "var(--muted-foreground)",
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+  presetChipActive: {
+    background: "color-mix(in srgb, var(--brand-primary) 14%, transparent)",
+    color: "var(--brand-primary)",
+    borderColor: "color-mix(in srgb, var(--brand-primary) 45%, transparent)",
+  },
+
+  permsHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    gap: 14,
+    flexWrap: "wrap",
+    paddingTop: 6,
+    borderTop: "1px solid var(--input-border)",
+  },
+  summary: {
+    display: "block",
+    marginTop: 4,
+    fontSize: 12,
+    color: "var(--muted-foreground)",
+  },
+  linkBtn: {
+    background: "transparent",
+    border: "none",
+    color: "var(--brand-primary)",
+    cursor: "pointer",
+    fontSize: 12,
+    fontWeight: 600,
+    padding: 0,
+  },
+
+  modulesWrap: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 14,
+  },
+  moduleCard: {
+    border: "1px solid var(--input-border)",
+    borderRadius: 12,
+    background: "var(--surface-2)",
+    overflow: "hidden",
+  },
+  moduleHead: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    padding: "12px 14px",
+    gap: 14,
+    borderBottom: "1px solid var(--input-border)",
+    background: "var(--surface-1)",
+  },
+  moduleTitle: {
+    fontSize: 14,
+    fontWeight: 700,
+    color: "var(--foreground)",
+  },
+  moduleDesc: {
+    margin: "2px 0 0",
+    fontSize: 12,
+    color: "var(--muted-foreground)",
+    maxWidth: 480,
+  },
+  moduleToggle: {
+    padding: "4px 12px",
+    borderRadius: 999,
+    border: "1px solid var(--input-border)",
+    background: "transparent",
+    color: "var(--muted-foreground)",
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+  },
+  moduleToggleAll: {
+    background: "color-mix(in srgb, var(--brand-primary) 18%, transparent)",
+    color: "var(--brand-primary)",
+    borderColor: "color-mix(in srgb, var(--brand-primary) 45%, transparent)",
+  },
+  actionGrid: {
+    padding: 10,
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gap: 8,
+  },
+  actionRow: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: 10,
+    padding: "10px 12px",
+    border: "1px solid var(--input-border)",
+    borderRadius: 10,
+    cursor: "pointer",
+    background: "var(--surface-1)",
+  },
+  actionLabel: { fontSize: 13, fontWeight: 600, color: "var(--foreground)" },
+  actionHint: {
+    fontSize: 11,
+    color: "var(--muted-foreground)",
+    marginTop: 2,
+    lineHeight: 1.4,
+  },
+};
