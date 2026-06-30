@@ -504,7 +504,7 @@ export default function ProviderDetailPage() {
                     <a
                       href={doc.url}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       style={styles.linkButton}
                     >
                       <ExternalLink size={14} />

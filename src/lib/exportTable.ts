@@ -10,7 +10,13 @@
 type CellValue = string | number | boolean | null | undefined;
 
 function toCsvValue(input: CellValue): string {
-  const value = String(input ?? "");
+  let value = String(input ?? "");
+  // CSV/formula injection: a cell a spreadsheet would treat as a formula
+  // (starts with = + - @, or a tab/CR) gets a leading apostrophe so Excel and
+  // Google Sheets render it as literal text instead of executing it.
+  if (/^[=+\-@\t\r]/.test(value)) {
+    value = `'${value}`;
+  }
   // RFC 4180: wrap in quotes and double any embedded quotes.
   return `"${value.replaceAll('"', '""')}"`;
 }

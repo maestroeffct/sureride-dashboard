@@ -1692,7 +1692,7 @@ export default function BusinessSettingsFeaturePage({
                   <a
                     href={item.url}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     style={styles.galleryLink}
                   >
                     {item.url}

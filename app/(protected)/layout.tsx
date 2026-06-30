@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { RequireAdmin } from "@/src/components/auth/RequireAdmin";
 import Topbar from "@/src/components/dashboard/Topbar/Topbar";
+import LicenseBanner from "@/src/components/dashboard/LicenseBanner";
 import { LayoutUIProvider } from "@/src/providers/LayoutUIProvider";
 
 export default function DashboardLayout({
@@ -14,6 +15,7 @@ export default function DashboardLayout({
         <div style={styles.wrapper}>
           <div style={styles.main}>
             <Topbar />
+            <LicenseBanner />
             <div style={styles.content}>{children}</div>
           </div>
         </div>

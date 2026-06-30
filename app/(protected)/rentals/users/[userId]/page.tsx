@@ -386,7 +386,7 @@ export default function UserDetailsPage() {
               key={doc.label}
               href={doc.url}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               style={styles.docLink}
             >
               Open {doc.label}

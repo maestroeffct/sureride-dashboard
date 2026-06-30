@@ -317,6 +317,11 @@ export const rentalsMenu: SidebarItem[] = [
         path: "/rentals/platform/audit-log",
         icon: sidebarIcons.reports,
       },
+      {
+        label: "License",
+        path: "/rentals/platform/license",
+        icon: sidebarIcons.settings,
+      },
     ],
   },
 ];

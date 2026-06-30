@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Topbar from "@/src/components/dashboard/Topbar/Topbar";
 import Sidebar from "@/src/components/dashboard/Sidebar/Sidebar";
+import LicenseBanner from "@/src/components/dashboard/LicenseBanner";
 import { RequireProvider } from "@/src/components/auth/RequireProvider";
 import { LayoutUIProvider } from "@/src/providers/LayoutUIProvider";
 import { useLayoutUI } from "@/src/hooks/useLayoutUI";
@@ -108,6 +109,7 @@ function ProviderShell({ children }: { children: React.ReactNode }) {
   return (
     <div style={styles.wrapper}>
       <Topbar />
+      <LicenseBanner />
       <div style={styles.body}>
         <Sidebar
           module="providerRentals"
