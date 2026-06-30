@@ -4,6 +4,8 @@ export type AdminCountry = {
   id: string;
   name: string;
   code: string;
+  /** ISO 4217 currency code — null when not set yet. */
+  currency: string | null;
   isActive: boolean;
   locationsCount: number;
 };
@@ -15,6 +17,7 @@ type ListAdminCountriesResponse = {
 type AdminCountryPayload = {
   name: string;
   code: string;
+  currency?: string | null;
   isActive?: boolean;
 };
 

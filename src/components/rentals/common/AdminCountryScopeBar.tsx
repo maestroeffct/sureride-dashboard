@@ -16,8 +16,21 @@ type Props = {
   loading?: boolean;
   allowManage?: boolean;
   onScopeChange: (scope: string) => void;
-  onCreateCountry?: (payload: { name: string; code: string }) => Promise<void>;
+  onCreateCountry?: (payload: {
+    name: string;
+    code: string;
+    currency?: string | null;
+  }) => Promise<void>;
   onToggleCountry?: (country: AdminCountry) => Promise<void>;
+  /**
+   * Update an existing country's currency. The same `updateAdminCountry`
+   * endpoint handles every field, but the bar only exposes a focused control
+   * for currency since that's what feeds the mobile picker.
+   */
+  onUpdateCountryCurrency?: (
+    country: AdminCountry,
+    currency: string,
+  ) => Promise<void>;
   // Region scope is optional — pages that don't care about sub-country scoping
   // can omit it and the region picker stays hidden. Pages that do care pass
   // both pieces in and the bar surfaces a second dropdown for countries with
@@ -34,14 +47,18 @@ export default function AdminCountryScopeBar({
   onScopeChange,
   onCreateCountry,
   onToggleCountry,
+  onUpdateCountryCurrency,
   regionScope = GLOBAL_REGION_SCOPE,
   onRegionScopeChange,
 }: Props) {
   const [isManageOpen, setIsManageOpen] = useState(false);
   const [countryName, setCountryName] = useState("");
   const [countryCode, setCountryCode] = useState("");
+  const [countryCurrency, setCountryCurrency] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingCountryId, setPendingCountryId] = useState<string | null>(null);
+  const [currencyDrafts, setCurrencyDrafts] = useState<Record<string, string>>({});
+  const [savingCurrencyFor, setSavingCurrencyFor] = useState<string | null>(null);
 
   const selectedCountry = useMemo(
     () => countries.find((country) => country.id === scope) ?? null,
@@ -73,6 +90,7 @@ export default function AdminCountryScopeBar({
 
     const name = countryName.trim();
     const code = countryCode.trim().toUpperCase();
+    const currency = countryCurrency.trim().toUpperCase();
 
     if (!name || code.length < 2) {
       return;
@@ -80,12 +98,33 @@ export default function AdminCountryScopeBar({
 
     try {
       setIsSubmitting(true);
-      await onCreateCountry({ name, code });
+      await onCreateCountry({
+        name,
+        code,
+        currency: currency.length === 3 ? currency : null,
+      });
       setCountryName("");
       setCountryCode("");
+      setCountryCurrency("");
       setIsManageOpen(false);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveCurrency = async (country: AdminCountry) => {
+    if (!onUpdateCountryCurrency) return;
+    const next = (currencyDrafts[country.id] ?? "").trim().toUpperCase();
+    if (next.length !== 3 || next === country.currency) return;
+    try {
+      setSavingCurrencyFor(country.id);
+      await onUpdateCountryCurrency(country, next);
+      setCurrencyDrafts((prev) => {
+        const { [country.id]: _drop, ...rest } = prev;
+        return rest;
+      });
+    } finally {
+      setSavingCurrencyFor(null);
     }
   };
 
@@ -199,6 +238,15 @@ export default function AdminCountryScopeBar({
               value={countryCode}
               onChange={(event) => setCountryCode(event.target.value.toUpperCase())}
             />
+            <input
+              style={styles.input}
+              placeholder="Currency (e.g. NGN)"
+              maxLength={3}
+              value={countryCurrency}
+              onChange={(event) =>
+                setCountryCurrency(event.target.value.toUpperCase())
+              }
+            />
             <button
               type="button"
               style={styles.primaryButton}
@@ -210,29 +258,69 @@ export default function AdminCountryScopeBar({
           </div>
 
           <div style={styles.countryGrid}>
-            {countries.map((country) => (
-              <div key={country.id} style={styles.countryCard}>
-                <div>
-                  <strong style={styles.countryName}>{country.name}</strong>
-                  <p style={styles.countryMeta}>
-                    {country.code} · {country.locationsCount} location
-                    {country.locationsCount === 1 ? "" : "s"}
-                  </p>
+            {countries.map((country) => {
+              const draft = currencyDrafts[country.id];
+              const currentDisplayed = draft ?? country.currency ?? "";
+              const draftDiffers =
+                draft !== undefined &&
+                draft.trim().toUpperCase() !== (country.currency ?? "");
+              const draftValid = currentDisplayed.trim().length === 3;
+              return (
+                <div key={country.id} style={styles.countryCard}>
+                  <div style={{ flex: 1 }}>
+                    <strong style={styles.countryName}>{country.name}</strong>
+                    <p style={styles.countryMeta}>
+                      {country.code} · {country.locationsCount} location
+                      {country.locationsCount === 1 ? "" : "s"}
+                    </p>
+                    {onUpdateCountryCurrency ? (
+                      <div style={styles.currencyRow}>
+                        <input
+                          style={styles.currencyInput}
+                          placeholder="Currency"
+                          maxLength={3}
+                          value={currentDisplayed}
+                          onChange={(event) =>
+                            setCurrencyDrafts((prev) => ({
+                              ...prev,
+                              [country.id]: event.target.value.toUpperCase(),
+                            }))
+                          }
+                        />
+                        <button
+                          type="button"
+                          style={styles.currencySaveBtn}
+                          disabled={
+                            !draftDiffers ||
+                            !draftValid ||
+                            savingCurrencyFor === country.id
+                          }
+                          onClick={() => void handleSaveCurrency(country)}
+                        >
+                          {savingCurrencyFor === country.id
+                            ? "Saving..."
+                            : "Save"}
+                        </button>
+                      </div>
+                    ) : country.currency ? (
+                      <p style={styles.countryMeta}>Currency: {country.currency}</p>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    style={country.isActive ? styles.deactivateButton : styles.activateButton}
+                    disabled={pendingCountryId === country.id}
+                    onClick={() => void handleToggleCountry(country)}
+                  >
+                    {pendingCountryId === country.id
+                      ? "Updating..."
+                      : country.isActive
+                        ? "Deactivate"
+                        : "Activate"}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  style={country.isActive ? styles.deactivateButton : styles.activateButton}
-                  disabled={pendingCountryId === country.id}
-                  onClick={() => void handleToggleCountry(country)}
-                >
-                  {pendingCountryId === country.id
-                    ? "Updating..."
-                    : country.isActive
-                      ? "Deactivate"
-                      : "Activate"}
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ) : null}
@@ -335,8 +423,37 @@ const styles: Record<string, CSSProperties> = {
   },
   manageForm: {
     display: "grid",
-    gridTemplateColumns: "minmax(180px, 1.4fr) minmax(100px, 0.8fr) auto",
+    gridTemplateColumns:
+      "minmax(180px, 1.4fr) minmax(80px, 0.6fr) minmax(110px, 0.8fr) auto",
     gap: 10,
+  },
+  currencyRow: {
+    marginTop: 8,
+    display: "flex",
+    gap: 6,
+  },
+  currencyInput: {
+    flex: 1,
+    height: 34,
+    borderRadius: 10,
+    border: "1px solid rgba(148,163,184,0.24)",
+    background: "rgba(15,23,42,0.72)",
+    color: "#f8fafc",
+    padding: "0 10px",
+    fontSize: 13,
+    letterSpacing: 0.4,
+    outline: "none",
+  },
+  currencySaveBtn: {
+    height: 34,
+    borderRadius: 10,
+    border: "none",
+    background: "rgba(16,185,129,0.18)",
+    color: "#a7f3d0",
+    padding: "0 12px",
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: "pointer",
   },
   input: {
     height: 44,

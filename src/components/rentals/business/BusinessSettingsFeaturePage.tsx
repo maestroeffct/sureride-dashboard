@@ -694,7 +694,11 @@ export default function BusinessSettingsFeaturePage({
     writeAdminRegionScope(scope);
   };
 
-  const handleCreateCountry = async (payload: { name: string; code: string }) => {
+  const handleCreateCountry = async (payload: {
+    name: string;
+    code: string;
+    currency?: string | null;
+  }) => {
     const item = await createAdminCountry(payload);
     setCountries((prev) => [...prev, item].sort((a, b) => a.name.localeCompare(b.name)));
     toast.success(`${item.name} added`);
@@ -716,6 +720,17 @@ export default function BusinessSettingsFeaturePage({
     toast.success(
       updated.isActive ? `${updated.name} activated` : `${updated.name} deactivated`,
     );
+  };
+
+  const handleUpdateCountryCurrency = async (
+    country: AdminCountry,
+    currency: string,
+  ) => {
+    const updated = await updateAdminCountry(country.id, { currency });
+    setCountries((prev) =>
+      prev.map((item) => (item.id === updated.id ? updated : item)),
+    );
+    toast.success(`${updated.name} currency set to ${updated.currency}`);
   };
 
   const handleImageUpload = async (
@@ -1851,6 +1866,7 @@ export default function BusinessSettingsFeaturePage({
         onScopeChange={handleCountryScopeChange}
         onCreateCountry={handleCreateCountry}
         onToggleCountry={handleToggleCountry}
+        onUpdateCountryCurrency={handleUpdateCountryCurrency}
         regionScope={featureSupportsRegion ? regionScope : undefined}
         onRegionScopeChange={
           featureSupportsRegion ? handleRegionScopeChange : undefined
