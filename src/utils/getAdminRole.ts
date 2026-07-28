@@ -12,4 +12,4 @@ export function getAdminRole() {
   }
 }
 
-// solid
+// solid deploy
