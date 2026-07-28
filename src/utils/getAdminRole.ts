@@ -11,3 +11,5 @@ export function getAdminRole() {
     return null;
   }
 }
+
+// solid
