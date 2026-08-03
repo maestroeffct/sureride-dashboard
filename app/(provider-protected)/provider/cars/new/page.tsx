@@ -195,7 +195,7 @@ export default function ProviderAddCarPage() {
 
   // ── Step validity ──────────────────────────────────────────────────────────
   const validity: Record<StepKey, boolean> = useMemo(() => ({
-    vehicle: !!(form.brand.trim() && form.model.trim() && form.locationId && form.year.trim()),
+    vehicle: !!(form.brand.trim() && form.model.trim() && form.locationId && form.year.trim() && form.licensePlate.trim().length >= 3),
     specs: !!(form.seats.trim()),
     pricing: !!(form.dailyRate.trim()),
     photos: true,
@@ -271,7 +271,7 @@ export default function ProviderAddCarPage() {
         dailyRate: daily,
         hourlyRate: form.hourlyRate ? Number(form.hourlyRate) : null,
         currency: effectiveCurrency,
-        licensePlate: form.licensePlate.trim() || undefined,
+        licensePlate: form.licensePlate.trim(),
         vin: form.vin.trim() || undefined,
         color: form.color.trim() || undefined,
       };
@@ -654,13 +654,14 @@ function StepVehicle({
         </Field>
       </div>
       <div style={f.grid2}>
-        <Field label="License Plate Number">
+        <Field label="License Plate Number *">
           <input
             style={f.input}
             placeholder="e.g. LSR-123-AB"
             value={form.licensePlate}
             onChange={(e) => set("licensePlate", e.target.value.toUpperCase())}
             maxLength={20}
+            required
           />
         </Field>
         <Field label="VIN (Vehicle Identification Number)">

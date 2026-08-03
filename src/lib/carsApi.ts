@@ -59,13 +59,11 @@ export type RentalLocationOption = {
   providerName: string;
 };
 
-function toBackendStatus(
+function toDashboardStatusFilter(
   status?: ListCarsParams["status"],
-): BackendCarStatus | undefined {
-  if (!status) return undefined;
-  if (status === "active") return "APPROVED";
-  if (status === "flagged") return "FLAGGED";
-  return "PENDING_APPROVAL";
+): "active" | "pending" | "flagged" | undefined {
+  if (status === "active" || status === "pending" || status === "flagged") return status;
+  return undefined;
 }
 
 function toDashboardStatus(car: RawCarApi): RentalCarRow["dashboardStatus"] {
@@ -79,6 +77,10 @@ function toDashboardStatus(car: RawCarApi): RentalCarRow["dashboardStatus"] {
     return "active";
   }
 
+  // Everything else — DRAFT (provider saved but not yet submitted),
+  // PENDING_APPROVAL (submitted, awaiting review), REJECTED, or
+  // deactivated APPROVED — falls into "pending" so admins can see and
+  // action every non-live car in one place.
   return "pending";
 }
 
@@ -132,7 +134,7 @@ export function mapCarToRow(car: RawCarApi): RentalCarRow {
 export async function listCars(params: ListCarsParams = {}) {
   const query = makeQuery({
     q: params.q,
-    status: toBackendStatus(params.status),
+    dashboardStatus: toDashboardStatusFilter(params.status),
     providerId: params.providerId,
     city: params.city,
     page: params.page ?? 1,
