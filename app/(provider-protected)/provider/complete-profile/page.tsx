@@ -20,6 +20,45 @@ import logoIcon from "@/src/assets/logo_icon.png";
 const PHONE_DIGITS = /^[0-9]{7,15}$/;
 const NAME_RE = /^[A-Za-z][A-Za-z\s'.-]{1,}$/;
 
+// Common E.164 dial-code prefixes, sorted longest-first so we can identify
+// the correct split for a stored phone. A greedy `\+\d{1,4}` regex would
+// swallow the first digit of the local number for 3-digit codes like +234
+// (Nigeria), which is where the "+2347…" bug came from.
+const DIAL_CODES = [
+  "+1876","+1868","+1809","+1787","+1784","+1767","+1758","+1721","+1684",
+  "+1671","+1670","+1664","+1649","+1473","+1441","+1345","+1284","+1264",
+  "+1246","+1242","+1939",
+  "+998","+996","+995","+994","+993","+992","+977","+976","+975","+974",
+  "+973","+972","+971","+968","+967","+966","+965","+964","+963","+962",
+  "+961","+960","+886","+880","+856","+855","+853","+852","+850","+692",
+  "+691","+690","+689","+688","+687","+686","+685","+683","+682","+681",
+  "+680","+679","+678","+677","+676","+675","+674","+673","+672","+670",
+  "+599","+598","+597","+595","+593","+592","+591","+590","+509","+508",
+  "+507","+506","+505","+504","+503","+502","+501","+500","+423","+421",
+  "+420","+389","+387","+386","+385","+383","+382","+381","+380","+379",
+  "+378","+377","+376","+375","+374","+373","+372","+371","+370","+359",
+  "+358","+357","+356","+355","+354","+353","+352","+351","+350","+299",
+  "+298","+297","+291","+290","+269","+268","+267","+266","+265","+264",
+  "+263","+262","+261","+260","+258","+257","+256","+255","+254","+253",
+  "+252","+251","+250","+249","+248","+247","+246","+245","+244","+243",
+  "+242","+241","+240","+239","+238","+237","+236","+235","+234","+233",
+  "+232","+231","+230","+229","+228","+227","+226","+225","+224","+223",
+  "+222","+221","+220","+218","+216","+213","+212","+211","+98","+95",
+  "+94","+93","+92","+91","+90","+86","+84","+82","+81","+66","+65",
+  "+64","+63","+62","+61","+60","+58","+57","+56","+55","+54","+53",
+  "+52","+51","+49","+48","+47","+46","+45","+44","+43","+41","+40",
+  "+39","+36","+34","+33","+32","+31","+30","+27","+20","+7","+1",
+];
+
+function splitStoredPhone(raw: string): { dialCode: string; local: string } {
+  const stored = raw.trim();
+  if (!stored.startsWith("+")) return { dialCode: "+234", local: stored };
+  for (const dc of DIAL_CODES) {
+    if (stored.startsWith(dc)) return { dialCode: dc, local: stored.slice(dc.length) };
+  }
+  return { dialCode: "+234", local: "" };
+}
+
 const CompleteProfileSchema = z.object({
   phone: z
     .string()
@@ -112,19 +151,7 @@ export default function CompleteProviderProfilePage() {
 
         // Split a stored E.164-ish phone into (dialCode, localDigits) so the
         // user doesn't see "+234" twice on the form.
-        const stored = (p.phone ?? "").trim();
-        let dialCode = "+234";
-        let localPhone = stored;
-        if (stored.startsWith("+")) {
-          // Match the longest prefix that looks like a dial code (1–4 digits).
-          const m = stored.match(/^(\+\d{1,4})(\d*)$/);
-          if (m) {
-            dialCode = m[1];
-            localPhone = m[2];
-          } else {
-            localPhone = "";
-          }
-        }
+        const { dialCode, local: localPhone } = splitStoredPhone(p.phone ?? "");
 
         setForm({
           phone: localPhone,
@@ -334,7 +361,12 @@ export default function CompleteProviderProfilePage() {
             <label style={s.label}>Contact role / title</label>
             {isOwner ? (
               <input
-                style={{ ...s.input, background: "#f3f4f6", cursor: "not-allowed" }}
+                style={{
+                  ...s.input,
+                  background: "var(--surface-2)",
+                  color: "var(--muted-foreground)",
+                  cursor: "not-allowed",
+                }}
                 value="Owner / Director"
                 disabled
                 readOnly
