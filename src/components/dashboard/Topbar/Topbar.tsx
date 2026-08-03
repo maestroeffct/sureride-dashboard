@@ -120,6 +120,16 @@ function getPageTitle(pathname: string): { section: string; title: string } {
   if (pathname === "/provider/locations") return { section: "Provider", title: "Locations" };
   if (pathname === "/provider/rents") return { section: "Provider", title: "Rentals" };
   if (pathname === "/provider/settings") return { section: "Provider", title: "Settings" };
+  if (pathname === "/provider/fines") return { section: "Provider", title: "Fines" };
+  if (pathname === "/provider/notifications") return { section: "Provider", title: "Notifications" };
+  if (pathname === "/provider/maintenance") return { section: "Fleet", title: "Maintenance" };
+  if (pathname === "/provider/availability") return { section: "Fleet", title: "Availability" };
+  if (pathname === "/provider/damages") return { section: "Ops", title: "Damage Claims" };
+  if (pathname === "/provider/refunds") return { section: "Ops", title: "Refunds" };
+  if (pathname === "/provider/addons") return { section: "Storefront", title: "Add-ons" };
+  if (pathname === "/provider/reviews") return { section: "Provider", title: "Reviews" };
+  if (pathname === "/provider/analytics") return { section: "Provider", title: "Analytics" };
+  if (pathname === "/provider/support") return { section: "Provider", title: "Help & Support" };
 
   return { section: "", title: "" };
 }

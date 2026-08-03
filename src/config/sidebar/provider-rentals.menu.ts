@@ -57,6 +57,41 @@ export const providerRentalsMenu: SidebarItem[] = [
     requiresVerification: true,
   },
   {
+    label: "Availability",
+    path: "/provider/availability",
+    icon: sidebarIcons.bookings,
+    allowedRoles: ["OWNER", "FLEET_MANAGER", "OPERATIONS"],
+    requiresVerification: true,
+  },
+  {
+    label: "Maintenance",
+    path: "/provider/maintenance",
+    icon: sidebarIcons.settings,
+    allowedRoles: ["OWNER", "FLEET_MANAGER", "OPERATIONS"],
+    requiresVerification: true,
+  },
+  {
+    label: "Damage Claims",
+    path: "/provider/damages",
+    icon: sidebarIcons.bookings,
+    allowedRoles: ["OWNER", "OPERATIONS", "FLEET_MANAGER", "CUSTOMER_SERVICE"],
+    requiresVerification: true,
+  },
+  {
+    label: "Refunds",
+    path: "/provider/refunds",
+    icon: sidebarIcons.bookings,
+    allowedRoles: ["OWNER", "OPERATIONS", "FINANCE", "CUSTOMER_SERVICE"],
+    requiresVerification: true,
+  },
+  {
+    label: "Reviews",
+    path: "/provider/reviews",
+    icon: sidebarIcons.bookings,
+    allowedRoles: ["OWNER", "OPERATIONS", "CUSTOMER_SERVICE"],
+    requiresVerification: true,
+  },
+  {
     kind: "section",
     label: "FINANCE",
     allowedRoles: ["OWNER", "FINANCE"],
@@ -69,8 +104,39 @@ export const providerRentalsMenu: SidebarItem[] = [
     requiresVerification: true,
   },
   {
+    label: "Fines",
+    path: "/provider/fines",
+    icon: sidebarIcons.bookings,
+    allowedRoles: ["OWNER", "FINANCE"],
+    requiresVerification: true,
+  },
+  {
+    label: "Analytics",
+    path: "/provider/analytics",
+    icon: sidebarIcons.bookings,
+    allowedRoles: ["OWNER", "FINANCE", "OPERATIONS"],
+    requiresVerification: true,
+  },
+  {
+    kind: "section",
+    label: "STOREFRONT",
+    allowedRoles: ["OWNER", "FLEET_MANAGER", "OPERATIONS"],
+  },
+  {
+    label: "Add-ons",
+    path: "/provider/addons",
+    icon: sidebarIcons.settings,
+    allowedRoles: ["OWNER", "FLEET_MANAGER", "OPERATIONS"],
+    requiresVerification: true,
+  },
+  {
     kind: "section",
     label: "ACCOUNT",
+  },
+  {
+    label: "Notifications",
+    path: "/provider/notifications",
+    icon: sidebarIcons.settings,
   },
   {
     label: "Team",
@@ -81,6 +147,11 @@ export const providerRentalsMenu: SidebarItem[] = [
   {
     label: "Settings",
     path: "/provider/settings",
+    icon: sidebarIcons.settings,
+  },
+  {
+    label: "Help & Support",
+    path: "/provider/support",
     icon: sidebarIcons.settings,
   },
 ];
