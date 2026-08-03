@@ -23,7 +23,7 @@ export const providerRentalsMenu: SidebarItem[] = [
   {
     label: "Notifications",
     path: "/provider/notifications",
-    icon: sidebarIcons.settings,
+    icon: sidebarIcons.notifications,
   },
 
   {
@@ -34,14 +34,14 @@ export const providerRentalsMenu: SidebarItem[] = [
   {
     label: "Rents",
     path: "/provider/rents",
-    icon: sidebarIcons.bookings,
+    icon: sidebarIcons.rentals,
     allowedRoles: ["OWNER", "OPERATIONS", "CUSTOMER_SERVICE", "FLEET_MANAGER"],
     requiresVerification: true,
   },
   {
     label: "Availability",
     path: "/provider/availability",
-    icon: sidebarIcons.bookings,
+    icon: sidebarIcons.availability,
     allowedRoles: ["OWNER", "FLEET_MANAGER", "OPERATIONS"],
     requiresVerification: true,
   },
@@ -61,19 +61,19 @@ export const providerRentalsMenu: SidebarItem[] = [
   {
     label: "Add Car",
     path: "/provider/cars/new",
-    icon: sidebarIcons.addProvider,
+    icon: sidebarIcons.addCar,
     allowedRoles: ["OWNER", "FLEET_MANAGER"],
     requiresVerification: true,
   },
   {
     label: "Maintenance",
     path: "/provider/maintenance",
-    icon: sidebarIcons.settings,
+    icon: sidebarIcons.maintenance,
     allowedRoles: ["OWNER", "FLEET_MANAGER", "OPERATIONS"],
     requiresVerification: true,
   },
   {
-    label: "Insurance",
+    label: "Protection Plans",
     path: "/provider/insurance",
     icon: sidebarIcons.insurance,
     allowedRoles: ["OWNER", "FLEET_MANAGER", "FINANCE"],
@@ -82,7 +82,7 @@ export const providerRentalsMenu: SidebarItem[] = [
   {
     label: "Locations",
     path: "/provider/locations",
-    icon: sidebarIcons.providers,
+    icon: sidebarIcons.locations,
     allowedRoles: ["OWNER", "FLEET_MANAGER"],
     requiresVerification: true,
   },
@@ -95,21 +95,21 @@ export const providerRentalsMenu: SidebarItem[] = [
   {
     label: "Damage Claims",
     path: "/provider/damages",
-    icon: sidebarIcons.bookings,
+    icon: sidebarIcons.damages,
     allowedRoles: ["OWNER", "OPERATIONS", "FLEET_MANAGER", "CUSTOMER_SERVICE"],
     requiresVerification: true,
   },
   {
     label: "Refunds",
     path: "/provider/refunds",
-    icon: sidebarIcons.bookings,
+    icon: sidebarIcons.refunds,
     allowedRoles: ["OWNER", "OPERATIONS", "FINANCE", "CUSTOMER_SERVICE"],
     requiresVerification: true,
   },
   {
     label: "Reviews",
     path: "/provider/reviews",
-    icon: sidebarIcons.bookings,
+    icon: sidebarIcons.reviews,
     allowedRoles: ["OWNER", "OPERATIONS", "CUSTOMER_SERVICE"],
     requiresVerification: true,
   },
@@ -122,21 +122,21 @@ export const providerRentalsMenu: SidebarItem[] = [
   {
     label: "Earnings",
     path: "/provider/earnings",
-    icon: sidebarIcons.bookings,
+    icon: sidebarIcons.earnings,
     allowedRoles: ["OWNER", "FINANCE"],
     requiresVerification: true,
   },
   {
     label: "Analytics",
     path: "/provider/analytics",
-    icon: sidebarIcons.bookings,
+    icon: sidebarIcons.analytics,
     allowedRoles: ["OWNER", "FINANCE", "OPERATIONS"],
     requiresVerification: true,
   },
   {
     label: "Fines",
     path: "/provider/fines",
-    icon: sidebarIcons.bookings,
+    icon: sidebarIcons.fines,
     allowedRoles: ["OWNER", "FINANCE"],
     requiresVerification: true,
   },
@@ -149,7 +149,7 @@ export const providerRentalsMenu: SidebarItem[] = [
   {
     label: "Add-ons",
     path: "/provider/addons",
-    icon: sidebarIcons.settings,
+    icon: sidebarIcons.addons,
     allowedRoles: ["OWNER", "FLEET_MANAGER", "OPERATIONS"],
     requiresVerification: true,
   },
@@ -161,7 +161,7 @@ export const providerRentalsMenu: SidebarItem[] = [
   {
     label: "Team",
     path: "/provider/team",
-    icon: sidebarIcons.providers,
+    icon: sidebarIcons.team,
     allowedRoles: ["OWNER"],
   },
   {
@@ -172,6 +172,6 @@ export const providerRentalsMenu: SidebarItem[] = [
   {
     label: "Help & Support",
     path: "/provider/support",
-    icon: sidebarIcons.settings,
+    icon: sidebarIcons.help,
   },
 ];

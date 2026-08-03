@@ -17,39 +17,39 @@ export const rentalsMenu: SidebarItem[] = [
   },
   {
     label: "Finance",
-    icon: sidebarIcons.pricing,
+    icon: sidebarIcons.finance,
     children: [
       {
         label: "Payments",
         path: "/rentals/finance/payments",
-        icon: sidebarIcons.pricing,
+        icon: sidebarIcons.payments,
       },
       {
         label: "Invoices",
         path: "/rentals/finance/invoices",
-        icon: sidebarIcons.pricing,
+        icon: sidebarIcons.invoices,
       },
       {
         label: "Fines",
         path: "/rentals/finance/fines",
-        icon: sidebarIcons.pricing,
+        icon: sidebarIcons.fines,
       },
       {
         label: "Expenses",
         path: "/rentals/finance/expenses",
-        icon: sidebarIcons.pricing,
+        icon: sidebarIcons.expenses,
       },
       {
         label: "Credits",
         path: "/rentals/finance/credits",
-        icon: sidebarIcons.pricing,
+        icon: sidebarIcons.credits,
       },
     ],
   },
   {
     label: "Provider Payouts",
     path: "/rentals/payouts",
-    icon: sidebarIcons.pricing,
+    icon: sidebarIcons.payouts,
   },
 
   {
@@ -73,7 +73,7 @@ export const rentalsMenu: SidebarItem[] = [
       {
         label: "Provider Requests",
         path: "/rentals/providers/requests",
-        icon: sidebarIcons.pendingProviders,
+        icon: sidebarIcons.providerRequests,
       },
     ],
   },
@@ -89,7 +89,7 @@ export const rentalsMenu: SidebarItem[] = [
       {
         label: "Add Car",
         path: "/rentals/cars/new",
-        icon: sidebarIcons.addProvider,
+        icon: sidebarIcons.addCar,
       },
       {
         label: "Pending Approval",
@@ -104,12 +104,12 @@ export const rentalsMenu: SidebarItem[] = [
       {
         label: "Rentals",
         path: "/rentals/fleet/rentals",
-        icon: sidebarIcons.bookings,
+        icon: sidebarIcons.rentals,
       },
       {
         label: "Availability",
         path: "/rentals/fleet/availability",
-        icon: sidebarIcons.bookings,
+        icon: sidebarIcons.availability,
       },
     ],
   },
@@ -125,7 +125,7 @@ export const rentalsMenu: SidebarItem[] = [
       {
         label: "Add User",
         path: "/rentals/users/new",
-        icon: sidebarIcons.addProvider,
+        icon: sidebarIcons.addUser,
       },
     ],
   },
@@ -146,7 +146,7 @@ export const rentalsMenu: SidebarItem[] = [
   },
   {
     label: "Configuration",
-    icon: sidebarIcons.settings,
+    icon: sidebarIcons.cog,
     children: [
       {
         label: "Car Categories",
@@ -161,17 +161,17 @@ export const rentalsMenu: SidebarItem[] = [
       {
         label: "Car Models",
         path: "/rentals/configuration/car-models",
-        icon: sidebarIcons.settings,
+        icon: sidebarIcons.car,
       },
       {
         label: "Car Features",
         path: "/rentals/configuration/car-features",
-        icon: sidebarIcons.settings,
+        icon: sidebarIcons.feature,
       },
       {
         label: "Model Requests",
         path: "/rentals/configuration/model-requests",
-        icon: sidebarIcons.settings,
+        icon: sidebarIcons.modelRequests,
       },
     ],
   },
@@ -182,94 +182,94 @@ export const rentalsMenu: SidebarItem[] = [
   },
   {
     label: "Business Settings",
-    icon: sidebarIcons.settings,
+    icon: sidebarIcons.business,
     children: [
       {
         label: "Business Setup",
         path: "/rentals/business/business-setup",
-        icon: sidebarIcons.settings,
+        icon: sidebarIcons.business,
       },
       {
         label: "System Tax",
         path: "/rentals/business/system-tax",
-        icon: sidebarIcons.pricing,
+        icon: sidebarIcons.tax,
       },
       {
         label: "Email Template",
         path: "/rentals/business/email-template",
-        icon: sidebarIcons.reviews,
+        icon: sidebarIcons.emailTemplate,
       },
       {
         label: "Theme Settings",
         path: "/rentals/business/theme-settings",
-        icon: sidebarIcons.settings,
+        icon: sidebarIcons.theme,
       },
       {
         label: "Gallery",
         path: "/rentals/business/gallery",
-        icon: sidebarIcons.reviews,
+        icon: sidebarIcons.gallery,
       },
       {
         label: "Login Setup",
         path: "/rentals/business/login-setup",
-        icon: sidebarIcons.users,
+        icon: sidebarIcons.loginSetup,
       },
       {
         label: "Pages & Social Media",
         path: "/rentals/business/pages-social-media",
-        icon: sidebarIcons.reports,
+        icon: sidebarIcons.social,
       },
     ],
   },
   {
     label: "Employee Management",
-    icon: sidebarIcons.users,
+    icon: sidebarIcons.team,
     children: [
       {
         label: "Employee Role",
         path: "/rentals/employees/roles",
-        icon: sidebarIcons.brand,
+        icon: sidebarIcons.employeeRole,
       },
       {
         label: "Employees",
         path: "/rentals/employees",
-        icon: sidebarIcons.users,
+        icon: sidebarIcons.employee,
       },
     ],
   },
   {
     label: "Promotions Management",
-    icon: sidebarIcons.reports,
+    icon: sidebarIcons.campaigns,
     children: [
       {
         label: "Campaigns",
         path: "/rentals/promotions/campaigns",
-        icon: sidebarIcons.reports,
+        icon: sidebarIcons.campaigns,
       },
       {
         label: "Coupons",
         path: "/rentals/promotions/coupons",
-        icon: sidebarIcons.pricing,
+        icon: sidebarIcons.coupons,
       },
       {
         label: "Cashback",
         path: "/rentals/promotions/cashback",
-        icon: sidebarIcons.pricing,
+        icon: sidebarIcons.cashback,
       },
       {
         label: "Banners",
         path: "/rentals/promotions/banners",
-        icon: sidebarIcons.settings,
+        icon: sidebarIcons.banners,
       },
       {
         label: "Push Notification",
         path: "/rentals/promotions/push-notification",
-        icon: sidebarIcons.pendingProviders,
+        icon: sidebarIcons.pushNotifications,
       },
       {
         label: "Limousine Requests",
         path: "/rentals/promotions/limousine-requests",
-        icon: sidebarIcons.reports,
+        icon: sidebarIcons.limousine,
       },
     ],
   },
@@ -280,47 +280,47 @@ export const rentalsMenu: SidebarItem[] = [
       {
         label: "3rd Party & Configuration",
         path: "/rentals/platform/third-party-configuration",
-        icon: sidebarIcons.settings,
+        icon: sidebarIcons.thirdParty,
       },
       {
         label: "App & Web Settings",
         path: "/rentals/platform/app-web-settings",
-        icon: sidebarIcons.settings,
+        icon: sidebarIcons.appSettings,
       },
       {
         label: "Notification Channels",
         path: "/rentals/platform/notification-channels",
-        icon: sidebarIcons.pendingProviders,
+        icon: sidebarIcons.notificationChannels,
       },
       {
         label: "Notification Messages",
         path: "/rentals/platform/notification-messages",
-        icon: sidebarIcons.claims,
+        icon: sidebarIcons.notificationMessages,
       },
       {
         label: "Landing Page Settings",
         path: "/rentals/platform/landing-page-settings",
-        icon: sidebarIcons.settings,
+        icon: sidebarIcons.landingPage,
       },
       {
         label: "Page Meta Data",
         path: "/rentals/platform/page-meta-data",
-        icon: sidebarIcons.reports,
+        icon: sidebarIcons.meta,
       },
       {
         label: "Clean Database",
         path: "/rentals/platform/clean-database",
-        icon: sidebarIcons.claims,
+        icon: sidebarIcons.database,
       },
       {
         label: "Audit Log",
         path: "/rentals/platform/audit-log",
-        icon: sidebarIcons.reports,
+        icon: sidebarIcons.auditLog,
       },
       {
         label: "License",
         path: "/rentals/platform/license",
-        icon: sidebarIcons.settings,
+        icon: sidebarIcons.license,
       },
     ],
   },
