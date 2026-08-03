@@ -426,3 +426,80 @@ export function markAllNotificationsRead() {
 export function deleteNotification(id: string) {
   return req<{ ok: true }>(`/notifications/${id}`, { method: "DELETE" });
 }
+
+// ─── Business hours ───────────────────────────────────────────────────────
+export type BusinessHoursDay = {
+  dayOfWeek: number; // 1=Mon .. 7=Sun
+  isOpen: boolean;
+  openTime: string | null;
+  closeTime: string | null;
+};
+export type BusinessHoursResponse = {
+  timezone: string;
+  isAlways247: boolean;
+  hours: BusinessHoursDay[];
+};
+export function getBusinessHours() {
+  return req<BusinessHoursResponse>(`/provider/business-hours`);
+}
+export function saveBusinessHours(payload: BusinessHoursResponse) {
+  return req<{ ok: true }>(`/provider/business-hours`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+// ─── Customer fines (provider issues to customers) ────────────────────────
+export type CustomerFineRow = {
+  id: string;
+  reference: string | null;
+  amount: number;
+  currency: string;
+  category: ProviderFineCategory;
+  status: ProviderFineStatus;
+  reason: string;
+  adminNote: string | null;
+  dueDate: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  user: { id: string; firstName: string; lastName: string; email: string } | null;
+  booking: {
+    id: string;
+    pickupAt: string;
+    returnAt: string;
+    car: { brand: string; model: string; licensePlate: string | null } | null;
+  } | null;
+};
+export type CustomerFinesResponse = {
+  items: CustomerFineRow[];
+  meta: { page: number; limit: number; total: number; pages: number };
+  summary: { openCount: number; outstandingAmount: number; dueThisWeek: number; overdue: number };
+};
+export function listCustomerFines(params: {
+  q?: string;
+  status?: ProviderFineStatus | "";
+  page?: number;
+  limit?: number;
+} = {}) {
+  return req<CustomerFinesResponse>(`/provider/customer-fines${qs(params as any)}`);
+}
+export function issueCustomerFine(payload: {
+  bookingId: string;
+  amount: number;
+  currency?: string;
+  category: ProviderFineCategory;
+  reason: string;
+  adminNote?: string;
+  dueDate?: string;
+}) {
+  return req<{ fine: CustomerFineRow }>(`/provider/customer-fines`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+export function resolveCustomerFine(id: string, status: "PAID" | "WAIVED", adminNote?: string) {
+  return req<{ fine: CustomerFineRow }>(`/provider/customer-fines/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status, adminNote }),
+  });
+}
