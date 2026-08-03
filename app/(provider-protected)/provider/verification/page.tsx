@@ -97,7 +97,28 @@ export default function VerificationCenterPage() {
 
   useEffect(() => {
     void refresh();
+    // Poll every 20s while the tab is visible so the "awaiting admin review"
+    // banner disappears automatically the moment the admin approves — no
+    // page reload needed. Skip when tab is hidden to save quota.
+    const tick = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        void refresh();
+      }
+    };
+    const id = window.setInterval(tick, 20_000);
+    return () => window.clearInterval(id);
   }, [refresh]);
+
+  // Once verified, bounce back to the overview — the verification page has
+  // served its purpose.
+  useEffect(() => {
+    if (status?.canListCars) {
+      const t = window.setTimeout(() => {
+        if (typeof window !== "undefined") window.location.href = "/provider";
+      }, 2000);
+      return () => window.clearTimeout(t);
+    }
+  }, [status?.canListCars]);
 
   if (loading) {
     return (
@@ -143,9 +164,19 @@ export default function VerificationCenterPage() {
           <div>
             <p style={s.reviewBannerTitle}>Documents submitted — awaiting admin review</p>
             <p style={s.reviewBannerSub}>
-              We typically review documents within 24 hours during business days. You&apos;ll
+              We typically review documents within 24 hours during business days. This
+              page auto-refreshes — you don&apos;t need to reload. You&apos;ll also
               receive an email when your account is approved.
             </p>
+          </div>
+        </div>
+      )}
+      {status?.canListCars && (
+        <div style={{ ...s.reviewBanner, borderColor: "rgba(34,197,94,0.4)", background: "color-mix(in srgb, #22c55e 6%, transparent)" }}>
+          <CheckCircle2 size={20} color="#22c55e" />
+          <div>
+            <p style={s.reviewBannerTitle}>Approved! Welcome to SureRide</p>
+            <p style={s.reviewBannerSub}>Redirecting you to your dashboard…</p>
           </div>
         </div>
       )}

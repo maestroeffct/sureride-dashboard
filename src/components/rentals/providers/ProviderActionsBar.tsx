@@ -68,17 +68,29 @@ export default function ProviderActionsBar({
   return (
     <div style={{ display: "flex", gap: 10 }}>
       {provider.status === "draft" && (
-        <button
-          disabled={busy}
-          style={btnApprove}
-          onClick={() =>
-            runAction("Provider submitted", () =>
-              submitProvider(provider.id).then((res) => ({ message: res.message })),
-            )
-          }
-        >
-          Submit for Approval
-        </button>
+        <>
+          <button
+            disabled={busy}
+            style={btnApprove}
+            onClick={() =>
+              runAction("Provider approved", () => approveProvider(provider.id))
+            }
+            title="Skip the review stage and grant listing access immediately."
+          >
+            Approve Provider
+          </button>
+          <button
+            disabled={busy}
+            style={btnMuted}
+            onClick={() =>
+              runAction("Provider marked pending review", () =>
+                submitProvider(provider.id).then((res) => ({ message: res.message })),
+              )
+            }
+          >
+            Mark Pending Review
+          </button>
+        </>
       )}
 
       {provider.status === "pending" && (
