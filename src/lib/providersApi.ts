@@ -343,6 +343,26 @@ export async function approveProvider(providerId: string) {
   });
 }
 
+export async function setProviderPayoutVerification(
+  providerId: string,
+  isVerified: boolean,
+) {
+  return apiRequest<{
+    message: string;
+    account: {
+      id: string;
+      bankName: string;
+      accountNumber: string;
+      accountName: string;
+      currency: string;
+      isVerified: boolean;
+    };
+  }>(`/admin/providers/${providerId}/payout-account/verification`, {
+    method: "PATCH",
+    body: JSON.stringify({ isVerified }),
+  });
+}
+
 export async function suspendProvider(providerId: string, reason?: string) {
   return apiRequest<{ message: string }>(`/admin/providers/${providerId}/suspend`, {
     method: "PATCH",

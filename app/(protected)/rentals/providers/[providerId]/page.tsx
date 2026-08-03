@@ -16,6 +16,7 @@ import {
   approveProviderDocument,
   getProviderDetail,
   rejectProviderDocument,
+  setProviderPayoutVerification,
   type ProviderDetailApi,
   type ProviderDocumentStatus,
 } from "@/src/lib/providersApi";
@@ -48,6 +49,22 @@ export default function ProviderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [provider, setProvider] = useState<ProviderDetailApi | null>(null);
   const [docBusyId, setDocBusyId] = useState<string | null>(null);
+  const [bankBusy, setBankBusy] = useState(false);
+
+  const handleSetBankVerification = async (isVerified: boolean) => {
+    const verb = isVerified ? "Approve this bank account for payouts?" : "Revoke bank-account verification? The provider will need to re-add or re-verify.";
+    if (!confirm(verb)) return;
+    try {
+      setBankBusy(true);
+      const res = await setProviderPayoutVerification(providerId, isVerified);
+      toast.success(res.message);
+      await loadProvider();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Action failed");
+    } finally {
+      setBankBusy(false);
+    }
+  };
 
   const loadProvider = async () => {
     if (!providerId) return;
@@ -569,7 +586,38 @@ export default function ProviderDetailPage() {
           </section>
 
           <section style={styles.card}>
-            <h2 style={styles.cardTitle}>Payout Account</h2>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 12 }}>
+              <div>
+                <h2 style={styles.cardTitle}>Payout Account</h2>
+                <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--fg-60)" }}>
+                  Provider-submitted bank details. Approve to unlock payout
+                  requests — provider will see &ldquo;Verified&rdquo; on their end.
+                </p>
+              </div>
+              {provider.payoutAccount && (
+                <div style={{ display: "flex", gap: 8 }}>
+                  {provider.payoutAccount.isVerified ? (
+                    <button
+                      type="button"
+                      disabled={bankBusy}
+                      onClick={() => void handleSetBankVerification(false)}
+                      style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(239,68,68,0.35)", background: "transparent", color: "#fca5a5", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                    >
+                      {bankBusy ? "…" : "Revoke Verification"}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={bankBusy}
+                      onClick={() => void handleSetBankVerification(true)}
+                      style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: "var(--brand-primary)", color: "#022c22", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                    >
+                      {bankBusy ? "Approving…" : "Approve Bank Account"}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
             {provider.payoutAccount ? (
               <div style={styles.infoGrid}>
                 <InfoItem
