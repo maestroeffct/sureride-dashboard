@@ -28,6 +28,15 @@ const TABS = [
   "Financials",
 ] as const;
 
+// Friendly, region-agnostic labels for the backend document-type enum.
+// (CAC/NIN are Nigeria-specific internally; the platform spans regions.)
+const DOC_TYPE_LABELS: Record<string, string> = {
+  CAC: "Business Certificate",
+  NIN: "Government ID",
+  ID_CARD: "Additional ID Card",
+  ADDRESS_PROOF: "Proof of Address",
+};
+
 export default function ProviderDetailPage() {
   const params = useParams();
   const rawProviderId = params.providerId;
@@ -491,7 +500,9 @@ export default function ProviderDetailPage() {
               {provider.documents.map((doc) => (
                 <article key={doc.id} style={styles.docCard}>
                   <div style={styles.docHeader}>
-                    <strong style={styles.locationTitle}>{doc.type}</strong>
+                    <strong style={styles.locationTitle}>
+                      {DOC_TYPE_LABELS[doc.type] ?? doc.type}
+                    </strong>
                     <span style={statusPillStyle(doc.status)}>{doc.status}</span>
                   </div>
                   <p style={styles.docMeta}>

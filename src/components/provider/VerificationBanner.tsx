@@ -116,7 +116,7 @@ export default function VerificationBanner({
           }
         />
         <ChecklistItem
-          label="Required documents (CAC certificate, government ID)"
+          label="Required documents (business certificate, government ID)"
           done={status.requirements.documents.done}
           extra={
             status.requirements.documents.missing.length > 0

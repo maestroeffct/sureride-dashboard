@@ -14,14 +14,14 @@ export default function Step4Documents({ form, setField }: Props) {
       <h2 style={styles.title}>Verification Documents</h2>
 
       <DocumentCard
-        label="Business Registration Certificate"
+        label="Business Certificate"
         required
         file={form.regCert}
         onUpload={(f) => setField("regCert", f)}
       />
 
       <DocumentCard
-        label="Government ID (NIN / Passport)"
+        label="Government ID"
         required
         file={form.govId}
         onUpload={(f) => setField("govId", f)}
