@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 import {
   Ban,
   Check,
@@ -514,8 +515,11 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
           <table style={styles.table}>
             <thead>
               <tr style={styles.trHead}>
-                <th style={styles.th}>S/N</th>
-                <th style={styles.th}>Car</th>
+                <th style={styles.th}>Photo</th>
+                <th style={styles.th}>Registration</th>
+                <th style={styles.th}>Make/Model</th>
+                <th style={styles.th}>Year</th>
+                <th style={styles.th}>Color</th>
                 <th style={styles.th}>Provider</th>
                 <th style={styles.th}>Location</th>
                 <th style={styles.th}>Pricing</th>
@@ -527,31 +531,40 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} style={styles.emptyCell}>
+                  <td colSpan={10} style={styles.emptyCell}>
                     Loading cars...
                   </td>
                 </tr>
               ) : visibleCars.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={styles.emptyCell}>
+                  <td colSpan={10} style={styles.emptyCell}>
                     No cars found for this view.
                   </td>
                 </tr>
               ) : (
-                visibleCars.map((car, index) => (
+                visibleCars.map((car) => (
                   <tr key={car.id} style={styles.tr}>
-                    <td style={styles.td}>{index + 1}</td>
+                    <td style={styles.td}>
+                      <div style={styles.thumb}>
+                        {car.imageUrl ? (
+                          <Image src={car.imageUrl} alt={`${car.brand} ${car.model}`} fill sizes="72px" style={{ objectFit: "cover" }} />
+                        ) : (
+                          <span style={styles.thumbEmpty}>—</span>
+                        )}
+                      </div>
+                    </td>
+
+                    <td style={{ ...styles.td, fontWeight: 700 }}>{car.licensePlate || "—"}</td>
 
                     <td style={styles.td}>
                       <div style={styles.twoLine}>
-                        <span style={styles.primaryText}>
-                          {car.brand} {car.model}
-                        </span>
-                        <span style={styles.secondaryText}>
-                          {car.category} {car.year ? `• ${car.year}` : ""}
-                        </span>
+                        <span style={styles.primaryText}>{car.brand}</span>
+                        <span style={styles.secondaryText}>{car.model}</span>
                       </div>
                     </td>
+
+                    <td style={styles.td}>{car.year || "—"}</td>
+                    <td style={{ ...styles.td, textTransform: "capitalize" }}>{car.color || "—"}</td>
 
                     <td style={styles.td}>
                       <div style={styles.twoLine}>
@@ -762,6 +775,23 @@ const styles: Record<string, React.CSSProperties> = {
   secondaryText: bookingsTableTheme.secondaryText,
   emptyCell: bookingsTableTheme.emptyCell,
   statusPill: bookingsTableTheme.statusPill,
+  thumb: {
+    position: "relative",
+    width: 72,
+    height: 52,
+    borderRadius: 10,
+    overflow: "hidden",
+    background: "var(--glass-06)",
+  } as React.CSSProperties,
+  thumbEmpty: {
+    position: "absolute",
+    inset: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "var(--fg-60)",
+    fontSize: 20,
+  } as React.CSSProperties,
   actions: {
     display: "flex",
     justifyContent: "flex-end",
