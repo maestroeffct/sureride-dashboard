@@ -30,6 +30,10 @@ export type RentalCarRow = {
   backendStatus: BackendCarStatus;
   moderationNote: string | null;
   flaggedReason: string | null;
+  licensePlate: string | null;
+  color: string | null;
+  vin: string | null;
+  currentlyRented: boolean;
 };
 
 export type RawCarApi = {
@@ -47,6 +51,10 @@ export type RawCarApi = {
   status?: BackendCarStatus;
   moderationNote?: string | null;
   flaggedReason?: string | null;
+  licensePlate?: string | null;
+  color?: string | null;
+  vin?: string | null;
+  currentlyRented?: boolean;
   provider?: {
     id?: string;
     name?: string;

@@ -113,8 +113,9 @@ function getPageTitle(pathname: string): { section: string; title: string } {
 
   if (pathname === "/provider") return { section: "Provider", title: "Dashboard" };
   if (pathname === "/provider/cars/new") return { section: "Fleet", title: "Add Vehicle" };
-  if (pathname.startsWith("/provider/cars/")) return { section: "Fleet", title: "Edit Vehicle" };
-  if (pathname === "/provider/cars") return { section: "Provider", title: "My Fleet" };
+  if (pathname.endsWith("/edit") && pathname.startsWith("/provider/cars/")) return { section: "Fleet", title: "Edit Vehicle" };
+  if (pathname.startsWith("/provider/cars/")) return { section: "Fleet", title: "Vehicle Details" };
+  if (pathname === "/provider/cars") return { section: "Provider", title: "Fleet Management" };
   if (pathname === "/provider/earnings") return { section: "Provider", title: "Earnings" };
   if (pathname === "/provider/insurance") return { section: "Provider", title: "Insurance" };
   if (pathname === "/provider/locations") return { section: "Provider", title: "Locations" };

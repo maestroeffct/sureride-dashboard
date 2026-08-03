@@ -122,6 +122,10 @@ export function mapCarToRow(car: RawCarApi): RentalCarRow {
     backendStatus,
     moderationNote: car.moderationNote ?? null,
     flaggedReason: car.flaggedReason ?? null,
+    licensePlate: car.licensePlate ?? null,
+    color: car.color ?? null,
+    vin: car.vin ?? null,
+    currentlyRented: car.currentlyRented === true,
   };
 }
 

@@ -232,6 +232,8 @@ export type ProviderCreateCarPayload = {
   licensePlate?: string;
   /** Vehicle Identification Number (uppercased, trimmed). */
   vin?: string;
+  /** Exterior color as free-form text (e.g. "silver"). */
+  color?: string;
 };
 
 export type ProviderCarBrandOption = {
@@ -667,6 +669,10 @@ export type ProviderCarDetail = {
   moderationNote: string | null;
   flaggedReason: string | null;
   locationId: string;
+  licensePlate: string | null;
+  vin: string | null;
+  color: string | null;
+  currency: string | null;
   images: Array<{ id: string; url: string; isPrimary: boolean }>;
   features: Array<{ featureId: string; feature: { id: string; name: string; category: string } }>;
   location: {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { ArrowLeft, ImagePlus, X, Check, FileSpreadsheet, Download, Upload } from "lucide-react";
@@ -51,6 +51,7 @@ type CarForm = {
   // Vehicle registration identifiers — optional at draft time.
   licensePlate: string;
   vin: string;
+  color: string;
 };
 
 type StepKey = "vehicle" | "specs" | "pricing" | "photos" | "review";
@@ -81,6 +82,7 @@ const INITIAL: CarForm = {
   currency: "",
   licensePlate: "",
   vin: "",
+  color: "",
 };
 
 type CsvRow = Record<string, string>;
@@ -271,6 +273,7 @@ export default function ProviderAddCarPage() {
         currency: effectiveCurrency,
         licensePlate: form.licensePlate.trim() || undefined,
         vin: form.vin.trim() || undefined,
+        color: form.color.trim() || undefined,
       };
       const res = await createProviderCar(payload);
       const carId = res.car.id;
@@ -478,8 +481,9 @@ function HorizontalStepper({
         const showDone = isDone && isPast;
 
         return (
-          <div key={step.key} style={st.item}>
-            {/* Connector line before */}
+          <Fragment key={step.key}>
+            {/* Connector line sits between nodes and flexes to fill the gap
+                equally, so every segment is the same width. */}
             {i > 0 && (
               <div style={{ ...st.line, ...(isPast ? st.lineDone : {}) }} />
             )}
@@ -497,7 +501,7 @@ function HorizontalStepper({
                 {step.short}
               </span>
             </button>
-          </div>
+          </Fragment>
         );
       })}
     </div>
@@ -507,18 +511,18 @@ function HorizontalStepper({
 const st: Record<string, CSSProperties> = {
   wrap: {
     display: "flex",
-    alignItems: "center",
+    // Align to the top so connector lines line up with the circles, not the
+    // taller circle+label column.
+    alignItems: "flex-start",
     width: "100%",
-  },
-  item: {
-    display: "flex",
-    alignItems: "center",
-    flex: 1,
   },
   line: {
     flex: 1,
     height: 2,
+    // Center the 2px line on the 32px circle (16 − 1).
+    marginTop: 15,
     background: "var(--input-border)",
+    borderRadius: 2,
     transition: "background 0.3s",
   },
   lineDone: { background: "var(--brand-secondary)" },
@@ -527,10 +531,12 @@ const st: Record<string, CSSProperties> = {
     flexDirection: "column",
     alignItems: "center",
     gap: 6,
+    // Fixed node width keeps every connector segment an equal length.
+    width: 76,
     background: "none",
     border: "none",
     cursor: "pointer",
-    padding: "0 8px",
+    padding: 0,
     flexShrink: 0,
   },
   circle: {
@@ -664,6 +670,17 @@ function StepVehicle({
             value={form.vin}
             onChange={(e) => set("vin", e.target.value.toUpperCase())}
             maxLength={20}
+          />
+        </Field>
+      </div>
+      <div style={f.grid2}>
+        <Field label="Exterior Color">
+          <input
+            style={f.input}
+            placeholder="e.g. silver, matte black, gray"
+            value={form.color}
+            onChange={(e) => set("color", e.target.value)}
+            maxLength={40}
           />
         </Field>
       </div>

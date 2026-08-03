@@ -46,6 +46,7 @@ type FormState = {
   currency: string;
   licensePlate: string;
   vin: string;
+  color: string;
 };
 
 export default function ProviderEditCarPage() {
@@ -98,6 +99,7 @@ export default function ProviderEditCarPage() {
           licensePlate:
             (carData as { licensePlate?: string | null }).licensePlate ?? "",
           vin: (carData as { vin?: string | null }).vin ?? "",
+          color: (carData as { color?: string | null }).color ?? "",
         });
         setSelectedFeatureIds(carData.features.map((f) => f.featureId));
         setLocations(
@@ -235,6 +237,7 @@ export default function ProviderEditCarPage() {
           ).code,
         licensePlate: form.licensePlate.trim() || undefined,
         vin: form.vin.trim() || undefined,
+        color: form.color.trim() || undefined,
       });
 
       await attachProviderCarFeatures(carId, selectedFeatureIds);
@@ -494,6 +497,19 @@ export default function ProviderEditCarPage() {
               onChange={(e) => setField("vin", e.target.value.toUpperCase())}
               disabled={isFlagged}
               maxLength={20}
+            />
+          </Field>
+        </div>
+
+        <div style={s.grid2}>
+          <Field label="Exterior Color">
+            <input
+              style={s.input}
+              placeholder="e.g. silver, matte black, gray"
+              value={form.color}
+              onChange={(e) => setField("color", e.target.value)}
+              disabled={isFlagged}
+              maxLength={40}
             />
           </Field>
         </div>
