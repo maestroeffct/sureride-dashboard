@@ -279,6 +279,11 @@ export type ProviderLocation = {
   longitude?: number | null;
 };
 
+export type ProtectionTier = "PREMIUM" | "STANDARD" | "MINIMUM";
+export type ProtectionProductType = "DAMAGE_WAIVER" | "INSURANCE";
+export type ProtectionPricingModel = "PER_DAY" | "PERCENT_OF_TRIP";
+export type ProtectionApprovalStatus = "PENDING" | "APPROVED" | "REJECTED";
+
 export type ProviderInsurancePackage = {
   id: string;
   name: string;
@@ -291,7 +296,29 @@ export type ProviderInsurancePackage = {
     id: string;
     label: string;
   } | null;
+
+  // Protection Plan fields — server always populates these; older
+  // rows come back with defaults (STANDARD / DAMAGE_WAIVER / PER_DAY).
+  tier: ProtectionTier;
+  productType: ProtectionProductType;
+  pricingModel: ProtectionPricingModel;
+  pricingPercent: number | null;
+  deductibleAmount: number | null;
+  liabilityLimit: number | null;
+  physicalDamageLimit: number | null;
+  coveredPerils: string[];
+  exclusions: string[];
+  coverageType: string | null;
+  underwriter: string | null;
+  allowedRegions: string[];
+  productHighlights: string[];
+  currency: string;
+  approvalStatus: ProtectionApprovalStatus;
+  approvalNote: string | null;
+  approvedAt: string | null;
+  expiresAt: string | null;
   createdAt: string;
+  updatedAt: string;
 };
 
 export type UpsertProviderInsurancePayload = {
@@ -300,6 +327,19 @@ export type UpsertProviderInsurancePayload = {
   dailyPrice: number;
   isActive?: boolean;
   carId?: string | null;
+  tier?: ProtectionTier;
+  pricingModel?: ProtectionPricingModel;
+  pricingPercent?: number | null;
+  deductibleAmount?: number | null;
+  liabilityLimit?: number | null;
+  physicalDamageLimit?: number | null;
+  coveredPerils?: string[];
+  exclusions?: string[];
+  coverageType?: string | null;
+  underwriter?: string | null;
+  allowedRegions?: string[];
+  productHighlights?: string[];
+  currency?: string | null;
 };
 
 export type UpsertProviderLocationPayload = {

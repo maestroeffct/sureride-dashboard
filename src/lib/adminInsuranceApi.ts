@@ -1,5 +1,10 @@
 import { apiRequest } from "@/src/lib/api";
 
+export type ProtectionTier = "PREMIUM" | "STANDARD" | "MINIMUM";
+export type ProtectionProductType = "DAMAGE_WAIVER" | "INSURANCE";
+export type ProtectionPricingModel = "PER_DAY" | "PERCENT_OF_TRIP";
+export type ProtectionApprovalStatus = "PENDING" | "APPROVED" | "REJECTED";
+
 export type AdminInsurancePackage = {
   id: string;
   name: string;
@@ -12,12 +17,25 @@ export type AdminInsurancePackage = {
   car: { id: string; label: string } | null;
   isGlobal: boolean;
   createdAt: string;
-  /**
-   * ISO-4217 currency for dailyPrice. Not yet returned by the backend; when it
-   * is, the admin UI will render the correct symbol instead of a bare number.
-   * Until then the amount is shown currency-neutral (never assumed to be NGN).
-   */
-  currency?: string | null;
+  currency: string;
+  // Protection Plan fields
+  tier: ProtectionTier;
+  productType: ProtectionProductType;
+  pricingModel: ProtectionPricingModel;
+  pricingPercent: number | null;
+  deductibleAmount: number | null;
+  liabilityLimit: number | null;
+  physicalDamageLimit: number | null;
+  coveredPerils: string[];
+  exclusions: string[];
+  coverageType: string | null;
+  underwriter: string | null;
+  allowedRegions: string[];
+  productHighlights: string[];
+  approvalStatus: ProtectionApprovalStatus;
+  approvalNote: string | null;
+  approvedByAdminEmail: string | null;
+  approvedAt: string | null;
 };
 
 export type AdminInsurancePayload = {
@@ -91,4 +109,17 @@ export function adminDeleteInsurance(insuranceId: string) {
   return apiRequest<{ message: string }>(`/admin/insurance/${insuranceId}`, {
     method: "DELETE",
   });
+}
+
+export function adminSetInsuranceApproval(
+  insuranceId: string,
+  payload: { approvalStatus: "APPROVED" | "REJECTED" | "PENDING"; approvalNote?: string },
+) {
+  return apiRequest<{ message: string; insurance: AdminInsurancePackage }>(
+    `/admin/insurance/${insuranceId}/approval`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    },
+  );
 }

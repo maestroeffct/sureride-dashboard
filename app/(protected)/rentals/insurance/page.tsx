@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import {
   adminCreateInsurance,
   adminDeleteInsurance,
+  adminSetInsuranceApproval,
   adminListInsurance,
   adminUpdateInsurance,
   type AdminInsurancePackage,
@@ -397,6 +398,28 @@ export default function AdminInsurancePage() {
                             Global
                           </span>
                         ) : null}
+                        <span
+                          style={{
+                            ...styles.statusPill,
+                            background:
+                              item.approvalStatus === "APPROVED"
+                                ? "rgba(34,197,94,0.14)"
+                                : item.approvalStatus === "PENDING"
+                                  ? "rgba(250,204,21,0.14)"
+                                  : "rgba(239,68,68,0.14)",
+                            color:
+                              item.approvalStatus === "APPROVED"
+                                ? "#86efac"
+                                : item.approvalStatus === "PENDING"
+                                  ? "#fde68a"
+                                  : "#fca5a5",
+                          }}
+                        >
+                          {item.approvalStatus}
+                        </span>
+                        <span style={{ ...styles.statusPill, background: "rgba(148,163,184,0.14)", color: "#cbd5e1" }}>
+                          {item.tier}
+                        </span>
                       </div>
                       <p style={styles.packageText}>{item.description}</p>
                     </div>
@@ -441,6 +464,37 @@ export default function AdminInsurancePage() {
                     >
                       {deletingId === item.id ? "Deleting..." : "Delete"}
                     </button>
+                    {item.approvalStatus !== "APPROVED" && (
+                      <button
+                        type="button"
+                        style={{ ...styles.secondaryButton, background: "var(--brand-primary)", color: "#022c22", border: "none" }}
+                        onClick={async () => {
+                          try {
+                            const res = await adminSetInsuranceApproval(item.id, { approvalStatus: "APPROVED" });
+                            setItems((prev) => prev.map((i) => (i.id === item.id ? res.insurance : i)));
+                            toast.success("Plan approved");
+                          } catch (e: any) { toast.error(e?.message ?? "Failed"); }
+                        }}
+                      >
+                        Approve
+                      </button>
+                    )}
+                    {item.approvalStatus !== "REJECTED" && item.approvalStatus !== "APPROVED" && (
+                      <button
+                        type="button"
+                        style={{ ...styles.secondaryButton, borderColor: "rgba(239,68,68,0.35)", color: "#fca5a5" }}
+                        onClick={async () => {
+                          const note = window.prompt("Reason for rejection (optional):") ?? "";
+                          try {
+                            const res = await adminSetInsuranceApproval(item.id, { approvalStatus: "REJECTED", approvalNote: note || undefined });
+                            setItems((prev) => prev.map((i) => (i.id === item.id ? res.insurance : i)));
+                            toast.success("Plan rejected");
+                          } catch (e: any) { toast.error(e?.message ?? "Failed"); }
+                        }}
+                      >
+                        Reject
+                      </button>
+                    )}
                   </div>
                 </article>
               ))}
