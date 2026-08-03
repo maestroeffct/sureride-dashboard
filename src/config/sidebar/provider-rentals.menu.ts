@@ -1,49 +1,31 @@
 import { SidebarItem } from "@/src/types/sidebar";
 import { sidebarIcons } from "./icons";
 
+// Section order reflects daily-use precedence for a car-rental provider:
+//   1. Overview + inbox  — first thing they open every morning
+//   2. Live operations   — rents in flight, availability blocks
+//   3. Fleet management  — cars, maintenance, insurance
+//   4. Post-rental       — damage, refunds, reviews
+//   5. Money             — earnings, fines, analytics
+//   6. Growth surface    — add-ons for checkout
+//   7. Account admin     — team, settings, support (rarely touched)
+// Within a section, items are ordered by how often they're used.
 export const providerRentalsMenu: SidebarItem[] = [
   {
     kind: "section",
-    label: "PROVIDER PORTAL",
+    label: "OVERVIEW",
   },
   {
-    label: "Overview",
+    label: "Dashboard",
     path: "/provider",
     icon: sidebarIcons.overview,
   },
   {
-    kind: "section",
-    label: "FLEET",
-    allowedRoles: ["OWNER", "FLEET_MANAGER", "OPERATIONS", "FINANCE"],
+    label: "Notifications",
+    path: "/provider/notifications",
+    icon: sidebarIcons.settings,
   },
-  {
-    label: "Cars",
-    path: "/provider/cars",
-    icon: sidebarIcons.cars,
-    allowedRoles: ["OWNER", "FLEET_MANAGER", "OPERATIONS"],
-    requiresVerification: true,
-  },
-  {
-    label: "Locations",
-    path: "/provider/locations",
-    icon: sidebarIcons.providers,
-    allowedRoles: ["OWNER", "FLEET_MANAGER"],
-    requiresVerification: true,
-  },
-  {
-    label: "Insurance",
-    path: "/provider/insurance",
-    icon: sidebarIcons.insurance,
-    allowedRoles: ["OWNER", "FLEET_MANAGER", "FINANCE"],
-    requiresVerification: true,
-  },
-  {
-    label: "Add Car",
-    path: "/provider/cars/new",
-    icon: sidebarIcons.addProvider,
-    allowedRoles: ["OWNER", "FLEET_MANAGER"],
-    requiresVerification: true,
-  },
+
   {
     kind: "section",
     label: "OPERATIONS",
@@ -63,12 +45,52 @@ export const providerRentalsMenu: SidebarItem[] = [
     allowedRoles: ["OWNER", "FLEET_MANAGER", "OPERATIONS"],
     requiresVerification: true,
   },
+
+  {
+    kind: "section",
+    label: "FLEET",
+    allowedRoles: ["OWNER", "FLEET_MANAGER", "OPERATIONS", "FINANCE"],
+  },
+  {
+    label: "Cars",
+    path: "/provider/cars",
+    icon: sidebarIcons.cars,
+    allowedRoles: ["OWNER", "FLEET_MANAGER", "OPERATIONS"],
+    requiresVerification: true,
+  },
+  {
+    label: "Add Car",
+    path: "/provider/cars/new",
+    icon: sidebarIcons.addProvider,
+    allowedRoles: ["OWNER", "FLEET_MANAGER"],
+    requiresVerification: true,
+  },
   {
     label: "Maintenance",
     path: "/provider/maintenance",
     icon: sidebarIcons.settings,
     allowedRoles: ["OWNER", "FLEET_MANAGER", "OPERATIONS"],
     requiresVerification: true,
+  },
+  {
+    label: "Insurance",
+    path: "/provider/insurance",
+    icon: sidebarIcons.insurance,
+    allowedRoles: ["OWNER", "FLEET_MANAGER", "FINANCE"],
+    requiresVerification: true,
+  },
+  {
+    label: "Locations",
+    path: "/provider/locations",
+    icon: sidebarIcons.providers,
+    allowedRoles: ["OWNER", "FLEET_MANAGER"],
+    requiresVerification: true,
+  },
+
+  {
+    kind: "section",
+    label: "POST-RENTAL",
+    allowedRoles: ["OWNER", "OPERATIONS", "FLEET_MANAGER", "CUSTOMER_SERVICE"],
   },
   {
     label: "Damage Claims",
@@ -91,21 +113,15 @@ export const providerRentalsMenu: SidebarItem[] = [
     allowedRoles: ["OWNER", "OPERATIONS", "CUSTOMER_SERVICE"],
     requiresVerification: true,
   },
+
   {
     kind: "section",
     label: "FINANCE",
-    allowedRoles: ["OWNER", "FINANCE"],
+    allowedRoles: ["OWNER", "FINANCE", "OPERATIONS"],
   },
   {
     label: "Earnings",
     path: "/provider/earnings",
-    icon: sidebarIcons.bookings,
-    allowedRoles: ["OWNER", "FINANCE"],
-    requiresVerification: true,
-  },
-  {
-    label: "Fines",
-    path: "/provider/fines",
     icon: sidebarIcons.bookings,
     allowedRoles: ["OWNER", "FINANCE"],
     requiresVerification: true,
@@ -118,6 +134,14 @@ export const providerRentalsMenu: SidebarItem[] = [
     requiresVerification: true,
   },
   {
+    label: "Fines",
+    path: "/provider/fines",
+    icon: sidebarIcons.bookings,
+    allowedRoles: ["OWNER", "FINANCE"],
+    requiresVerification: true,
+  },
+
+  {
     kind: "section",
     label: "STOREFRONT",
     allowedRoles: ["OWNER", "FLEET_MANAGER", "OPERATIONS"],
@@ -129,14 +153,10 @@ export const providerRentalsMenu: SidebarItem[] = [
     allowedRoles: ["OWNER", "FLEET_MANAGER", "OPERATIONS"],
     requiresVerification: true,
   },
+
   {
     kind: "section",
     label: "ACCOUNT",
-  },
-  {
-    label: "Notifications",
-    path: "/provider/notifications",
-    icon: sidebarIcons.settings,
   },
   {
     label: "Team",

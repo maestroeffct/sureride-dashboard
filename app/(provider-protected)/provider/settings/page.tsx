@@ -16,6 +16,10 @@ import {
   updateProviderProfile,
   type ProviderProfile,
 } from "@/src/lib/providerApi";
+import {
+  getProviderNotificationSettings,
+  updateProviderNotificationSettings,
+} from "@/src/lib/providerOpsApi";
 
 type ProfileForm = {
   name: string;
@@ -122,11 +126,33 @@ function ProviderSettingsContent() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [pushEnabled, setPushEnabled] = useState(true);
+  const [savingPush, setSavingPush] = useState(false);
 
   const forcePasswordChange = useMemo(
     () => searchParams.get("forcePasswordChange") === "1",
     [searchParams],
   );
+
+  useEffect(() => {
+    getProviderNotificationSettings()
+      .then((r) => setPushEnabled(r.settings.pushNotificationsEnabled))
+      .catch(() => {});
+  }, []);
+
+  const togglePush = async (next: boolean) => {
+    try {
+      setSavingPush(true);
+      setPushEnabled(next);
+      await updateProviderNotificationSettings({ pushNotificationsEnabled: next });
+      toast.success(next ? "Push notifications enabled" : "Push notifications disabled");
+    } catch (e) {
+      setPushEnabled(!next);
+      toast.error(e instanceof Error ? e.message : "Failed to save");
+    } finally {
+      setSavingPush(false);
+    }
+  };
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -425,6 +451,65 @@ function ProviderSettingsContent() {
           </div>
         </section>
       </div>
+
+      <section style={styles.card}>
+        <div style={styles.cardHeader}>
+          <div>
+            <h2 style={styles.cardTitle}>Notifications</h2>
+            <p style={styles.sectionText}>
+              Booking events, admin messages, fine alerts, payout updates.
+              Disable to receive them only inside the dashboard inbox.
+            </p>
+          </div>
+        </div>
+        <label
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: 14,
+            background: "var(--surface-2)",
+            borderRadius: 10,
+            cursor: savingPush ? "wait" : "pointer",
+          }}
+        >
+          <div>
+            <strong style={{ fontSize: 14 }}>Push notifications</strong>
+            <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--muted-foreground)" }}>
+              Send to registered mobile devices when new bookings, fines, or
+              admin messages arrive.
+            </p>
+          </div>
+          <span
+            role="switch"
+            aria-checked={pushEnabled}
+            onClick={() => !savingPush && void togglePush(!pushEnabled)}
+            style={{
+              width: 44,
+              height: 24,
+              borderRadius: 999,
+              background: pushEnabled ? "var(--brand-primary)" : "var(--input-border)",
+              position: "relative",
+              transition: "background 0.2s",
+              flexShrink: 0,
+            }}
+          >
+            <span
+              style={{
+                position: "absolute",
+                top: 2,
+                left: pushEnabled ? 22 : 2,
+                width: 20,
+                height: 20,
+                borderRadius: "50%",
+                background: "#fff",
+                transition: "left 0.2s",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+              }}
+            />
+          </span>
+        </label>
+      </section>
 
       <section style={styles.card}>
         <div style={styles.cardHeader}>

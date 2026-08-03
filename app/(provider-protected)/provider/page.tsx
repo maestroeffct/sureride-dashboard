@@ -4,13 +4,18 @@ import { type CSSProperties, type ReactNode, useEffect, useMemo, useState } from
 import Link from "next/link";
 import toast from "react-hot-toast";
 import {
+  AlertOctagon,
   CarFront,
   CheckCircle2,
   Circle,
   CircleDollarSign,
   MapPin,
+  Receipt,
+  RotateCcw,
   ShieldCheck,
+  Star,
   TimerReset,
+  TrendingUp,
 } from "lucide-react";
 import {
   getProviderDashboardStats,
@@ -18,6 +23,13 @@ import {
   type ProviderDashboardStats,
   type ProviderProfile,
 } from "@/src/lib/providerApi";
+import {
+  getProviderAnalytics,
+  listDamages,
+  listProviderFines,
+  listRefunds,
+  type ProviderAnalytics,
+} from "@/src/lib/providerOpsApi";
 import VerificationBanner from "@/src/components/provider/VerificationBanner";
 import VerificationCelebration from "@/src/components/provider/VerificationCelebration";
 import { useProviderVerification } from "@/src/hooks/useProviderVerification";
@@ -49,6 +61,13 @@ export default function ProviderOverviewPage() {
   const [stats, setStats] = useState<ProviderDashboardStats>(emptyStats);
   const [loading, setLoading] = useState(true);
   const [celebrate, setCelebrate] = useState(false);
+  const [ops, setOps] = useState<{
+    openFines: number;
+    pendingRefunds: number;
+    openDamages: number;
+    rating: number;
+    utilisation: number;
+  }>({ openFines: 0, pendingRefunds: 0, openDamages: 0, rating: 0, utilisation: 0 });
   const verification = useProviderVerification();
 
   // Fire the celebration overlay the *first* time a provider lands on the
@@ -75,12 +94,23 @@ export default function ProviderOverviewPage() {
     const load = async () => {
       try {
         setLoading(true);
-        const [profileResponse, statsResponse] = await Promise.all([
+        const [profileResponse, statsResponse, analytics, fines, refunds, damages] = await Promise.all([
           getProviderProfile(),
           getProviderDashboardStats(),
+          getProviderAnalytics(30).catch(() => null),
+          listProviderFines({ status: "PENDING", limit: 1 }).catch(() => null),
+          listRefunds({ status: "PENDING" }).catch(() => null),
+          listDamages({ status: "OPEN" }).catch(() => null),
         ]);
         setProfile(profileResponse);
         setStats(statsResponse);
+        setOps({
+          openFines: (fines?.summary.pendingCount ?? 0) + (fines?.summary.overdueCount ?? 0),
+          pendingRefunds: refunds?.items.length ?? 0,
+          openDamages: damages?.items.length ?? 0,
+          rating: analytics?.reviews.average ?? 0,
+          utilisation: analytics?.utilisation ?? 0,
+        });
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : "Failed to load provider dashboard",
@@ -289,6 +319,44 @@ export default function ProviderOverviewPage() {
             tone={card.tone}
           />
         ))}
+      </section>
+
+      <section style={styles.statsGrid}>
+        <KpiCard
+          label="Utilisation (30d)"
+          value={loading ? "..." : `${Math.round(ops.utilisation * 100)}%`}
+          subtext="Booked days ÷ fleet-days"
+          icon={<TrendingUp size={18} />}
+          tone="var(--brand-primary)"
+        />
+        <KpiCard
+          label="Avg. rating"
+          value={loading ? "..." : ops.rating > 0 ? ops.rating.toFixed(1) : "—"}
+          subtext="Across all your cars"
+          icon={<Star size={18} />}
+          tone="#f59e0b"
+        />
+        <KpiCard
+          label="Open fines"
+          value={loading ? "..." : String(ops.openFines)}
+          subtext="Pending + overdue"
+          icon={<Receipt size={18} />}
+          tone={ops.openFines > 0 ? "#ef4444" : "#22c55e"}
+        />
+        <KpiCard
+          label="Pending refunds"
+          value={loading ? "..." : String(ops.pendingRefunds)}
+          subtext="Awaiting your response"
+          icon={<RotateCcw size={18} />}
+          tone={ops.pendingRefunds > 0 ? "#f59e0b" : "#22c55e"}
+        />
+        <KpiCard
+          label="Open damage claims"
+          value={loading ? "..." : String(ops.openDamages)}
+          subtext="Filed against bookings"
+          icon={<AlertOctagon size={18} />}
+          tone={ops.openDamages > 0 ? "#ef4444" : "#22c55e"}
+        />
       </section>
 
       <section style={styles.chartGrid}>
