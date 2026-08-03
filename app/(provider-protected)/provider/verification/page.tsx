@@ -46,14 +46,14 @@ type DocSpec = {
 const DOC_SPECS: DocSpec[] = [
   {
     type: "CAC",
-    label: "CAC Certificate",
-    description: "Business registration certificate from the Corporate Affairs Commission.",
+    label: "Business Certificate",
+    description: "Official business registration certificate from your local company registry.",
     required: true,
   },
   {
     type: "NIN",
-    label: "Government ID (NIN slip)",
-    description: "National Identity Number slip of the primary contact person.",
+    label: "Government ID",
+    description: "A government-issued ID for the primary contact person (e.g. national ID, passport, or NIN slip).",
     required: true,
   },
   {
