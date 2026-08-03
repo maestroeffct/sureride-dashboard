@@ -12,6 +12,12 @@ export type AdminInsurancePackage = {
   car: { id: string; label: string } | null;
   isGlobal: boolean;
   createdAt: string;
+  /**
+   * ISO-4217 currency for dailyPrice. Not yet returned by the backend; when it
+   * is, the admin UI will render the correct symbol instead of a bare number.
+   * Until then the amount is shown currency-neutral (never assumed to be NGN).
+   */
+  currency?: string | null;
 };
 
 export type AdminInsurancePayload = {

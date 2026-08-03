@@ -65,3 +65,17 @@ export function currencyForCountryCodeByCurrency(code: string): CurrencyInfo {
     }
   );
 }
+
+// Formats a money amount for display. Unlike the helpers above, this does NOT
+// fall back to a Naira symbol when the currency is unknown — it returns a bare,
+// currency-neutral number so we never mislabel a non-Nigerian amount as ₦.
+// Pass the ISO-4217 code (e.g. "USD", "NGN") when it is known.
+export function formatMoney(
+  amount: number,
+  currencyCode?: string | null,
+): string {
+  const code = currencyCode?.trim().toUpperCase();
+  if (!code) return amount.toLocaleString();
+  const { symbol } = currencyForCountryCodeByCurrency(code);
+  return `${symbol}${amount.toLocaleString()}`;
+}

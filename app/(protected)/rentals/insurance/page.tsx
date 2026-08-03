@@ -11,6 +11,7 @@ import {
   type ListAdminInsuranceParams,
 } from "@/src/lib/adminInsuranceApi";
 import { listProviders } from "@/src/lib/providersApi";
+import { formatMoney } from "@/src/lib/currencyForCountry";
 
 type FormState = {
   name: string;
@@ -61,7 +62,7 @@ export default function AdminInsurancePage() {
       setItems(response.items ?? []);
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to load insurance packages",
+        error instanceof Error ? error.message : "Failed to load protection plans",
       );
     } finally {
       setLoading(false);
@@ -131,7 +132,7 @@ export default function AdminInsurancePage() {
 
   const handleSave = async () => {
     if (!form.name.trim() || !form.description.trim() || !form.dailyPrice.trim()) {
-      toast.error("Complete the insurance form");
+      toast.error("Complete the protection plan form");
       return;
     }
 
@@ -168,7 +169,7 @@ export default function AdminInsurancePage() {
       resetForm();
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to save insurance package",
+        error instanceof Error ? error.message : "Failed to save protection plan",
       );
     } finally {
       setSaving(false);
@@ -176,7 +177,7 @@ export default function AdminInsurancePage() {
   };
 
   const handleDelete = async (insuranceId: string) => {
-    if (!confirm("Delete this insurance package? This cannot be undone.")) {
+    if (!confirm("Delete this protection plan? This cannot be undone.")) {
       return;
     }
     try {
@@ -187,7 +188,7 @@ export default function AdminInsurancePage() {
       if (editingId === insuranceId) resetForm();
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to delete insurance package",
+        error instanceof Error ? error.message : "Failed to delete protection plan",
       );
     } finally {
       setDeletingId(null);
@@ -217,11 +218,11 @@ export default function AdminInsurancePage() {
       <div style={styles.hero}>
         <div>
           <p style={styles.eyebrow}>Admin · Rentals</p>
-          <h1 style={styles.title}>Insurance Packages</h1>
+          <h1 style={styles.title}>Protection Plans</h1>
           <p style={styles.subtitle}>
-            View and manage every insurance package across all providers. Create
-            global packages that apply across the marketplace, or moderate
-            provider-owned packages.
+            View and manage every protection plan across all providers. Create
+            global plans that apply across the marketplace, or moderate
+            provider-owned plans.
           </p>
         </div>
         <div style={styles.statsRow}>
@@ -235,16 +236,16 @@ export default function AdminInsurancePage() {
         {/* ── FORM ── */}
         <section style={styles.formCard}>
           <h2 style={styles.cardTitle}>
-            {editingId ? "Edit Insurance Package" : "New Insurance Package"}
+            {editingId ? "Edit Protection Plan" : "New Protection Plan"}
           </h2>
           <p style={styles.cardText}>
-            Leave <strong>Provider</strong> empty to create a global package
+            Leave <strong>Provider</strong> empty to create a global plan
             available across the marketplace. Pick a provider to attach the
-            package to a specific provider&apos;s fleet.
+            plan to a specific provider&apos;s fleet.
           </p>
 
           <div style={styles.formGrid}>
-            <Field label="Package Name">
+            <Field label="Plan Name">
               <input
                 style={styles.input}
                 value={form.name}
@@ -252,7 +253,7 @@ export default function AdminInsurancePage() {
               />
             </Field>
 
-            <Field label="Daily Price (NGN)">
+            <Field label="Daily Price">
               <input
                 style={styles.input}
                 type="number"
@@ -370,9 +371,9 @@ export default function AdminInsurancePage() {
           </div>
 
           {loading ? (
-            <div style={styles.empty}>Loading insurance packages...</div>
+            <div style={styles.empty}>Loading protection plans...</div>
           ) : items.length === 0 ? (
-            <div style={styles.empty}>No insurance packages match the filters.</div>
+            <div style={styles.empty}>No protection plans match the filters.</div>
           ) : (
             <div style={styles.packageList}>
               {items.map((item) => (
@@ -400,7 +401,7 @@ export default function AdminInsurancePage() {
                       <p style={styles.packageText}>{item.description}</p>
                     </div>
                     <strong style={styles.packagePrice}>
-                      NGN {item.dailyPrice.toLocaleString()}
+                      {formatMoney(item.dailyPrice, item.currency)}
                       <span style={styles.packagePriceMeta}> / day</span>
                     </strong>
                   </div>

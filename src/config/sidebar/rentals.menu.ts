@@ -140,7 +140,7 @@ export const rentalsMenu: SidebarItem[] = [
     icon: sidebarIcons.pricing,
   },
   {
-    label: "Insurance Packages",
+    label: "Protection Plans",
     path: "/rentals/insurance",
     icon: sidebarIcons.insurance,
   },

@@ -10,6 +10,7 @@ import {
   updateProviderInsurancePackage,
   type ProviderInsurancePackage,
 } from "@/src/lib/providerApi";
+import { formatMoney } from "@/src/lib/currencyForCountry";
 
 type FormState = {
   name: string;
@@ -54,7 +55,7 @@ export default function ProviderInsurancePage() {
         );
       } catch (error) {
         toast.error(
-          error instanceof Error ? error.message : "Failed to load insurance packages",
+          error instanceof Error ? error.message : "Failed to load protection plans",
         );
       } finally {
         setLoading(false);
@@ -68,6 +69,11 @@ export default function ProviderInsurancePage() {
     () => items.filter((item) => item.isActive).length,
     [items],
   );
+
+  // NOTE: neither the protection-plan record nor the provider car list exposes
+  // a currency to the dashboard, so amounts are shown currency-neutral (never
+  // assumed to be NGN). Once the backend adds a `currency` field to the plan,
+  // pass it into formatMoney() here to render the correct symbol.
 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -91,7 +97,7 @@ export default function ProviderInsurancePage() {
 
   const handleSave = async () => {
     if (!form.name.trim() || !form.description.trim() || !form.dailyPrice.trim()) {
-      toast.error("Complete the insurance form");
+      toast.error("Complete the protection plan form");
       return;
     }
 
@@ -128,7 +134,7 @@ export default function ProviderInsurancePage() {
       resetForm();
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to save insurance package",
+        error instanceof Error ? error.message : "Failed to save protection plan",
       );
     } finally {
       setSaving(false);
@@ -146,7 +152,7 @@ export default function ProviderInsurancePage() {
       }
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to delete insurance package",
+        error instanceof Error ? error.message : "Failed to delete protection plan",
       );
     } finally {
       setDeletingId(null);
@@ -158,15 +164,16 @@ export default function ProviderInsurancePage() {
       <div style={styles.hero}>
         <div>
           <p style={styles.eyebrow}>Provider Portal</p>
-          <h1 style={styles.title}>Insurance Packages</h1>
+          <h1 style={styles.title}>Protection Plans</h1>
           <p style={styles.subtitle}>
-            Create daily insurance options for your fleet and assign them to every
-            car or a specific uploaded vehicle.
+            Create daily protection options for your fleet and assign them to
+            every car or a specific uploaded vehicle. These are contractual
+            damage-protection plans, not insurance policies.
           </p>
         </div>
 
         <div style={styles.statsRow}>
-          <StatCard label="Packages" value={items.length} />
+          <StatCard label="Plans" value={items.length} />
           <StatCard label="Active" value={activeCount} />
         </div>
       </div>
@@ -174,15 +181,15 @@ export default function ProviderInsurancePage() {
       <div style={styles.layout}>
         <section style={styles.formCard}>
           <h2 style={styles.cardTitle}>
-            {editingId ? "Edit Insurance Package" : "New Insurance Package"}
+            {editingId ? "Edit Protection Plan" : "New Protection Plan"}
           </h2>
           <p style={styles.cardText}>
-            If no car is selected, the package becomes available across all of your
+            If no car is selected, the plan becomes available across all of your
             cars.
           </p>
 
           <div style={styles.formGrid}>
-            <Field label="Package Name">
+            <Field label="Plan Name">
               <input
                 style={styles.input}
                 value={form.name}
@@ -245,7 +252,7 @@ export default function ProviderInsurancePage() {
               disabled={saving}
               onClick={() => void handleSave()}
             >
-              {saving ? "Saving..." : editingId ? "Update Package" : "Create Package"}
+              {saving ? "Saving..." : editingId ? "Update Plan" : "Create Plan"}
             </button>
             <button
               type="button"
@@ -258,13 +265,13 @@ export default function ProviderInsurancePage() {
         </section>
 
         <section style={styles.listCard}>
-          <h2 style={styles.cardTitle}>Saved Packages</h2>
+          <h2 style={styles.cardTitle}>Saved Plans</h2>
 
           {loading ? (
-            <div style={styles.empty}>Loading insurance packages...</div>
+            <div style={styles.empty}>Loading protection plans...</div>
           ) : items.length === 0 ? (
             <div style={styles.empty}>
-              No insurance packages yet. Create your first provider coverage option.
+              No protection plans yet. Create your first coverage option.
             </div>
           ) : (
             <div style={styles.packageList}>
@@ -288,7 +295,7 @@ export default function ProviderInsurancePage() {
                       <p style={styles.packageText}>{item.description}</p>
                     </div>
                     <strong style={styles.packagePrice}>
-                      NGN {item.dailyPrice.toLocaleString()}
+                      {formatMoney(item.dailyPrice)}
                       <span style={styles.packagePriceMeta}> / day</span>
                     </strong>
                   </div>
