@@ -20,6 +20,7 @@ export type FineStatus =
 
 export type FineRow = {
   id: string;
+  reference: string | null;
   targetType: FineTargetType;
   userId: string | null;
   providerId: string | null;
@@ -31,7 +32,9 @@ export type FineRow = {
   reason: string;
   adminNote: string | null;
   dueDate: string | null;
-  issuedByAdminEmail: string;
+  issuedByAdminEmail: string | null;
+  issuedByProviderId: string | null;
+  issuedByProviderEmail: string | null;
   resolvedAt: string | null;
   resolvedByAdminEmail: string | null;
   createdAt: string;
@@ -62,6 +65,7 @@ export type FineRow = {
 type ListResponse = {
   items: FineRow[];
   meta: { page: number; limit: number; total: number; pages: number };
+  summary: { openCount: number; outstandingAmount: number; dueThisWeek: number; overdue: number };
 };
 
 export async function listFines(
