@@ -131,19 +131,23 @@ export default function Sidebar({
           )}
         </div>
 
-        {/* Switch Module footer */}
-        <div
-          style={{
-            ...styles.footer,
-            pointerEvents: collapsed ? "none" : "auto",
-            opacity: collapsed ? 0 : 1,
-          }}
-        >
-          <button style={styles.switchBtn} onClick={handleSwitchModule}>
-            <LayoutGrid size={16} />
-            <span>Switch Module</span>
-          </button>
-        </div>
+        {/* Switch Module — admins only. Providers have exactly one
+            module (providerRentals) and shouldn't see a switcher that
+            takes them out of their portal. */}
+        {module !== "providerRentals" && (
+          <div
+            style={{
+              ...styles.footer,
+              pointerEvents: collapsed ? "none" : "auto",
+              opacity: collapsed ? 0 : 1,
+            }}
+          >
+            <button style={styles.switchBtn} onClick={handleSwitchModule}>
+              <LayoutGrid size={16} />
+              <span>Switch Module</span>
+            </button>
+          </div>
+        )}
       </aside>
     </>
   );

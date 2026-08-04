@@ -968,6 +968,13 @@ export type BankVerifyRequest =
       accountNumber: string;
     }
   | {
+      currency: "XOF";
+      /** ISO-2 country code — one of TG, CI, SN, BJ, BF, ML, NE */
+      country: string;
+      bankCode: string;
+      accountNumber: string;
+    }
+  | {
       currency: "USD";
       linkedAccountId: string;
     }
@@ -1001,10 +1008,18 @@ export type BankVerifyResponse =
       reason?: string;
     };
 
-export function listProviderBanks(currency: string) {
-  return providerApiRequest<{ currency: string; banks: BankOption[] }>(
-    `/provider/banks?currency=${encodeURIComponent(currency)}`,
-  );
+export function listProviderBanks(currency: string, country?: string) {
+  const q = new URLSearchParams({ currency });
+  if (country) q.set("country", country);
+  return providerApiRequest<{
+    currency: string;
+    country?: string;
+    banks: BankOption[];
+    /** For XOF: when no country is picked yet, the API returns the
+     * available countries and an empty banks[]. */
+    countries?: Array<{ code: string; name: string }>;
+    message?: string;
+  }>(`/provider/banks?${q.toString()}`);
 }
 
 export function verifyProviderBankAccount(body: BankVerifyRequest) {

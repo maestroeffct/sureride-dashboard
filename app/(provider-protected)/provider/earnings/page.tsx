@@ -59,6 +59,20 @@ function StatusPill({ status }: { status: PayoutStatus }) {
 
 /* ── Account Modal ── */
 
+// Currencies where the payout modal knows how to verify natively.
+// Each maps to a gateway on the backend:
+//   NGN  → Paystack
+//   XOF  → Flutterwave (Togo, Côte d'Ivoire, Senegal, Benin, Burkina
+//                       Faso, Mali, Niger — needs a country pick first)
+// USD/GBP/EUR are supported via the Verification Center flow (Stripe FC
+// popup, TrueLayer CoP/VoP) — keep them out of this modal so we don't
+// half-implement them.
+type PayoutCurrency = "NGN" | "XOF";
+const PAYOUT_CURRENCIES: { value: PayoutCurrency; label: string; gateway: string }[] = [
+  { value: "NGN", label: "NGN — Nigerian Naira", gateway: "Paystack" },
+  { value: "XOF", label: "XOF — West African CFA franc", gateway: "Flutterwave" },
+];
+
 function AccountModal({
   initial,
   onClose,
@@ -68,8 +82,12 @@ function AccountModal({
   onClose: () => void;
   onSaved: (account: ProviderPayoutAccount) => void;
 }) {
-  // Bank code drives verification; bankName mirrors the picked bank's
-  // display name so the payout record shows a human label.
+  const [currency, setCurrency] = useState<PayoutCurrency>(
+    (initial?.currency?.toUpperCase() === "XOF" ? "XOF" : "NGN") as PayoutCurrency,
+  );
+  // XOF requires an ISO-2 country pick (TG/CI/SN/BJ/BF/ML/NE).
+  const [country, setCountry] = useState<string>("");
+  const [xofCountries, setXofCountries] = useState<{ code: string; name: string }[]>([]);
   const [banks, setBanks] = useState<BankOption[]>([]);
   const [banksLoading, setBanksLoading] = useState(true);
   const [banksError, setBanksError] = useState<string | null>(null);
@@ -80,17 +98,20 @@ function AccountModal({
   const [verified, setVerified] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Load Nigerian banks from Paystack on mount. When re-editing an
-  // existing account, pre-select by name once the list arrives.
+  // Load banks for the selected currency (+ country when XOF). Also
+  // pre-selects the current bank by name when editing.
   useEffect(() => {
     let mounted = true;
+    setBanks([]);
+    setBankCode("");
     setBanksLoading(true);
     setBanksError(null);
-    listProviderBanks("NGN")
+    listProviderBanks(currency, currency === "XOF" ? country || undefined : undefined)
       .then((r) => {
         if (!mounted) return;
+        setXofCountries(r.countries ?? []);
         setBanks(r.banks);
-        if (initial?.bankName) {
+        if (r.banks.length && initial?.bankName) {
           const match = r.banks.find(
             (b) => b.name.toLowerCase() === initial.bankName.toLowerCase(),
           );
@@ -99,34 +120,49 @@ function AccountModal({
       })
       .catch((e) => {
         if (!mounted) return;
-        setBanksError(e?.message ?? "Couldn't load banks list");
+        setBanksError(
+          e?.message?.includes("NOT_CONFIGURED")
+            ? `${currency === "XOF" ? "Flutterwave" : "Paystack"} isn't configured on this install — admin must set the API key.`
+            : e?.message ?? "Couldn't load banks list",
+        );
       })
       .finally(() => {
         if (mounted) setBanksLoading(false);
       });
     return () => { mounted = false; };
-  }, [initial?.bankName]);
+  }, [currency, country, initial?.bankName]);
 
-  // Any change to bank or account number invalidates the previous
-  // verification so the customer can't slip through with a stale name.
+  // Any change invalidates the previous verification so a stale name
+  // can't slip through.
   useEffect(() => {
     setVerified(false);
     setAccountName("");
-  }, [bankCode, accountNumber]);
+  }, [currency, country, bankCode, accountNumber]);
 
   const bankName = banks.find((b) => b.code === bankCode)?.name ?? "";
+
+  // Digit-length rules differ by market. NGN is exactly 10 (NUBAN);
+  // XOF accounts are typically longer (up to 26 in the SFI standard),
+  // so we accept 8–26 digits and let the gateway reject the rest.
+  const isNumValid = currency === "NGN"
+    ? /^\d{10}$/.test(accountNumber.trim())
+    : /^\d{8,26}$/.test(accountNumber.trim());
+
   const canVerify =
-    !!bankCode && /^\d{10}$/.test(accountNumber.trim()) && !verifying && !verified;
+    !!bankCode &&
+    isNumValid &&
+    (currency !== "XOF" || !!country) &&
+    !verifying &&
+    !verified;
 
   const runVerify = async () => {
     if (!canVerify) return;
     try {
       setVerifying(true);
-      const res = await verifyProviderBankAccount({
-        currency: "NGN",
-        bankCode,
-        accountNumber: accountNumber.trim(),
-      });
+      const req = currency === "XOF"
+        ? { currency: "XOF" as const, country, bankCode, accountNumber: accountNumber.trim() }
+        : { currency: "NGN" as const, bankCode, accountNumber: accountNumber.trim() };
+      const res = await verifyProviderBankAccount(req);
       if ("accountName" in res && res.accountName) {
         setAccountName(res.accountName);
         setVerified(true);
@@ -152,6 +188,7 @@ function AccountModal({
         bankName,
         accountNumber: accountNumber.trim(),
         accountName,
+        currency,
       });
       toast.success("Payout account saved");
       onSaved(res.account);
@@ -163,15 +200,53 @@ function AccountModal({
     }
   };
 
+  const gatewayName = currency === "XOF" ? "Flutterwave" : "Paystack";
+
   return (
     <div style={s.backdrop}>
       <div style={s.modal}>
         <h2 style={s.modalTitle}>Payout Account</h2>
         <p style={s.modalSub}>
-          Pick your bank and enter your account number — we verify with
-          Paystack before saving so the account name is guaranteed to
+          Pick your bank and enter your account number — we verify with{" "}
+          {gatewayName} before saving so the account name is guaranteed to
           match. Admin then approves the account for withdrawals.
         </p>
+
+        <div style={s.field}>
+          <label style={s.fieldLabel}>Currency</label>
+          <select
+            style={s.input}
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value as PayoutCurrency)}
+            disabled={saving}
+          >
+            {PAYOUT_CURRENCIES.map((c) => (
+              <option key={c.value} value={c.value}>{c.label} — via {c.gateway}</option>
+            ))}
+          </select>
+        </div>
+
+        {currency === "XOF" && (
+          <div style={s.field}>
+            <label style={s.fieldLabel}>Country</label>
+            <select
+              style={s.input}
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              disabled={saving}
+            >
+              <option value="">Select your country…</option>
+              {xofCountries.map((c) => (
+                <option key={c.code} value={c.code}>{c.name}</option>
+              ))}
+            </select>
+            {!country && (
+              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                XOF is shared across 7 West African countries — pick yours to load the right banks.
+              </span>
+            )}
+          </div>
+        )}
 
         <div style={s.field}>
           <label style={s.fieldLabel}>Bank</label>
@@ -179,9 +254,17 @@ function AccountModal({
             style={s.input}
             value={bankCode}
             onChange={(e) => setBankCode(e.target.value)}
-            disabled={banksLoading || saving}
+            disabled={banksLoading || saving || (currency === "XOF" && !country)}
           >
-            <option value="">{banksLoading ? "Loading banks…" : "Select bank"}</option>
+            <option value="">
+              {banksLoading
+                ? "Loading banks…"
+                : currency === "XOF" && !country
+                  ? "Pick a country first"
+                  : banks.length === 0
+                    ? "No banks available"
+                    : "Select bank"}
+            </option>
             {banks.map((b) => (
               <option key={b.code} value={b.code}>{b.name}</option>
             ))}
@@ -193,9 +276,9 @@ function AccountModal({
           <label style={s.fieldLabel}>Account Number</label>
           <input
             style={s.input}
-            placeholder="10-digit NUBAN"
+            placeholder={currency === "NGN" ? "10-digit NUBAN" : "Account number (8–26 digits)"}
             inputMode="numeric"
-            maxLength={10}
+            maxLength={currency === "NGN" ? 10 : 26}
             value={accountNumber}
             onChange={(e) => setAccountNumber(e.target.value.replace(/[^0-9]/g, ""))}
             disabled={saving}
