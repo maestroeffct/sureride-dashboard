@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import toast from "react-hot-toast";
-import { CheckCircle2, RotateCcw, X, XCircle } from "lucide-react";
+import { CheckCircle2, CircleDollarSign, Clock, RotateCcw, X, XCircle } from "lucide-react";
+import KpiCard, { KpiGrid } from "@/src/components/admin/KpiCard";
 import {
   listRefunds,
   respondRefund,
@@ -35,12 +36,30 @@ export default function RefundsPage() {
 
   useEffect(() => { void load(); }, [load]);
 
+  const kpi = useMemo(() => {
+    let pending = 0, approvedValue = 0, rejected = 0, paidValue = 0;
+    for (const r of rows) {
+      if (r.status === "PENDING") pending += 1;
+      if (r.status === "APPROVED") approvedValue += r.amount;
+      if (r.status === "REJECTED") rejected += 1;
+      if (r.status === "PAID") paidValue += r.amount;
+    }
+    return { pending, approvedValue, rejected, paidValue };
+  }, [rows]);
+
   return (
     <div style={s.page}>
       <header>
         <h1 style={s.title}><RotateCcw size={20} color="var(--brand-primary)" /> Refund Requests</h1>
         <p style={s.sub}>Customers can request a refund after a rental. Approve or reject with a written response — admin has final override.</p>
       </header>
+
+      <KpiGrid>
+        <KpiCard label="Pending" value={kpi.pending} subtext="Awaiting your response" icon={<Clock size={18} />} tone="#f59e0b" />
+        <KpiCard label="Approved (value)" value={`₦${kpi.approvedValue.toLocaleString()}`} subtext="Awaiting refund payout" icon={<CheckCircle2 size={18} />} tone="#22c55e" />
+        <KpiCard label="Paid Out" value={`₦${kpi.paidValue.toLocaleString()}`} subtext="Refunded to customers" icon={<CircleDollarSign size={18} />} tone="var(--brand-primary)" />
+        <KpiCard label="Rejected" value={kpi.rejected} subtext="Denied by you" icon={<XCircle size={18} />} tone="#ef4444" />
+      </KpiGrid>
 
       <div style={s.filters}>
         <select style={s.select} value={status} onChange={(e) => setStatus(e.target.value as any)}>

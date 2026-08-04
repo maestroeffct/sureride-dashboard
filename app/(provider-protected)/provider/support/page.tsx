@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import toast from "react-hot-toast";
-import { HelpCircle, MessageSquare, Plus, X } from "lucide-react";
+import { CheckCircle2, Clock, HelpCircle, MessageSquare, Plus, X } from "lucide-react";
+import KpiCard, { KpiGrid } from "@/src/components/admin/KpiCard";
 import {
   closeSupportTicket,
   createSupportTicket,
@@ -47,6 +48,29 @@ export default function SupportPage() {
     catch (e: any) { toast.error(e?.message ?? "Failed"); }
   };
 
+  const kpi = useMemo(() => {
+    let open = 0, answered = 0, closed = 0;
+    for (const r of rows) {
+      if (r.status === "OPEN") open += 1;
+      else if (r.status === "ANSWERED") answered += 1;
+      else if (r.status === "CLOSED") closed += 1;
+    }
+    // Average admin response time in hours for answered tickets.
+    const answeredWithReply = rows.filter((r) => r.adminReplyAt);
+    const avgHrs = answeredWithReply.length
+      ? Math.round(
+          answeredWithReply.reduce(
+            (acc, r) =>
+              acc +
+              (new Date(r.adminReplyAt!).getTime() - new Date(r.createdAt).getTime()) /
+                (1000 * 60 * 60),
+            0,
+          ) / answeredWithReply.length,
+        )
+      : null;
+    return { open, answered, closed, total: rows.length, avgHrs };
+  }, [rows]);
+
   return (
     <div style={s.page}>
       <header style={s.headerRow}>
@@ -56,6 +80,13 @@ export default function SupportPage() {
         </div>
         <button style={s.primaryBtn} onClick={() => setOpen(true)}><Plus size={15} /> New ticket</button>
       </header>
+
+      <KpiGrid>
+        <KpiCard label="Open" value={kpi.open} subtext="Awaiting admin reply" icon={<Clock size={18} />} tone="#f59e0b" />
+        <KpiCard label="Answered" value={kpi.answered} subtext="Admin replied — awaiting your close" icon={<CheckCircle2 size={18} />} tone="#22c55e" />
+        <KpiCard label="Closed" value={kpi.closed} subtext="Resolved conversations" icon={<MessageSquare size={18} />} tone="#94a3b8" />
+        <KpiCard label="Avg Response" value={kpi.avgHrs != null ? `${kpi.avgHrs}h` : "—"} subtext="First reply time" icon={<Clock size={18} />} tone="var(--brand-primary)" />
+      </KpiGrid>
 
       <section>
         <h2 style={s.h2}>Frequently asked</h2>

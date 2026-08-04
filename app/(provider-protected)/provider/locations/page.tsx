@@ -19,6 +19,8 @@ import {
   type ProviderCountryOption,
   type ProviderLocation,
 } from "@/src/lib/providerApi";
+import { Compass, Globe, MapPin } from "lucide-react";
+import KpiCard, { KpiGrid } from "@/src/components/admin/KpiCard";
 
 type FormState = {
   name: string;
@@ -462,6 +464,12 @@ export default function ProviderLocationsPage() {
     mapMarkerRef.current.setPosition(nextPosition);
   }, [form.latitude, form.longitude, isMapReady]);
 
+  const kpi = (() => {
+    const countries = new Set(locations.map((l) => l.countryId).filter(Boolean)).size;
+    const withCoords = locations.filter((l) => l.latitude && l.longitude).length;
+    return { total: locations.length, countries, withCoords };
+  })();
+
   return (
     <div style={styles.page}>
       <div style={styles.header}>
@@ -475,6 +483,13 @@ export default function ProviderLocationsPage() {
           New Location
         </button>
       </div>
+
+      <KpiGrid>
+        <KpiCard label="Total Locations" value={kpi.total} subtext="Pickup + drop-off points" icon={<MapPin size={18} />} tone="var(--brand-primary)" />
+        <KpiCard label="Countries" value={kpi.countries} subtext="Markets you cover" icon={<Globe size={18} />} tone="#a78bfa" />
+        <KpiCard label="Mapped" value={kpi.withCoords} subtext={`of ${kpi.total} pinned on the map`} icon={<Compass size={18} />} tone="#22c55e" />
+        <KpiCard label="Coverage" value={kpi.total > 0 ? `${Math.round((kpi.withCoords / kpi.total) * 100)}%` : "—"} subtext="Locations with coordinates" icon={<MapPin size={18} />} tone="#f59e0b" />
+      </KpiGrid>
 
       <div style={styles.layout}>
         <section style={styles.listCard}>

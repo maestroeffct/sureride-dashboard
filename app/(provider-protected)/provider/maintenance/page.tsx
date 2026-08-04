@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import toast from "react-hot-toast";
-import { Plus, Wrench, X, Trash2 } from "lucide-react";
+import { CarFront, CircleDollarSign, Clock, Plus, Wrench, X, Trash2 } from "lucide-react";
+import KpiCard, { KpiGrid } from "@/src/components/admin/KpiCard";
 import {
   createMaintenance,
   deleteMaintenance,
@@ -56,6 +57,22 @@ export default function MaintenancePage() {
     catch (e: any) { toast.error(e?.message ?? "Failed"); }
   };
 
+  const kpi = useMemo(() => {
+    const monthStart = new Date();
+    monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+    let monthCost = 0;
+    let totalCost = 0;
+    const carsServiced = new Set<string>();
+    for (const r of rows) {
+      const c = r.cost ?? 0;
+      totalCost += c;
+      if (new Date(r.serviceDate) >= monthStart) monthCost += c;
+      carsServiced.add(r.carId);
+    }
+    const avgCost = rows.length ? Math.round(totalCost / rows.length) : 0;
+    return { total: rows.length, monthCost, carsServiced: carsServiced.size, avgCost };
+  }, [rows]);
+
   return (
     <div style={s.page}>
       <header style={s.headerRow}>
@@ -65,6 +82,13 @@ export default function MaintenancePage() {
         </div>
         <button style={s.primaryBtn} onClick={() => setOpen(true)}><Plus size={15} /> Log service</button>
       </header>
+
+      <KpiGrid>
+        <KpiCard label="Services Logged" value={kpi.total} subtext="All-time records" icon={<Wrench size={18} />} tone="var(--brand-primary)" />
+        <KpiCard label="This Month" value={`₦${kpi.monthCost.toLocaleString()}`} subtext="Cost recorded this month" icon={<Clock size={18} />} tone="#f59e0b" />
+        <KpiCard label="Cars Serviced" value={kpi.carsServiced} subtext="Unique vehicles" icon={<CarFront size={18} />} tone="#a78bfa" />
+        <KpiCard label="Avg Cost" value={`₦${kpi.avgCost.toLocaleString()}`} subtext="Per service" icon={<CircleDollarSign size={18} />} tone="#22c55e" />
+      </KpiGrid>
 
       <div style={s.filters}>
         <select style={s.select} value={filter} onChange={(e) => setFilter(e.target.value)}>

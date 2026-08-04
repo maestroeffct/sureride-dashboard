@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import toast from "react-hot-toast";
-import { Ban, Calendar, CalendarClock, Clock, Copy, Plus, Trash2, X } from "lucide-react";
+import { Ban, Calendar, CalendarClock, CarFront, Clock, Copy, Plus, Trash2, X } from "lucide-react";
+import KpiCard, { KpiGrid } from "@/src/components/admin/KpiCard";
 import {
   createAvailabilityBlock,
   deleteAvailabilityBlock,
@@ -93,7 +94,23 @@ function BlockedDatesSection() {
     catch (e: any) { toast.error(e?.message ?? "Failed"); }
   };
 
+  const kpi = useMemo(() => {
+    const now = new Date();
+    const activeNow = rows.filter((r) => new Date(r.startAt) <= now && new Date(r.endAt) >= now).length;
+    const upcoming = rows.filter((r) => new Date(r.startAt) > now).length;
+    const carsBlockedNow = new Set(rows.filter((r) => new Date(r.startAt) <= now && new Date(r.endAt) >= now).map((r) => r.carId)).size;
+    return { total: rows.length, activeNow, upcoming, carsBlockedNow, fleetSize: cars.length };
+  }, [rows, cars]);
+
   return (
+    <>
+    <KpiGrid>
+      <KpiCard label="Active Blocks" value={kpi.activeNow} subtext="Currently blocking bookings" icon={<Ban size={18} />} tone="#ef4444" />
+      <KpiCard label="Upcoming" value={kpi.upcoming} subtext="Blocks starting later" icon={<Calendar size={18} />} tone="#f59e0b" />
+      <KpiCard label="Cars Off-road" value={kpi.carsBlockedNow} subtext={`out of ${kpi.fleetSize} in fleet`} icon={<CarFront size={18} />} tone="#a78bfa" />
+      <KpiCard label="Total Blocks" value={kpi.total} subtext="All-time" icon={<Clock size={18} />} tone="var(--brand-primary)" />
+    </KpiGrid>
+
     <section style={s.card}>
       <div style={s.sectionHead}>
         <div>
@@ -136,6 +153,7 @@ function BlockedDatesSection() {
         <BlockModal cars={cars} onClose={() => setOpen(false)} onDone={() => { setOpen(false); void load(); }} />
       )}
     </section>
+    </>
   );
 }
 

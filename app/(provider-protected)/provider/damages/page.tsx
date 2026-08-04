@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import toast from "react-hot-toast";
-import { AlertOctagon, Plus, X } from "lucide-react";
+import { AlertOctagon, CheckCircle2, CircleDollarSign, Clock, Plus, X } from "lucide-react";
+import KpiCard, { KpiGrid } from "@/src/components/admin/KpiCard";
 import {
   createDamage,
   listDamages,
@@ -46,6 +47,17 @@ export default function DamagesPage() {
 
   useEffect(() => { void load(); }, [load]);
 
+  const kpi = useMemo(() => {
+    let open = 0, approvedValue = 0, paidValue = 0, rejected = 0;
+    for (const r of rows) {
+      if (r.status === "OPEN" || r.status === "UNDER_REVIEW") open += 1;
+      if (r.status === "APPROVED") approvedValue += r.estimatedCost;
+      if (r.status === "PAID") paidValue += r.estimatedCost;
+      if (r.status === "REJECTED") rejected += 1;
+    }
+    return { total: rows.length, open, approvedValue, paidValue, rejected };
+  }, [rows]);
+
   return (
     <div style={s.page}>
       <header style={s.headerRow}>
@@ -55,6 +67,13 @@ export default function DamagesPage() {
         </div>
         <button style={s.primaryBtn} onClick={() => setOpen(true)}><Plus size={15} /> File claim</button>
       </header>
+
+      <KpiGrid>
+        <KpiCard label="Open Claims" value={kpi.open} subtext="Awaiting admin review" icon={<Clock size={18} />} tone="#f59e0b" />
+        <KpiCard label="Approved Value" value={`₦${kpi.approvedValue.toLocaleString()}`} subtext="Awaiting payout" icon={<CheckCircle2 size={18} />} tone="#22c55e" />
+        <KpiCard label="Paid Value" value={`₦${kpi.paidValue.toLocaleString()}`} subtext="Recovered from customers" icon={<CircleDollarSign size={18} />} tone="var(--brand-primary)" />
+        <KpiCard label="Rejected" value={kpi.rejected} subtext={`of ${kpi.total} total`} icon={<AlertOctagon size={18} />} tone="#ef4444" />
+      </KpiGrid>
 
       <div style={s.filters}>
         <select style={s.select} value={status} onChange={(e) => setStatus(e.target.value as any)}>

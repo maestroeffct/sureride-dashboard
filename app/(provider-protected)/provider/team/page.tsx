@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import toast from "react-hot-toast";
 import { z } from "zod";
+import { CheckCircle2, Clock, ShieldCheck, UsersRound } from "lucide-react";
+import KpiCard, { KpiGrid } from "@/src/components/admin/KpiCard";
 import {
   listProviderStaff,
   inviteProviderStaff,
@@ -170,6 +172,17 @@ export default function ProviderTeamPage() {
   const setField = <K extends keyof InviteForm>(k: K, v: InviteForm[K]) =>
     setForm((prev) => ({ ...prev, [k]: v }));
 
+  const kpi = useMemo(() => {
+    let active = 0, pending = 0, suspended = 0;
+    for (const m of staff) {
+      if (m.status === "ACTIVE") active += 1;
+      else if (m.status === "PENDING") pending += 1;
+      else if (m.status === "SUSPENDED") suspended += 1;
+    }
+    const owners = staff.filter((m) => m.role === "OWNER").length;
+    return { active, pending, suspended, owners, total: staff.length };
+  }, [staff]);
+
   return (
     <div style={s.page}>
       <header style={s.header}>
@@ -179,6 +192,13 @@ export default function ProviderTeamPage() {
           one-time setup link.
         </p>
       </header>
+
+      <KpiGrid>
+        <KpiCard label="Active" value={kpi.active} subtext="Signed in and working" icon={<CheckCircle2 size={18} />} tone="#22c55e" />
+        <KpiCard label="Pending Invites" value={kpi.pending} subtext="Waiting to accept" icon={<Clock size={18} />} tone="#f59e0b" />
+        <KpiCard label="Suspended" value={kpi.suspended} subtext="Temporarily disabled" icon={<ShieldCheck size={18} />} tone="#ef4444" />
+        <KpiCard label="Team Size" value={kpi.total} subtext={`${kpi.owners} owner${kpi.owners === 1 ? "" : "s"}`} icon={<UsersRound size={18} />} tone="var(--brand-primary)" />
+      </KpiGrid>
 
       <section style={s.card}>
         <h2 style={s.cardTitle}>Invite a team member</h2>

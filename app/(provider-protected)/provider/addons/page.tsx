@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import toast from "react-hot-toast";
-import { Package, Plus, Trash2, X } from "lucide-react";
+import { CheckCircle2, CircleDollarSign, LayoutGrid, Package, Plus, Trash2, X } from "lucide-react";
+import KpiCard, { KpiGrid } from "@/src/components/admin/KpiCard";
 import {
   createAddon,
   deleteAddon,
@@ -40,6 +41,15 @@ export default function AddonsPage() {
     catch (e: any) { toast.error(e?.message ?? "Failed"); }
   };
 
+  const kpi = useMemo(() => {
+    const active = rows.filter((r) => r.isActive).length;
+    const inactive = rows.length - active;
+    const totalPrice = rows.reduce((s, r) => s + r.pricePerUnit, 0);
+    const avgPrice = rows.length ? Math.round(totalPrice / rows.length) : 0;
+    const units = new Set(rows.map((r) => r.unit)).size;
+    return { total: rows.length, active, inactive, avgPrice, units };
+  }, [rows]);
+
   return (
     <div style={s.page}>
       <header style={s.headerRow}>
@@ -49,6 +59,13 @@ export default function AddonsPage() {
         </div>
         <button style={s.primaryBtn} onClick={() => setOpen("new")}><Plus size={15} /> Add extra</button>
       </header>
+
+      <KpiGrid>
+        <KpiCard label="Total Add-ons" value={kpi.total} subtext="Everything you offer" icon={<Package size={18} />} tone="var(--brand-primary)" />
+        <KpiCard label="Active" value={kpi.active} subtext="Selectable at checkout" icon={<CheckCircle2 size={18} />} tone="#22c55e" />
+        <KpiCard label="Draft / Off" value={kpi.inactive} subtext="Hidden from customers" icon={<LayoutGrid size={18} />} tone="#94a3b8" />
+        <KpiCard label="Avg Price" value={`₦${kpi.avgPrice.toLocaleString()}`} subtext="Across all add-ons" icon={<CircleDollarSign size={18} />} tone="#f59e0b" />
+      </KpiGrid>
 
       {loading ? <div style={s.empty}>Loading…</div>
         : rows.length === 0 ? <div style={s.empty}>No add-ons yet. Create your first extra to offer at checkout.</div>
