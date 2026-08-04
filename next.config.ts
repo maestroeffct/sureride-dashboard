@@ -39,7 +39,44 @@ const securityHeaders = [
   },
 ];
 
+// Extra image hosts a buyer can allowlist without touching this file —
+// comma-separated hostnames in NEXT_PUBLIC_EXTRA_IMAGE_HOSTS, e.g.
+//   NEXT_PUBLIC_EXTRA_IMAGE_HOSTS=cdn.mysite.com,storage.googleapis.com
+const extraImageHosts = (process.env.NEXT_PUBLIC_EXTRA_IMAGE_HOSTS ?? "")
+  .split(",")
+  .map((h) => h.trim())
+  .filter(Boolean);
+
+// Parse the backend origin so its hostname is auto-allowlisted for the
+// self-hosted images admins upload directly (uploads/*).
+let apiHost: string | null = null;
+try {
+  if (apiBase) apiHost = new URL(apiBase).hostname;
+} catch {}
+
 const nextConfig: NextConfig = {
+  images: {
+    // remotePatterns wins over the legacy `domains` list. Cover the CDNs
+    // this codebase uploads to today, plus the self-hosted backend host,
+    // plus anything the buyer opts in via env.
+    remotePatterns: [
+      { protocol: "https", hostname: "res.cloudinary.com", pathname: "/**" },
+      { protocol: "https", hostname: "images.unsplash.com", pathname: "/**" },
+      { protocol: "https", hostname: "lh3.googleusercontent.com", pathname: "/**" },
+      { protocol: "https", hostname: "avatars.githubusercontent.com", pathname: "/**" },
+      { protocol: "https", hostname: "flagcdn.com", pathname: "/**" },
+      { protocol: "https", hostname: "**.amazonaws.com", pathname: "/**" },
+      { protocol: "https", hostname: "**.digitaloceanspaces.com", pathname: "/**" },
+      { protocol: "https", hostname: "storage.googleapis.com", pathname: "/**" },
+      { protocol: "https", hostname: "firebasestorage.googleapis.com", pathname: "/**" },
+      ...(apiHost ? [{ protocol: "https" as const, hostname: apiHost, pathname: "/**" }] : []),
+      ...extraImageHosts.map((hostname) => ({
+        protocol: "https" as const,
+        hostname,
+        pathname: "/**",
+      })),
+    ],
+  },
   async headers() {
     return [
       {
