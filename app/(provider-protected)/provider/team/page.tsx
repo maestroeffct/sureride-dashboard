@@ -331,7 +331,7 @@ export default function ProviderTeamPage() {
                           </button>
                         )}
                         <button
-                          style={{ ...s.linkBtn, color: "#b91c1c" }}
+                          style={{ ...s.linkBtn, color: "#fca5a5" }}
                           onClick={() => handleDelete(m.id)}
                         >
                           Remove
@@ -351,9 +351,9 @@ export default function ProviderTeamPage() {
 
 function statusStyle(status: ProviderStaffMember["status"]): CSSProperties {
   const palette: Record<ProviderStaffMember["status"], { bg: string; fg: string }> = {
-    PENDING: { bg: "#fef3c7", fg: "#92400e" },
-    ACTIVE: { bg: "#dcfce7", fg: "#166534" },
-    SUSPENDED: { bg: "#fee2e2", fg: "#991b1b" },
+    PENDING: { bg: "rgba(250,204,21,0.14)", fg: "#fde68a" },
+    ACTIVE: { bg: "rgba(34,197,94,0.14)", fg: "#86efac" },
+    SUSPENDED: { bg: "rgba(239,68,68,0.14)", fg: "#fca5a5" },
   };
   const c = palette[status];
   return {
@@ -370,65 +370,77 @@ function statusStyle(status: ProviderStaffMember["status"]): CSSProperties {
 const s: Record<string, CSSProperties> = {
   page: { display: "flex", flexDirection: "column", gap: 24, maxWidth: 920 },
   header: { display: "flex", flexDirection: "column", gap: 4 },
-  title: { fontSize: 26, fontWeight: 700, margin: 0 },
-  subtitle: { color: "#475569", margin: 0 },
+  title: { fontSize: 26, fontWeight: 750, margin: 0, color: "var(--foreground)" },
+  subtitle: { color: "var(--muted-foreground)", margin: 0, fontSize: 13 },
   card: {
-    background: "var(--card-bg, #fff)",
-    border: "1px solid var(--input-border, #e5e7eb)",
+    background: "var(--surface-1)",
+    border: "1px solid var(--input-border)",
     borderRadius: 14,
     padding: 20,
     display: "flex",
     flexDirection: "column",
     gap: 14,
   },
-  cardTitle: { fontSize: 16, fontWeight: 600, margin: 0 },
+  cardTitle: { fontSize: 16, fontWeight: 700, margin: 0, color: "var(--foreground)" },
   form: { display: "flex", flexDirection: "column", gap: 14 },
   row: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
   field: { display: "flex", flexDirection: "column", gap: 6 },
-  label: { fontSize: 13, fontWeight: 500, color: "#334155" },
+  label: { fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: 0.4 },
   input: {
     padding: "10px 12px",
     borderRadius: 10,
-    border: "1px solid var(--input-border, #d1d5db)",
+    border: "1px solid var(--input-border)",
+    background: "var(--input-bg)",
+    color: "var(--input-fg)",
     fontSize: 14,
     outline: "none",
+    fontFamily: "inherit",
   },
   inputError: { borderColor: "#dc2626" },
-  err: { fontSize: 12, color: "#dc2626" },
-  help: { fontSize: 12, color: "#64748b" },
+  err: { fontSize: 12, color: "#fca5a5" },
+  help: { fontSize: 12, color: "var(--muted-foreground)" },
   primaryBtn: {
     alignSelf: "flex-start",
     padding: "10px 18px",
     borderRadius: 10,
-    background: "var(--brand-primary, #22c55e)",
-    color: "#fff",
+    background: "var(--brand-primary)",
+    color: "#022c22",
     border: "none",
-    fontWeight: 600,
+    fontWeight: 700,
     cursor: "pointer",
+    fontSize: 13,
   },
-  empty: { color: "#64748b", padding: "20px 0", textAlign: "center" },
+  empty: {
+    color: "var(--muted-foreground)",
+    padding: "24px 0",
+    textAlign: "center",
+    fontSize: 13,
+  },
   tableWrap: { overflowX: "auto" },
   table: { width: "100%", borderCollapse: "collapse" },
   th: {
     textAlign: "left",
-    fontSize: 12,
-    fontWeight: 600,
-    color: "#64748b",
+    fontSize: 11,
+    fontWeight: 700,
+    color: "var(--muted-foreground)",
     textTransform: "uppercase",
     letterSpacing: 0.4,
-    padding: "10px 8px",
-    borderBottom: "1px solid var(--input-border, #e5e7eb)",
+    padding: "12px 10px",
+    borderBottom: "1px solid var(--input-border)",
   },
   td: {
-    padding: "12px 8px",
-    fontSize: 14,
-    borderBottom: "1px solid #f1f5f9",
+    padding: "14px 10px",
+    fontSize: 13,
+    color: "var(--foreground)",
+    borderBottom: "1px solid var(--input-border)",
     verticalAlign: "middle",
   },
   smallSelect: {
     padding: "6px 8px",
     borderRadius: 8,
-    border: "1px solid var(--input-border, #d1d5db)",
+    border: "1px solid var(--input-border)",
+    background: "var(--input-bg)",
+    color: "var(--input-fg)",
     fontSize: 13,
   },
   actions: { display: "flex", gap: 8, flexWrap: "wrap" },
@@ -437,7 +449,7 @@ const s: Record<string, CSSProperties> = {
     border: "none",
     color: "var(--brand-primary)",
     cursor: "pointer",
-    fontWeight: 500,
+    fontWeight: 600,
     padding: 0,
     fontSize: 13,
   },

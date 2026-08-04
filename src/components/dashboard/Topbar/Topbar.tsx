@@ -131,6 +131,7 @@ function getPageTitle(pathname: string): { section: string; title: string } {
   if (pathname === "/provider/reviews") return { section: "Provider", title: "Reviews" };
   if (pathname === "/provider/analytics") return { section: "Provider", title: "Analytics" };
   if (pathname === "/provider/support") return { section: "Provider", title: "Help & Support" };
+  if (pathname === "/rentals/support-tickets") return { section: "Admin", title: "Support Tickets" };
 
   return { section: "", title: "" };
 }

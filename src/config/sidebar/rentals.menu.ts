@@ -181,6 +181,11 @@ export const rentalsMenu: SidebarItem[] = [
     label: "ADMIN MODULES",
   },
   {
+    label: "Support Tickets",
+    path: "/rentals/support-tickets",
+    icon: sidebarIcons.help,
+  },
+  {
     label: "Business Settings",
     icon: sidebarIcons.business,
     children: [

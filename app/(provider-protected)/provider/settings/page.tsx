@@ -373,81 +373,33 @@ function ProviderSettingsContent() {
           </div>
         </section>
 
-        <section style={styles.card}>
+        <section style={{ ...styles.card, background: "var(--surface-2)", border: "1px dashed var(--input-border)" }}>
           <div style={styles.cardHeader}>
             <div>
               <h2 style={styles.cardTitle}>Business Hours</h2>
               <p style={styles.sectionText}>
-                Define when your rental desk is open so your team operates with a
-                consistent schedule.
+                Working hours now live on the Availability page — richer
+                per-day schedule, 24/7 toggle, and timezone in one place.
+                Any legacy hours here have been migrated.
               </p>
             </div>
-          </div>
-
-          <div style={styles.hoursRow}>
-            <Field label="Opening Time">
-              <select
-                style={styles.select}
-                value={form.businessOpeningTime}
-                onChange={(event) =>
-                  handleProfileChange("businessOpeningTime", event.target.value)
-                }
-              >
-                <option value="">Select opening time</option>
-                {TIME_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
-            <Field label="Closing Time">
-              <select
-                style={styles.select}
-                value={form.businessClosingTime}
-                onChange={(event) =>
-                  handleProfileChange("businessClosingTime", event.target.value)
-                }
-              >
-                <option value="">Select closing time</option>
-                {TIME_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
-
-          <div style={styles.dayGrid}>
-            {BUSINESS_DAY_OPTIONS.map((day) => {
-              const active = form.businessOperatingDays.includes(day);
-              return (
-                <button
-                  key={day}
-                  type="button"
-                  style={{
-                    ...styles.dayChip,
-                    ...(active ? styles.dayChipActive : {}),
-                  }}
-                  onClick={() => toggleOperatingDay(day)}
-                >
-                  {day}
-                </button>
-              );
-            })}
-          </div>
-
-          <div style={styles.hoursSummary}>
-            <span style={styles.summaryPill}>
-              {form.businessOperatingDays.length
-                ? `${form.businessOperatingDays.length} day${
-                    form.businessOperatingDays.length === 1 ? "" : "s"
-                  } active`
-                : "No active days selected"}
-            </span>
-            <span style={styles.summaryText}>{getBusinessHoursSummary(form)}</span>
+            <a
+              href="/provider/availability"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "9px 16px",
+                borderRadius: 10,
+                background: "var(--brand-primary)",
+                color: "#022c22",
+                fontSize: 13,
+                fontWeight: 700,
+                textDecoration: "none",
+              }}
+            >
+              Go to Availability →
+            </a>
           </div>
         </section>
       </div>
