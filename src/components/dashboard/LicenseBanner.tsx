@@ -29,7 +29,14 @@ export default function LicenseBanner() {
   const [info, setInfo] = useState<LicenseInfo | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
+  // License is an admin/operator concern — providers can't do
+  // anything about it and shouldn't see the banner. Their requests are
+  // already gated at the backend middleware if a license lapses; a
+  // banner just confuses them into thinking it's their own account.
+  const isProviderRoute = pathname.startsWith("/provider");
+
   const skip =
+    isProviderRoute ||
     pathname.startsWith("/install") ||
     pathname.startsWith("/provider/auth") ||
     pathname.startsWith("/admin/auth") ||
