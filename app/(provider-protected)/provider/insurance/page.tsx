@@ -29,6 +29,7 @@ import {
   type ProviderInsurancePackage,
   type UpsertProviderInsurancePayload,
 } from "@/src/lib/providerApi";
+import { formatMoney } from "@/src/lib/currencyForCountry";
 
 type FormState = {
   name: string;
@@ -63,7 +64,8 @@ const EMPTY: FormState = {
   coveredPerils: "",
   exclusions: "",
   productHighlights: "",
-  currency: "NGN",
+  // Filled from the provider's operating currency at open time (see PlanModal).
+  currency: "",
 };
 
 const TIERS: { value: ProtectionTier; label: string; blurb: string }[] = [
@@ -129,6 +131,26 @@ export default function ProviderProtectionPlansPage() {
     return { approved, pending, rejected };
   }, [items]);
 
+  // The provider's operating currency, inferred from the currency they already
+  // use on existing plans (most common). Used to pre-fill new plans instead of
+  // hardcoding NGN. Empty for a brand-new provider — they pick it explicitly.
+  const defaultCurrency = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of items) {
+      const c = p.currency?.trim();
+      if (c) counts.set(c, (counts.get(c) ?? 0) + 1);
+    }
+    let best = "";
+    let bestN = 0;
+    for (const [c, n] of counts) {
+      if (n > bestN) {
+        best = c;
+        bestN = n;
+      }
+    }
+    return best;
+  }, [items]);
+
   return (
     <div style={s.page}>
       <header style={s.headerRow}>
@@ -179,11 +201,10 @@ export default function ProviderProtectionPlansPage() {
               <strong style={{ fontSize: 16, marginTop: 4 }}>{p.name}</strong>
               <p style={s.desc}>{p.description}</p>
               <div style={s.price}>
-                {p.currency}{" "}
                 <span style={{ fontSize: 22, fontWeight: 800 }}>
                   {p.pricingModel === "PERCENT_OF_TRIP"
                     ? `${p.pricingPercent ?? 0}%`
-                    : p.dailyPrice.toLocaleString()}
+                    : formatMoney(p.dailyPrice, p.currency)}
                 </span>
                 <span style={{ fontSize: 12, color: "var(--muted-foreground)", marginLeft: 4 }}>
                   {p.pricingModel === "PERCENT_OF_TRIP" ? "of trip subtotal" : "per day"}
@@ -191,13 +212,13 @@ export default function ProviderProtectionPlansPage() {
               </div>
               <div style={s.detailGrid}>
                 {p.deductibleAmount != null && (
-                  <Detail label="Deductible">{p.currency} {p.deductibleAmount.toLocaleString()}</Detail>
+                  <Detail label="Deductible">{formatMoney(p.deductibleAmount, p.currency)}</Detail>
                 )}
                 {p.liabilityLimit != null && (
-                  <Detail label="Liability limit">{p.currency} {p.liabilityLimit.toLocaleString()}</Detail>
+                  <Detail label="Liability limit">{formatMoney(p.liabilityLimit, p.currency)}</Detail>
                 )}
                 {p.physicalDamageLimit != null && (
-                  <Detail label="Damage limit">{p.currency} {p.physicalDamageLimit.toLocaleString()}</Detail>
+                  <Detail label="Damage limit">{formatMoney(p.physicalDamageLimit, p.currency)}</Detail>
                 )}
                 {p.car && <Detail label="Attached car">{p.car.label}</Detail>}
               </div>
@@ -219,6 +240,7 @@ export default function ProviderProtectionPlansPage() {
         <PlanModal
           plan={openEdit === "new" ? null : openEdit}
           cars={cars}
+          defaultCurrency={defaultCurrency}
           onClose={() => setOpenEdit(null)}
           onDone={() => {
             setOpenEdit(null);
@@ -233,11 +255,13 @@ export default function ProviderProtectionPlansPage() {
 function PlanModal({
   plan,
   cars,
+  defaultCurrency,
   onClose,
   onDone,
 }: {
   plan: ProviderInsurancePackage | null;
   cars: { id: string; label: string }[];
+  defaultCurrency: string;
   onClose: () => void;
   onDone: () => void;
 }) {
@@ -260,7 +284,7 @@ function PlanModal({
           productHighlights: plan.productHighlights.join("\n"),
           currency: plan.currency,
         }
-      : EMPTY,
+      : { ...EMPTY, currency: defaultCurrency },
   );
   const [busy, setBusy] = useState(false);
 
@@ -270,6 +294,7 @@ function PlanModal({
   const submit = async () => {
     if (form.name.trim().length < 2) return toast.error("Name required");
     if (form.description.trim().length < 2) return toast.error("Description required");
+    if (!form.currency.trim()) return toast.error("Currency required (e.g. NGN, USD)");
     const price = Number(form.dailyPrice);
     if (form.pricingModel === "PER_DAY" && !(price >= 0)) return toast.error("Enter a per-day price");
     if (form.pricingModel === "PERCENT_OF_TRIP" && !Number(form.pricingPercent))
