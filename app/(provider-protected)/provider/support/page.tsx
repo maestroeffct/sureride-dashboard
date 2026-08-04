@@ -1,15 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import toast from "react-hot-toast";
-import { CheckCircle2, Clock, HelpCircle, MessageSquare, Plus, X } from "lucide-react";
+import { CheckCircle2, Clock, HelpCircle, MessageSquare, Plus, Send, X } from "lucide-react";
 import KpiCard, { KpiGrid } from "@/src/components/admin/KpiCard";
 import {
   closeSupportTicket,
   createSupportTicket,
+  getSupportTicket,
   listSupportTickets,
+  postSupportMessage,
   type SupportCategory,
+  type SupportMessage,
   type SupportRow,
+  type SupportRowWithThread,
   type SupportStatus,
 } from "@/src/lib/providerOpsApi";
 
@@ -34,6 +38,7 @@ export default function SupportPage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<SupportStatus | "">("");
+  const [thread, setThread] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try { setLoading(true); setRows((await listSupportTickets({ status: filter || undefined })).items); }
@@ -114,34 +119,189 @@ export default function SupportPage() {
           : rows.length === 0 ? <div style={s.empty}>No tickets yet.</div>
           : (
             <div style={s.list}>
-              {rows.map((t) => (
-                <article key={t.id} style={s.card}>
-                  <div style={s.cardTop}>
-                    <div>
-                      <strong>{t.subject}</strong>
-                      <div style={s.meta}>{CATEGORIES.find((c) => c.value === t.category)?.label} · opened {new Date(t.createdAt).toLocaleDateString()}</div>
+              {rows.map((t) => {
+                const msgCount = t._count?.messages ?? 0;
+                return (
+                  <article key={t.id} style={s.card}>
+                    <div style={s.cardTop}>
+                      <div>
+                        <strong>{t.subject}</strong>
+                        <div style={s.meta}>
+                          {CATEGORIES.find((c) => c.value === t.category)?.label} · opened{" "}
+                          {new Date(t.createdAt).toLocaleDateString()}
+                          {msgCount > 1 && ` · ${msgCount} messages`}
+                        </div>
+                      </div>
+                      <span style={statusStyle(t.status)}>{t.status}</span>
                     </div>
-                    <span style={statusStyle(t.status)}>{t.status}</span>
-                  </div>
-                  <p style={{ margin: 0, padding: 10, background: "var(--surface-2)", borderRadius: 8, fontSize: 13, lineHeight: 1.5 }}>{t.message}</p>
-                  {t.adminReply && (
-                    <div style={s.reply}>
-                      <strong style={{ fontSize: 12 }}>Support reply · {t.adminReplyBy ?? "admin"} · {t.adminReplyAt ? new Date(t.adminReplyAt).toLocaleString() : ""}</strong>
-                      <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.5 }}>{t.adminReply}</p>
-                    </div>
-                  )}
-                  {t.status !== "CLOSED" && (
+                    {t.adminReply && (
+                      <div style={s.reply}>
+                        <strong style={{ fontSize: 12 }}>
+                          Latest support reply · {t.adminReplyBy ?? "admin"}
+                          {t.adminReplyAt ? ` · ${new Date(t.adminReplyAt).toLocaleString()}` : ""}
+                        </strong>
+                        <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.5 }}>{t.adminReply}</p>
+                      </div>
+                    )}
                     <div style={s.actions}>
-                      <button style={s.linkBtn} onClick={() => void close(t.id)}>Close ticket</button>
+                      <button
+                        style={{ ...s.linkBtn, color: "var(--brand-primary)", fontWeight: 700 }}
+                        onClick={() => setThread(t.id)}
+                      >
+                        Open conversation
+                      </button>
+                      {t.status !== "CLOSED" && (
+                        <button style={s.linkBtn} onClick={() => void close(t.id)}>
+                          Close ticket
+                        </button>
+                      )}
                     </div>
-                  )}
-                </article>
-              ))}
+                  </article>
+                );
+              })}
             </div>
           )}
       </section>
 
       {open && <NewTicket onClose={() => setOpen(false)} onDone={() => { setOpen(false); void load(); }} />}
+      {thread && (
+        <ThreadModal ticketId={thread} onClose={() => setThread(null)} onChanged={() => void load()} />
+      )}
+    </div>
+  );
+}
+
+// ─── Thread modal (chat-style ticket conversation) ───────────────────────
+function ThreadModal({
+  ticketId,
+  onClose,
+  onChanged,
+}: {
+  ticketId: string;
+  onClose: () => void;
+  onChanged: () => void;
+}) {
+  const [ticket, setTicket] = useState<SupportRowWithThread | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [reply, setReply] = useState("");
+  const [sending, setSending] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await getSupportTicket(ticketId);
+      setTicket(res.ticket);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to load conversation");
+    } finally {
+      setLoading(false);
+    }
+  }, [ticketId]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  // Scroll to the bottom whenever a new message arrives.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [ticket?.messages.length]);
+
+  const send = async () => {
+    if (reply.trim().length < 1) return;
+    try {
+      setSending(true);
+      const res = await postSupportMessage(ticketId, reply.trim());
+      setTicket(res.ticket);
+      setReply("");
+      onChanged();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to send");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div style={t.backdrop} onClick={() => !sending && onClose()}>
+      <div style={t.card} onClick={(e) => e.stopPropagation()}>
+        <div style={t.header}>
+          <div>
+            <strong style={{ fontSize: 16 }}>{ticket?.subject ?? "Loading…"}</strong>
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 3 }}>
+              {ticket && `${CATEGORIES.find((c) => c.value === ticket.category)?.label} · opened ${new Date(ticket.createdAt).toLocaleString()}`}
+            </div>
+          </div>
+          <button style={t.close} onClick={onClose}><X size={16} /></button>
+        </div>
+        <div style={t.thread} ref={scrollRef}>
+          {loading ? (
+            <div style={{ padding: 40, textAlign: "center", color: "var(--muted-foreground)" }}>Loading…</div>
+          ) : ticket?.messages.length === 0 ? (
+            <div style={{ padding: 40, textAlign: "center", color: "var(--muted-foreground)" }}>No messages yet.</div>
+          ) : (
+            ticket?.messages.map((m) => <Bubble key={m.id} m={m} />)
+          )}
+        </div>
+        {ticket?.status !== "CLOSED" ? (
+          <div style={t.composer}>
+            <textarea
+              style={t.input}
+              value={reply}
+              onChange={(e) => setReply(e.target.value)}
+              placeholder="Type your reply…"
+              rows={2}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  void send();
+                }
+              }}
+            />
+            <button
+              style={t.sendBtn}
+              disabled={sending || reply.trim().length < 1}
+              onClick={() => void send()}
+            >
+              <Send size={14} /> {sending ? "Sending…" : "Send"}
+            </button>
+          </div>
+        ) : (
+          <div style={{ padding: 16, textAlign: "center", color: "var(--muted-foreground)", borderTop: "1px solid var(--input-border)", fontSize: 13 }}>
+            This ticket is closed. Open a new one to continue.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Bubble({ m }: { m: SupportMessage }) {
+  const mine = m.author === "PROVIDER";
+  return (
+    <div style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start", marginBottom: 12 }}>
+      <div style={{ maxWidth: "80%" }}>
+        <div style={{
+          fontSize: 11,
+          color: "var(--muted-foreground)",
+          textAlign: mine ? "right" : "left",
+          marginBottom: 4,
+        }}>
+          {mine ? "You" : m.authorName ?? m.authorEmail ?? "Support"} · {new Date(m.createdAt).toLocaleString()}
+        </div>
+        <div style={{
+          padding: "10px 14px",
+          borderRadius: 12,
+          background: mine ? "var(--brand-primary)" : "var(--surface-2)",
+          color: mine ? "#022c22" : "var(--foreground)",
+          fontSize: 14,
+          lineHeight: 1.5,
+          whiteSpace: "pre-wrap",
+          borderBottomRightRadius: mine ? 4 : 12,
+          borderBottomLeftRadius: mine ? 12 : 4,
+        }}>
+          {m.body}
+        </div>
+      </div>
     </div>
   );
 }
@@ -226,4 +386,15 @@ const m: Record<string, CSSProperties> = {
   footer: { display: "flex", justifyContent: "flex-end", gap: 10, padding: "12px 20px", borderTop: "1px solid var(--input-border)" },
   secondary: { padding: "10px 18px", borderRadius: 8, border: "1px solid var(--input-border)", background: "transparent", color: "var(--foreground)", fontSize: 13, fontWeight: 600, cursor: "pointer" },
   primary: { padding: "10px 22px", borderRadius: 8, border: "none", background: "var(--brand-primary)", color: "#022c22", fontSize: 13, fontWeight: 700, cursor: "pointer" },
+};
+
+const t: Record<string, CSSProperties> = {
+  backdrop: { position: "fixed", inset: 0, background: "rgba(2,6,23,0.65)", zIndex: 80, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" },
+  card: { width: "100%", maxWidth: 640, height: "min(720px, 90vh)", background: "var(--surface-1)", border: "1px solid var(--input-border)", borderRadius: 14, display: "flex", flexDirection: "column" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "16px 22px", borderBottom: "1px solid var(--input-border)" },
+  close: { background: "transparent", border: "none", cursor: "pointer", color: "var(--muted-foreground)" },
+  thread: { flex: 1, overflowY: "auto", padding: "18px 22px", background: "color-mix(in srgb, var(--surface-2) 60%, transparent)" },
+  composer: { display: "flex", gap: 10, padding: "14px 22px", borderTop: "1px solid var(--input-border)", background: "var(--surface-1)" },
+  input: { flex: 1, padding: "10px 12px", borderRadius: 10, border: "1px solid var(--input-border)", background: "var(--input-bg)", color: "var(--input-fg)", fontSize: 14, outline: "none", fontFamily: "inherit", resize: "none" as any, minHeight: 44 },
+  sendBtn: { display: "inline-flex", alignItems: "center", gap: 6, padding: "0 18px", borderRadius: 10, border: "none", background: "var(--brand-primary)", color: "#022c22", fontSize: 13, fontWeight: 700, cursor: "pointer" },
 };

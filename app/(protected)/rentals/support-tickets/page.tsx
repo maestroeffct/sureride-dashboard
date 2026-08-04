@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import toast from "react-hot-toast";
 import {
   CheckCircle2,
@@ -13,9 +13,12 @@ import {
 import KpiCard, { KpiGrid } from "@/src/components/admin/KpiCard";
 import { bookingsTableTheme } from "@/src/components/rentals/table/sharedTableStyles";
 import {
+  getAdminSupportTicket,
   listAdminSupportTickets,
-  replyAdminSupportTicket,
+  postAdminSupportMessage,
+  type AdminSupportMessage,
   type AdminSupportRow,
+  type AdminSupportRowWithThread,
   type SupportStatus,
 } from "@/src/lib/adminSupportApi";
 
@@ -187,73 +190,119 @@ export default function AdminSupportTicketsPage() {
   );
 }
 
-function ReplyModal({ ticket, onClose, onDone }: {
+function ReplyModal({ ticket: initial, onClose, onDone }: {
   ticket: AdminSupportRow;
   onClose: () => void;
   onDone: () => void;
 }) {
-  const [reply, setReply] = useState(ticket.adminReply ?? "");
-  const [busy, setBusy] = useState(false);
-  const canSend = ticket.status === "OPEN" || ticket.status === "ANSWERED";
+  const [ticket, setTicket] = useState<AdminSupportRowWithThread | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [reply, setReply] = useState("");
+  const [sending, setSending] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const submit = async () => {
-    if (reply.trim().length < 3) return toast.error("Reply must be 3+ chars");
+  const load = useCallback(async () => {
     try {
-      setBusy(true);
-      await replyAdminSupportTicket(ticket.id, reply.trim());
-      toast.success("Reply sent to provider");
+      setLoading(true);
+      const res = await getAdminSupportTicket(initial.id);
+      setTicket(res.ticket);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to load conversation");
+    } finally {
+      setLoading(false);
+    }
+  }, [initial.id]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [ticket?.messages.length]);
+
+  const send = async () => {
+    if (reply.trim().length < 1) return;
+    try {
+      setSending(true);
+      const res = await postAdminSupportMessage(initial.id, reply.trim());
+      setTicket(res.ticket);
+      setReply("");
       onDone();
-    } catch (e: any) { toast.error(e?.message ?? "Failed to reply"); }
-    finally { setBusy(false); }
+    } catch (e: any) { toast.error(e?.message ?? "Failed to send"); }
+    finally { setSending(false); }
   };
 
+  const canSend = ticket?.status !== "CLOSED";
+
   return (
-    <div style={m.backdrop} onClick={() => !busy && onClose()}>
-      <div style={m.card} onClick={(e) => e.stopPropagation()}>
-        <div style={m.header}>
+    <div style={t.backdrop} onClick={() => !sending && onClose()}>
+      <div style={t.card} onClick={(e) => e.stopPropagation()}>
+        <div style={t.header}>
           <div>
-            <strong style={{ fontSize: 16 }}>{ticket.subject}</strong>
+            <strong style={{ fontSize: 16 }}>{initial.subject}</strong>
             <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 4 }}>
-              {ticket.provider.name} · {ticket.provider.email} · opened {new Date(ticket.createdAt).toLocaleString()}
+              {initial.provider.name} · {initial.provider.email} · opened {new Date(initial.createdAt).toLocaleString()}
             </div>
           </div>
-          <button style={m.close} onClick={onClose}><X size={16} /></button>
+          <button style={t.close} onClick={onClose}><X size={16} /></button>
         </div>
-        <div style={m.body}>
-          <div>
-            <div style={m.label}>Provider wrote</div>
-            <div style={{ padding: 14, background: "var(--surface-2)", borderRadius: 10, fontSize: 14, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>
-              {ticket.message}
-            </div>
-          </div>
-          {ticket.adminReply && (
-            <div>
-              <div style={m.label}>Your previous reply {ticket.adminReplyAt ? `· ${new Date(ticket.adminReplyAt).toLocaleString()}` : ""}</div>
-              <div style={{ padding: 14, background: "color-mix(in srgb, var(--brand-primary) 8%, var(--surface-2))", borderLeft: "3px solid var(--brand-primary)", borderRadius: 8, fontSize: 14, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>
-                {ticket.adminReply}
-              </div>
-            </div>
-          )}
-          {canSend && (
-            <div>
-              <div style={m.label}>{ticket.adminReply ? "Update your reply" : "Reply to provider"}</div>
-              <textarea
-                style={{ ...m.input, height: 140 }}
-                value={reply}
-                onChange={(e) => setReply(e.target.value)}
-                placeholder="Type your response — the provider sees this in Help & Support and gets an email."
-                autoFocus
-              />
-            </div>
+        <div style={t.thread} ref={scrollRef}>
+          {loading ? (
+            <div style={{ padding: 40, textAlign: "center", color: "var(--muted-foreground)" }}>Loading…</div>
+          ) : ticket?.messages.length === 0 ? (
+            <div style={{ padding: 40, textAlign: "center", color: "var(--muted-foreground)" }}>No messages yet.</div>
+          ) : (
+            ticket?.messages.map((msg) => <Bubble key={msg.id} m={msg} />)
           )}
         </div>
-        <div style={m.footer}>
-          <button style={m.secondary} onClick={onClose} disabled={busy}>Close</button>
-          {canSend && (
-            <button style={m.primary} onClick={submit} disabled={busy}>
-              <Send size={13} /> {busy ? "Sending…" : ticket.adminReply ? "Update reply" : "Send reply"}
+        {canSend ? (
+          <div style={t.composer}>
+            <textarea
+              style={t.input}
+              value={reply}
+              onChange={(e) => setReply(e.target.value)}
+              placeholder="Type your response — provider sees it in Help & Support + gets emailed."
+              rows={2}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  void send();
+                }
+              }}
+            />
+            <button style={t.sendBtn} disabled={sending || reply.trim().length < 1} onClick={() => void send()}>
+              <Send size={14} /> {sending ? "Sending…" : "Send"}
             </button>
-          )}
+          </div>
+        ) : (
+          <div style={{ padding: 16, textAlign: "center", color: "var(--muted-foreground)", borderTop: "1px solid var(--input-border)", fontSize: 13 }}>
+            This ticket is closed.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Bubble({ m }: { m: AdminSupportMessage }) {
+  const mine = m.author === "ADMIN";
+  return (
+    <div style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start", marginBottom: 12 }}>
+      <div style={{ maxWidth: "80%" }}>
+        <div style={{ fontSize: 11, color: "var(--muted-foreground)", textAlign: mine ? "right" : "left", marginBottom: 4 }}>
+          {mine ? "You (admin)" : m.authorName ?? m.authorEmail ?? "Provider"} · {new Date(m.createdAt).toLocaleString()}
+        </div>
+        <div style={{
+          padding: "10px 14px",
+          borderRadius: 12,
+          background: mine ? "var(--brand-primary)" : "var(--surface-2)",
+          color: mine ? "#022c22" : "var(--foreground)",
+          fontSize: 14,
+          lineHeight: 1.5,
+          whiteSpace: "pre-wrap",
+          borderBottomRightRadius: mine ? 4 : 12,
+          borderBottomLeftRadius: mine ? 12 : 4,
+        }}>
+          {m.body}
         </div>
       </div>
     </div>
@@ -296,4 +345,15 @@ const m: Record<string, CSSProperties> = {
   footer: { display: "flex", justifyContent: "flex-end", gap: 10, padding: "14px 22px", borderTop: "1px solid var(--input-border)" },
   secondary: { padding: "10px 18px", borderRadius: 8, border: "1px solid var(--input-border)", background: "transparent", color: "var(--foreground)", fontSize: 13, fontWeight: 600, cursor: "pointer" },
   primary: { display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 22px", borderRadius: 8, border: "none", background: "var(--brand-primary)", color: "#022c22", fontSize: 13, fontWeight: 700, cursor: "pointer" },
+};
+
+const t: Record<string, CSSProperties> = {
+  backdrop: { position: "fixed", inset: 0, background: "rgba(2,6,23,0.65)", zIndex: 80, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" },
+  card: { width: "100%", maxWidth: 700, height: "min(760px, 90vh)", background: "var(--surface-1)", border: "1px solid var(--input-border)", borderRadius: 14, display: "flex", flexDirection: "column" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "16px 22px", borderBottom: "1px solid var(--input-border)" },
+  close: { background: "transparent", border: "none", cursor: "pointer", color: "var(--muted-foreground)" },
+  thread: { flex: 1, overflowY: "auto", padding: "18px 22px", background: "color-mix(in srgb, var(--surface-2) 60%, transparent)" },
+  composer: { display: "flex", gap: 10, padding: "14px 22px", borderTop: "1px solid var(--input-border)", background: "var(--surface-1)" },
+  input: { flex: 1, padding: "10px 12px", borderRadius: 10, border: "1px solid var(--input-border)", background: "var(--input-bg)", color: "var(--input-fg)", fontSize: 14, outline: "none", fontFamily: "inherit", resize: "none" as any, minHeight: 44 },
+  sendBtn: { display: "inline-flex", alignItems: "center", gap: 6, padding: "0 18px", borderRadius: 10, border: "none", background: "var(--brand-primary)", color: "#022c22", fontSize: 13, fontWeight: 700, cursor: "pointer" },
 };

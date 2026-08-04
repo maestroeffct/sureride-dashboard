@@ -324,6 +324,16 @@ export function deleteAddon(id: string) {
 // ─── Support ──────────────────────────────────────────────────────────────
 export type SupportCategory = "ACCOUNT" | "PAYOUTS" | "BOOKINGS" | "DOCUMENTS" | "TECHNICAL" | "OTHER";
 export type SupportStatus = "OPEN" | "ANSWERED" | "CLOSED";
+export type SupportAuthor = "PROVIDER" | "ADMIN";
+export type SupportMessage = {
+  id: string;
+  author: SupportAuthor;
+  authorName: string | null;
+  authorEmail: string | null;
+  body: string;
+  attachments: string[];
+  createdAt: string;
+};
 export type SupportRow = {
   id: string;
   subject: string;
@@ -335,18 +345,30 @@ export type SupportRow = {
   adminReplyBy: string | null;
   createdAt: string;
   updatedAt: string;
+  _count?: { messages: number };
 };
+export type SupportRowWithThread = SupportRow & { messages: SupportMessage[] };
+
 export function listSupportTickets(params: { status?: SupportStatus | "" } = {}) {
   return req<{ items: SupportRow[] }>(`/provider/support-tickets${qs(params as any)}`);
+}
+export function getSupportTicket(id: string) {
+  return req<{ ticket: SupportRowWithThread }>(`/provider/support-tickets/${id}`);
 }
 export function createSupportTicket(payload: {
   subject: string;
   message: string;
   category?: SupportCategory;
 }) {
-  return req<{ ticket: SupportRow }>(`/provider/support-tickets`, {
+  return req<{ ticket: SupportRowWithThread }>(`/provider/support-tickets`, {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+export function postSupportMessage(id: string, body: string) {
+  return req<{ ticket: SupportRowWithThread }>(`/provider/support-tickets/${id}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ body }),
   });
 }
 export function closeSupportTicket(id: string) {

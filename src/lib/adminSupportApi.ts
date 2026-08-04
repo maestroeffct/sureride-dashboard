@@ -3,6 +3,17 @@ import { apiRequest } from "@/src/lib/api";
 export type SupportCategory =
   | "ACCOUNT" | "PAYOUTS" | "BOOKINGS" | "DOCUMENTS" | "TECHNICAL" | "OTHER";
 export type SupportStatus = "OPEN" | "ANSWERED" | "CLOSED";
+export type SupportAuthor = "PROVIDER" | "ADMIN";
+
+export type AdminSupportMessage = {
+  id: string;
+  author: SupportAuthor;
+  authorName: string | null;
+  authorEmail: string | null;
+  body: string;
+  attachments: string[];
+  createdAt: string;
+};
 
 export type AdminSupportRow = {
   id: string;
@@ -16,6 +27,11 @@ export type AdminSupportRow = {
   createdAt: string;
   updatedAt: string;
   provider: { id: string; name: string; email: string };
+  _count?: { messages: number };
+};
+
+export type AdminSupportRowWithThread = AdminSupportRow & {
+  messages: AdminSupportMessage[];
 };
 
 export function listAdminSupportTickets(params: { status?: SupportStatus | "" } = {}) {
@@ -23,9 +39,15 @@ export function listAdminSupportTickets(params: { status?: SupportStatus | "" } 
   return apiRequest<{ items: AdminSupportRow[] }>(`/admin/support-tickets${q}`);
 }
 
-export function replyAdminSupportTicket(id: string, adminReply: string) {
-  return apiRequest<{ ticket: AdminSupportRow }>(
-    `/admin/support-tickets/${id}/reply`,
-    { method: "POST", body: JSON.stringify({ adminReply }) },
+export function getAdminSupportTicket(id: string) {
+  return apiRequest<{ ticket: AdminSupportRowWithThread }>(
+    `/admin/support-tickets/${id}`,
+  );
+}
+
+export function postAdminSupportMessage(id: string, body: string) {
+  return apiRequest<{ ticket: AdminSupportRowWithThread }>(
+    `/admin/support-tickets/${id}/messages`,
+    { method: "POST", body: JSON.stringify({ body }) },
   );
 }
