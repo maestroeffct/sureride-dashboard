@@ -17,6 +17,9 @@ import {
   getProviderPayoutAccount,
   upsertProviderPayoutAccount,
   requestProviderPayout,
+  listProviderBanks,
+  verifyProviderBankAccount,
+  type BankOption,
   type ProviderEarningsOverview,
   type ProviderPayoutAccount,
 } from "@/src/lib/providerApi";
@@ -65,19 +68,91 @@ function AccountModal({
   onClose: () => void;
   onSaved: (account: ProviderPayoutAccount) => void;
 }) {
-  const [bankName, setBankName] = useState(initial?.bankName ?? "");
+  // Bank code drives verification; bankName mirrors the picked bank's
+  // display name so the payout record shows a human label.
+  const [banks, setBanks] = useState<BankOption[]>([]);
+  const [banksLoading, setBanksLoading] = useState(true);
+  const [banksError, setBanksError] = useState<string | null>(null);
+  const [bankCode, setBankCode] = useState("");
   const [accountNumber, setAccountNumber] = useState(initial?.accountNumber ?? "");
   const [accountName, setAccountName] = useState(initial?.accountName ?? "");
+  const [verifying, setVerifying] = useState(false);
+  const [verified, setVerified] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Load Nigerian banks from Paystack on mount. When re-editing an
+  // existing account, pre-select by name once the list arrives.
+  useEffect(() => {
+    let mounted = true;
+    setBanksLoading(true);
+    setBanksError(null);
+    listProviderBanks("NGN")
+      .then((r) => {
+        if (!mounted) return;
+        setBanks(r.banks);
+        if (initial?.bankName) {
+          const match = r.banks.find(
+            (b) => b.name.toLowerCase() === initial.bankName.toLowerCase(),
+          );
+          if (match) setBankCode(match.code);
+        }
+      })
+      .catch((e) => {
+        if (!mounted) return;
+        setBanksError(e?.message ?? "Couldn't load banks list");
+      })
+      .finally(() => {
+        if (mounted) setBanksLoading(false);
+      });
+    return () => { mounted = false; };
+  }, [initial?.bankName]);
+
+  // Any change to bank or account number invalidates the previous
+  // verification so the customer can't slip through with a stale name.
+  useEffect(() => {
+    setVerified(false);
+    setAccountName("");
+  }, [bankCode, accountNumber]);
+
+  const bankName = banks.find((b) => b.code === bankCode)?.name ?? "";
+  const canVerify =
+    !!bankCode && /^\d{10}$/.test(accountNumber.trim()) && !verifying && !verified;
+
+  const runVerify = async () => {
+    if (!canVerify) return;
+    try {
+      setVerifying(true);
+      const res = await verifyProviderBankAccount({
+        currency: "NGN",
+        bankCode,
+        accountNumber: accountNumber.trim(),
+      });
+      if ("accountName" in res && res.accountName) {
+        setAccountName(res.accountName);
+        setVerified(true);
+        toast.success(`Verified — account belongs to ${res.accountName}`);
+      } else {
+        toast.error("Bank returned no name for that account number");
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Verification failed — check the number and bank");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   const handleSave = async () => {
-    if (!bankName.trim() || !accountNumber.trim() || !accountName.trim()) {
-      toast.error("All fields are required");
+    if (!verified) {
+      toast.error("Verify the account first — we won't save unverified details");
       return;
     }
     setSaving(true);
     try {
-      const res = await upsertProviderPayoutAccount({ bankName, accountNumber, accountName });
+      const res = await upsertProviderPayoutAccount({
+        bankName,
+        accountNumber: accountNumber.trim(),
+        accountName,
+      });
       toast.success("Payout account saved");
       onSaved(res.account);
       onClose();
@@ -92,39 +167,82 @@ function AccountModal({
     <div style={s.backdrop}>
       <div style={s.modal}>
         <h2 style={s.modalTitle}>Payout Account</h2>
-        <p style={s.modalSub}>Your bank details for receiving payouts. Admin will verify before enabling withdrawals.</p>
+        <p style={s.modalSub}>
+          Pick your bank and enter your account number — we verify with
+          Paystack before saving so the account name is guaranteed to
+          match. Admin then approves the account for withdrawals.
+        </p>
 
         <div style={s.field}>
-          <label style={s.fieldLabel}>Bank Name</label>
-          <input
+          <label style={s.fieldLabel}>Bank</label>
+          <select
             style={s.input}
-            placeholder="e.g. First Bank"
-            value={bankName}
-            onChange={(e) => setBankName(e.target.value)}
-          />
+            value={bankCode}
+            onChange={(e) => setBankCode(e.target.value)}
+            disabled={banksLoading || saving}
+          >
+            <option value="">{banksLoading ? "Loading banks…" : "Select bank"}</option>
+            {banks.map((b) => (
+              <option key={b.code} value={b.code}>{b.name}</option>
+            ))}
+          </select>
+          {banksError && <span style={{ fontSize: 12, color: "#fca5a5" }}>{banksError}</span>}
         </div>
+
         <div style={s.field}>
           <label style={s.fieldLabel}>Account Number</label>
           <input
             style={s.input}
-            placeholder="10-digit account number"
+            placeholder="10-digit NUBAN"
+            inputMode="numeric"
+            maxLength={10}
             value={accountNumber}
-            onChange={(e) => setAccountNumber(e.target.value)}
+            onChange={(e) => setAccountNumber(e.target.value.replace(/[^0-9]/g, ""))}
+            disabled={saving}
           />
         </div>
+
         <div style={s.field}>
           <label style={s.fieldLabel}>Account Name</label>
           <input
-            style={s.input}
-            placeholder="Name as it appears on the account"
+            style={{
+              ...s.input,
+              background: verified ? "color-mix(in srgb, #22c55e 8%, transparent)" : undefined,
+            }}
+            placeholder={verified ? accountName : "Verify to auto-fill from your bank"}
             value={accountName}
-            onChange={(e) => setAccountName(e.target.value)}
+            readOnly
           />
+          <div style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center" }}>
+            {verified ? (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 999, background: "rgba(34,197,94,0.14)", color: "#86efac", fontSize: 12, fontWeight: 700 }}>
+                <BadgeCheck size={14} /> Verified with Paystack
+              </span>
+            ) : (
+              <button
+                type="button"
+                style={{ ...s.cancelBtn, background: canVerify ? "var(--brand-primary)" : "var(--surface-2)", color: canVerify ? "#022c22" : "var(--muted-foreground)", border: "none" }}
+                onClick={runVerify}
+                disabled={!canVerify}
+              >
+                {verifying ? "Verifying…" : "Verify account"}
+              </button>
+            )}
+            {!verified && (
+              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                Enter a valid 10-digit account number and pick your bank.
+              </span>
+            )}
+          </div>
         </div>
 
         <div style={s.modalActions}>
           <button style={s.cancelBtn} onClick={onClose} disabled={saving}>Cancel</button>
-          <button style={s.primaryBtn} onClick={handleSave} disabled={saving}>
+          <button
+            style={{ ...s.primaryBtn, opacity: verified ? 1 : 0.5, cursor: verified ? "pointer" : "not-allowed" }}
+            onClick={handleSave}
+            disabled={saving || !verified}
+          >
             {saving ? "Saving…" : "Save Account"}
           </button>
         </div>
