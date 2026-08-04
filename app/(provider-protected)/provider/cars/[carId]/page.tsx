@@ -16,6 +16,7 @@ import {
 import {
   deleteProviderCarImage,
   getProviderCar,
+  setProviderCarBanner,
   updateProviderCar,
   uploadProviderCarImages,
   type ProviderCarDetail,
@@ -68,6 +69,17 @@ export default function ProviderCarDetailPage() {
     }
   };
 
+  const setBanner = async (imageId: string) => {
+    if (!carId) return;
+    try {
+      await setProviderCarBanner(carId, imageId);
+      toast.success("Banner updated");
+      void load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed");
+    }
+  };
+
   const toggleActive = async () => {
     if (!car || !carId) return;
     const nextIsActive = !car.isActive;
@@ -110,15 +122,39 @@ export default function ProviderCarDetailPage() {
         {car.images.length === 0 ? (
           <div style={s.emptyPhoto}>No photos yet. Upload at least one — customers won't book a car without photos.</div>
         ) : (
+          <>
+          <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "0 0 10px" }}>
+            Click any photo to make it the banner customers see in search results.
+          </p>
           <div style={s.photoGrid}>
             {car.images.map((img, i) => (
-              <div key={img.id} style={s.photo}>
+              <div
+                key={img.id}
+                style={{
+                  ...s.photo,
+                  ...(img.isPrimary ? { outline: "3px solid var(--brand-primary)", outlineOffset: 2 } : {}),
+                  cursor: img.isPrimary ? "default" : "pointer",
+                }}
+                onClick={() => !img.isPrimary && void setBanner(img.id)}
+                title={img.isPrimary ? "This is the banner" : "Click to make this the banner"}
+              >
                 <Image src={img.url} alt={`Photo ${i + 1}`} fill sizes="(max-width: 900px) 100vw, 33vw" style={{ objectFit: "cover" }} />
-                {i === 0 && <span style={s.banner}>★ Banner</span>}
-                <button style={s.photoRemove} onClick={() => void removeImage(img.id)} title="Remove"><Trash2 size={13} /></button>
+                {img.isPrimary ? (
+                  <span style={s.banner}>★ Banner</span>
+                ) : (
+                  <span style={s.bannerHover}>Set as banner</span>
+                )}
+                <button
+                  style={s.photoRemove}
+                  onClick={(e) => { e.stopPropagation(); void removeImage(img.id); }}
+                  title="Remove"
+                >
+                  <Trash2 size={13} />
+                </button>
               </div>
             ))}
           </div>
+          </>
         )}
         <div style={s.uploadRow}>
           <label style={s.uploadBtn}>
@@ -230,6 +266,7 @@ const s: Record<string, CSSProperties> = {
   photoGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 12, marginTop: 14 },
   photo: { position: "relative", aspectRatio: "4 / 3", borderRadius: 12, overflow: "hidden", background: "var(--surface-2)", border: "1px solid var(--input-border)" },
   banner: { position: "absolute", top: 10, left: 10, padding: "4px 10px", borderRadius: 999, background: "var(--brand-primary)", color: "#022c22", fontSize: 11, fontWeight: 700, zIndex: 2 },
+  bannerHover: { position: "absolute", bottom: 8, left: 8, padding: "4px 10px", borderRadius: 999, background: "rgba(2,6,23,0.65)", color: "#fff", fontSize: 10, fontWeight: 700, zIndex: 2, letterSpacing: 0.3 },
   photoRemove: { position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: 6, background: "rgba(0,0,0,0.6)", border: "none", color: "#fca5a5", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", zIndex: 2 },
   emptyPhoto: { padding: 32, textAlign: "center", color: "var(--muted-foreground)", border: "1px dashed var(--input-border)", borderRadius: 10 },
   uploadRow: { display: "flex", justifyContent: "center", marginTop: 16 },

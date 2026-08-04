@@ -746,6 +746,15 @@ export function deleteProviderCarImage(carId: string, imageId: string) {
   );
 }
 
+export function setProviderCarBanner(carId: string, imageId: string) {
+  return providerApiRequest<{
+    message: string;
+    images: Array<{ id: string; url: string; isPrimary: boolean }>;
+  }>(`/provider/cars/${carId}/images/${imageId}/primary`, {
+    method: "PATCH",
+  });
+}
+
 export function createProviderCar(payload: ProviderCreateCarPayload) {
   return providerApiRequest<{ message: string; car: { id: string } }>(
     "/provider/cars",
