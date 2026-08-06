@@ -416,6 +416,7 @@ export default function ProviderAddCarPage() {
               <StepReview
                 form={form}
                 selectedFeatureIds={selectedFeatureIds}
+                featureOptions={featureOptions}
                 imageCount={imageFiles.length}
                 locations={locations}
                 onEdit={setActiveStep}
@@ -925,15 +926,31 @@ function StepPhotos({
 // ── Step 5: Review ────────────────────────────────────────────────────────────
 
 function StepReview({
-  form, selectedFeatureIds, imageCount, locations, onEdit,
+  form, selectedFeatureIds, featureOptions, imageCount, locations, onEdit,
 }: {
   form: CarForm;
   selectedFeatureIds: string[];
+  featureOptions: Array<{ id: string; name: string; category?: string | null }>;
   imageCount: number;
   locations: Array<{ id: string; name: string }>;
   onEdit: (step: StepKey) => void;
 }) {
   const locationName = locations.find((l) => l.id === form.locationId)?.name ?? "—";
+
+  // Resolve selected IDs to full rows and group by category — matches
+  // how the picker renders them, so the review reflects what the
+  // provider actually saw when choosing.
+  const selectedRows = selectedFeatureIds
+    .map((id) => featureOptions.find((f) => f.id === id))
+    .filter(Boolean) as Array<{ id: string; name: string; category?: string | null }>;
+  const grouped = selectedRows.reduce<Record<string, string[]>>((acc, item) => {
+    const key = (item.category || "Other").toString();
+    (acc[key] ||= []).push(item.name);
+    return acc;
+  }, {});
+  const groupedEntries = Object.entries(grouped).sort((a, b) =>
+    a[0].localeCompare(b[0]),
+  );
 
   return (
     <div style={f.wrapper}>
@@ -959,7 +976,27 @@ function StepReview({
         <ReviewCard title="Pricing" onEdit={() => onEdit("pricing")}>
           <Row label="Daily" value={form.dailyRate ? `₦${Number(form.dailyRate).toLocaleString()}` : "—"} />
           <Row label="Hourly" value={form.hourlyRate ? `₦${Number(form.hourlyRate).toLocaleString()}` : "—"} />
-          <Row label="Features" value={`${selectedFeatureIds.length} selected`} />
+        </ReviewCard>
+
+        <ReviewCard title={`Features (${selectedFeatureIds.length})`} onEdit={() => onEdit("pricing")}>
+          {selectedRows.length === 0 ? (
+            <p style={{ margin: 0, fontSize: 12, color: "var(--muted-foreground, #94a3b8)" }}>
+              No features selected. Add a few so renters know what's included.
+            </p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {groupedEntries.map(([category, names]) => (
+                <div key={category}>
+                  <div style={f.featureGroupLabel}>{category}</div>
+                  <div style={f.featurePillWrap}>
+                    {names.map((n) => (
+                      <span key={n} style={f.featurePill}>{n}</span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </ReviewCard>
 
         <ReviewCard title="Photos" onEdit={() => onEdit("photos")}>
@@ -1482,6 +1519,26 @@ const f: Record<string, CSSProperties> = {
   row: { display: "flex", justifyContent: "space-between", alignItems: "center" },
   rowLabel: { fontSize: 12, color: "var(--muted-foreground)" },
   rowValue: { fontSize: 13, fontWeight: 600, color: "var(--foreground)" },
+  featureGroupLabel: {
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    color: "var(--muted-foreground)",
+    marginBottom: 6,
+  },
+  featurePillWrap: { display: "flex", flexWrap: "wrap", gap: 6 },
+  featurePill: {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "4px 10px",
+    borderRadius: 999,
+    background: "var(--glass-06, rgba(148,163,184,0.14))",
+    border: "1px solid var(--glass-10, rgba(148,163,184,0.25))",
+    fontSize: 12,
+    fontWeight: 600,
+    color: "var(--foreground)",
+  },
 };
 
 // ── CSV Modal styles ──────────────────────────────────────────────────────────
