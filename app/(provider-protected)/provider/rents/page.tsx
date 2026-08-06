@@ -174,6 +174,9 @@ function HandoverModal({ booking, onClose }: { booking: ProviderBookingRow; onCl
   const [intNotes, setIntNotes] = useState("");
   const [damage, setDamage] = useState(false);
   const [signed, setSigned] = useState(false);
+  const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
+  const [signedAt, setSignedAt] = useState<string | null>(null);
+  const [showSignature, setShowSignature] = useState(false);
   const [busy, setBusy] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -201,7 +204,12 @@ function HandoverModal({ booking, onClose }: { booking: ProviderBookingRow; onCl
       setExtNotes(found.exteriorNotes ?? "");
       setIntNotes(found.interiorNotes ?? "");
       setDamage(found.damagesFound);
-      setSigned(found.signedByCustomer);
+      // Derive the "customer confirmed" state from the in-app signature
+      // URL, not the raw `signedByCustomer` flag. That flag lingers on
+      // legacy rows even when there's no real signature on file.
+      setSigned(Boolean(found.customerSignatureUrl));
+      setSignatureUrl(found.customerSignatureUrl ?? null);
+      setSignedAt(found.customerSignedAt ?? null);
       setPhotos(found.photos ?? []);
     } else {
       setOdometer("");
@@ -210,6 +218,8 @@ function HandoverModal({ booking, onClose }: { booking: ProviderBookingRow; onCl
       setIntNotes("");
       setDamage(false);
       setSigned(false);
+      setSignatureUrl(null);
+      setSignedAt(null);
       setPhotos([]);
     }
   }, [tab, existing]);
@@ -247,7 +257,9 @@ function HandoverModal({ booking, onClose }: { booking: ProviderBookingRow; onCl
         exteriorNotes: extNotes || undefined,
         interiorNotes: intNotes || undefined,
         damagesFound: damage,
-        signedByCustomer: signed,
+        // `signedByCustomer` is now derived server-side from the
+        // in-app signature. We stop sending it — the checkbox is
+        // read-only. Preserve whatever the server already has.
         photos,
       });
       toast.success(`${tab === "PICKUP" ? "Pickup" : "Return"} inspection saved`);
@@ -346,10 +358,118 @@ function HandoverModal({ booking, onClose }: { booking: ProviderBookingRow; onCl
               <input type="checkbox" checked={damage} onChange={(e) => setDamage(e.target.checked)} />
               Damage found — I will file a claim
             </label>
-            <label style={m.checkRow}>
-              <input type="checkbox" checked={signed} onChange={(e) => setSigned(e.target.checked)} />
-              Customer confirmed this inspection
-            </label>
+            <div>
+              <label style={{ ...m.checkRow, opacity: 0.85 }}>
+                <input
+                  type="checkbox"
+                  checked={signed}
+                  readOnly
+                  disabled
+                  style={{ cursor: "not-allowed" }}
+                />
+                Customer signed this inspection in-app
+                {signatureUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setShowSignature(true)}
+                    style={{
+                      marginLeft: "auto",
+                      background: "transparent",
+                      border: "none",
+                      color: "var(--brand-primary)",
+                      fontWeight: 600,
+                      fontSize: 12,
+                      cursor: "pointer",
+                      textDecoration: "underline",
+                    }}
+                  >
+                    View signature
+                  </button>
+                )}
+              </label>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "var(--muted-foreground)",
+                  marginTop: 4,
+                  marginLeft: 24,
+                  lineHeight: 1.4,
+                }}
+              >
+                {signedAt
+                  ? `Signed on ${new Date(signedAt).toLocaleString()}.`
+                  : "Customer signs in-app from their bookings screen after you save the inspection."}
+              </div>
+            </div>
+          </div>
+        )}
+        {showSignature && signatureUrl && (
+          <div
+            onClick={() => setShowSignature(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(2,6,23,0.85)",
+              zIndex: 90,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 32,
+              cursor: "zoom-out",
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: "#fff",
+                padding: 16,
+                borderRadius: 12,
+                maxWidth: "80vw",
+                maxHeight: "80vh",
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+                cursor: "default",
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={signatureUrl}
+                alt="Customer signature"
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "60vh",
+                  objectFit: "contain",
+                  background: "#f8fafc",
+                  borderRadius: 8,
+                }}
+              />
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "#334155",
+                  textAlign: "center",
+                }}
+              >
+                {signedAt
+                  ? `Signed ${new Date(signedAt).toLocaleString()}`
+                  : "Signature on file"}
+                {" · "}
+                <button
+                  type="button"
+                  onClick={() => setShowSignature(false)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "#0A6A4B",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         )}
         <div style={m.footer}>

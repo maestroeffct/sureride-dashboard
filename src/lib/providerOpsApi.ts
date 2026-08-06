@@ -207,6 +207,12 @@ export type HandoverRow = {
   photos: string[];
   signedByCustomer: boolean;
   performedByStaffId: string | null;
+  // Populated once the customer has signed in-app from their bookings
+  // screen. The "signed" checkbox on the dashboard is derived from the
+  // presence of this URL — not from `signedByCustomer` directly — so a
+  // legacy row without a signature still shows as unsigned.
+  customerSignatureUrl: string | null;
+  customerSignedAt: string | null;
   createdAt: string;
 };
 
