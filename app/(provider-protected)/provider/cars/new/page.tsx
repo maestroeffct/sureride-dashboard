@@ -3,7 +3,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { ArrowLeft, ImagePlus, X, Check, FileSpreadsheet, Download, Upload } from "lucide-react";
+import { ArrowLeft, ImagePlus, X, Check, FileSpreadsheet, Download, Upload, FileText, GripVertical } from "lucide-react";
 import {
   attachProviderCarFeatures,
   createProviderCar,
@@ -12,7 +12,9 @@ import {
   listProviderFeatureOptions,
   listProviderLocations,
   submitProviderCar,
+  uploadCarDocument,
   uploadProviderCarImages,
+  type CarDocumentType,
   type ProviderCarBrandOption,
   type ProviderCarModelOption,
   type ProviderCreateCarPayload,
@@ -45,6 +47,11 @@ type CarForm = {
   hasAC: boolean;
   dailyRate: string;
   hourlyRate: string;
+  // Per-car security-deposit override. depositType is "" when the
+  // provider leaves it on the platform default; depositValue is a
+  // string so the input stays controlled.
+  depositType: "" | "FIXED" | "PERCENTAGE";
+  depositValue: string;
   // Empty string = "auto from location"; once the user picks anything else
   // we treat it as an explicit override and stop syncing with location.
   currency: string;
@@ -54,15 +61,55 @@ type CarForm = {
   color: string;
 };
 
-type StepKey = "vehicle" | "specs" | "pricing" | "photos" | "review";
+type StepKey = "vehicle" | "specs" | "pricing" | "photos" | "documents" | "review";
 
 const STEPS: { key: StepKey; label: string; short: string }[] = [
   { key: "vehicle", label: "Vehicle Details", short: "Vehicle" },
   { key: "specs", label: "Specs & Features", short: "Specs" },
   { key: "pricing", label: "Pricing", short: "Pricing" },
   { key: "photos", label: "Photos", short: "Photos" },
+  { key: "documents", label: "Documents", short: "Docs" },
   { key: "review", label: "Review & Save", short: "Review" },
 ];
+
+// Human-readable labels for the backend CarDocumentType enum. Keep in sync
+// with the enum exported from providerApi.ts.
+const DOCUMENT_TYPE_LABELS: Record<CarDocumentType, string> = {
+  VEHICLE_REGISTRATION: "Vehicle Registration",
+  ROADWORTHINESS: "Roadworthiness",
+  INSURANCE_CERTIFICATE: "Insurance Certificate",
+  HACKNEY_PERMIT: "Hackney Permit",
+  PROOF_OF_OWNERSHIP: "Proof of Ownership",
+  CUSTOMS_DUTY: "Customs Duty",
+  OTHER: "Other",
+};
+
+const DOCUMENT_TYPES: CarDocumentType[] = [
+  "VEHICLE_REGISTRATION",
+  "ROADWORTHINESS",
+  "INSURANCE_CERTIFICATE",
+  "HACKNEY_PERMIT",
+  "PROOF_OF_OWNERSHIP",
+  "CUSTOMS_DUTY",
+  "OTHER",
+];
+
+type DocRow = {
+  // Local-only id so React keys survive reorders/removals.
+  localId: string;
+  file: File | null;
+  type: CarDocumentType;
+  label: string;
+  expiresAt: string;
+};
+
+const newDocRow = (): DocRow => ({
+  localId: `d_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+  file: null,
+  type: "VEHICLE_REGISTRATION",
+  label: "",
+  expiresAt: "",
+});
 
 const STEP_ORDER: StepKey[] = STEPS.map((s) => s.key);
 
@@ -79,6 +126,8 @@ const INITIAL: CarForm = {
   hasAC: true,
   dailyRate: "",
   hourlyRate: "",
+  depositType: "",
+  depositValue: "",
   currency: "",
   licensePlate: "",
   vin: "",
@@ -98,6 +147,7 @@ export default function ProviderAddCarPage() {
   const [selectedFeatureIds, setSelectedFeatureIds] = useState<string[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [documents, setDocuments] = useState<DocRow[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [csvOpen, setCsvOpen] = useState(false);
@@ -193,12 +243,51 @@ export default function ProviderAddCarPage() {
     });
   };
 
+  // ── Photo reordering ───────────────────────────────────────────────────────
+  // Native HTML5 DnD — move a tile from `from` → `to` and mirror the change
+  // in both files/previews so upload order matches what the user sees.
+  const reorderImages = useCallback((from: number, to: number) => {
+    if (from === to || from < 0 || to < 0) return;
+    setImageFiles((prev) => {
+      if (from >= prev.length || to >= prev.length) return prev;
+      const next = prev.slice();
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+    setImagePreviews((prev) => {
+      if (from >= prev.length || to >= prev.length) return prev;
+      const next = prev.slice();
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  }, []);
+
+  // ── Document row helpers ───────────────────────────────────────────────────
+  const addDocumentRow = useCallback(() => {
+    setDocuments((p) => [...p, newDocRow()]);
+  }, []);
+  const updateDocumentRow = useCallback(
+    (localId: string, patch: Partial<DocRow>) => {
+      setDocuments((p) => p.map((r) => (r.localId === localId ? { ...r, ...patch } : r)));
+    },
+    [],
+  );
+  const removeDocumentRow = useCallback((localId: string) => {
+    setDocuments((p) => p.filter((r) => r.localId !== localId));
+  }, []);
+
   // ── Step validity ──────────────────────────────────────────────────────────
   const validity: Record<StepKey, boolean> = useMemo(() => ({
     vehicle: !!(form.brand.trim() && form.model.trim() && form.locationId && form.year.trim() && form.licensePlate.trim().length >= 3),
     specs: !!(form.seats.trim()),
     pricing: !!(form.dailyRate.trim()),
     photos: true,
+    // Docs are optional at draft time — admin verification handles enforcement.
+    // A row without a file, however, can't be uploaded, so we still let the
+    // user proceed and simply skip empty rows on submit.
+    documents: true,
     review: true,
   }), [form]);
 
@@ -274,11 +363,38 @@ export default function ProviderAddCarPage() {
         licensePlate: form.licensePlate.trim(),
         vin: form.vin.trim() || undefined,
         color: form.color.trim() || undefined,
+        depositType: form.depositType || undefined,
+        depositValue: form.depositType
+          ? Number(form.depositValue) || undefined
+          : undefined,
       };
       const res = await createProviderCar(payload);
       const carId = res.car.id;
       if (selectedFeatureIds.length) await attachProviderCarFeatures(carId, selectedFeatureIds);
       if (imageFiles.length) await uploadProviderCarImages(carId, imageFiles);
+      // Documents — upload each row that has a file. We do these sequentially
+      // so a single failure doesn't take down the batch, and we surface a
+      // toast noting how many succeeded / failed.
+      const docsToUpload = documents.filter((d) => d.file);
+      if (docsToUpload.length) {
+        let failed = 0;
+        for (const doc of docsToUpload) {
+          if (!doc.file) continue;
+          try {
+            await uploadCarDocument(carId, {
+              file: doc.file,
+              type: doc.type,
+              label: doc.label.trim() || undefined,
+              expiresAt: doc.expiresAt || undefined,
+            });
+          } catch {
+            failed += 1;
+          }
+        }
+        if (failed) {
+          toast.error(`${failed} document${failed === 1 ? "" : "s"} failed to upload — retry from the car's edit page.`);
+        }
+      }
       // Auto-submit the brand-new car to PENDING_APPROVAL so admins see it
       // immediately in the moderation queue (no "draft limbo").
       try {
@@ -410,6 +526,15 @@ export default function ProviderAddCarPage() {
                 setDragOver={setDragOver}
                 addImages={addImages}
                 removeImage={removeImage}
+                reorderImages={reorderImages}
+              />
+            )}
+            {activeStep === "documents" && (
+              <StepDocuments
+                documents={documents}
+                addRow={addDocumentRow}
+                updateRow={updateDocumentRow}
+                removeRow={removeDocumentRow}
               />
             )}
             {activeStep === "review" && (
@@ -418,6 +543,7 @@ export default function ProviderAddCarPage() {
                 selectedFeatureIds={selectedFeatureIds}
                 featureOptions={featureOptions}
                 imageCount={imageFiles.length}
+                documentCount={documents.filter((d) => d.file).length}
                 locations={locations}
                 onEdit={setActiveStep}
               />
@@ -826,6 +952,74 @@ function StepPricingFeatures({
         </Field>
       </div>
 
+      {/* Security Deposit — optional per-car override. When left blank
+          the pricing engine uses the platform / category default. */}
+      <div style={f.featuresBlock}>
+        <p style={f.featuresSectionLabel}>Security Deposit (Optional)</p>
+        <p style={f.stepDesc}>
+          Refundable hold on the customer's card at pickup. Leave blank to
+          use the platform default. Set a bigger amount for higher-value
+          vehicles — a Range Rover typically needs more security than a
+          Honda. Not part of the protection plan.
+        </p>
+        <div style={f.grid2}>
+          <Field label="Deposit type">
+            <select
+              style={f.input}
+              value={form.depositType}
+              onChange={(e) =>
+                set("depositType", e.target.value as CarForm["depositType"])
+              }
+            >
+              <option value="">Platform default</option>
+              <option value="FIXED">Fixed amount</option>
+              <option value="PERCENTAGE">% of trip total</option>
+            </select>
+          </Field>
+          {form.depositType && (
+            <Field
+              label={
+                form.depositType === "PERCENTAGE"
+                  ? "Percentage (e.g. 30 = 30%)"
+                  : `Fixed amount (${effective.code})`
+              }
+            >
+              <div style={f.inputPrefixed}>
+                <span style={f.prefix}>
+                  {form.depositType === "PERCENTAGE" ? "%" : effective.symbol}
+                </span>
+                <input
+                  style={{ ...f.input, paddingLeft: 34 }}
+                  type="number"
+                  min={0}
+                  step={form.depositType === "PERCENTAGE" ? 1 : 1000}
+                  placeholder={form.depositType === "PERCENTAGE" ? "30" : "100000"}
+                  value={
+                    form.depositType === "PERCENTAGE" && form.depositValue
+                      ? String(Number(form.depositValue) * 100)
+                      : form.depositValue
+                  }
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    // Store PERCENTAGE as a fraction (0.30) even though
+                    // the input shows whole percent (30).
+                    if (form.depositType === "PERCENTAGE") {
+                      const pct = Number(raw);
+                      set(
+                        "depositValue",
+                        raw === "" || Number.isNaN(pct) ? "" : String(pct / 100),
+                      );
+                    } else {
+                      set("depositValue", raw);
+                    }
+                  }}
+                />
+              </div>
+            </Field>
+          )}
+        </div>
+      </div>
+
       {groupedFeatures.length > 0 ? (
         <div style={f.featuresBlock}>
           <p style={f.featuresSectionLabel}>Available Features</p>
@@ -864,19 +1058,25 @@ function StepPricingFeatures({
 // ── Step 4: Photos ────────────────────────────────────────────────────────────
 
 function StepPhotos({
-  imagePreviews, dragOver, setDragOver, addImages, removeImage,
+  imagePreviews, dragOver, setDragOver, addImages, removeImage, reorderImages,
 }: {
   imagePreviews: string[];
   dragOver: boolean;
   setDragOver: (v: boolean) => void;
   addImages: (files: File[]) => void;
   removeImage: (i: number) => void;
+  reorderImages: (from: number, to: number) => void;
 }) {
+  // Tracks the tile being dragged and the tile currently under the cursor,
+  // so we can render an "insertion" outline as the user drags.
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+
   return (
     <div style={f.wrapper}>
       <StepHeader
         title="Vehicle Photos"
-        desc="Upload clear photos — exterior, interior, and any notable details. The first image will be the cover."
+        desc="Upload clear photos — exterior, interior, and any notable details. The first image will be the cover; drag tiles to reorder."
       />
 
       <div
@@ -900,18 +1100,63 @@ function StepPhotos({
       </div>
 
       {imagePreviews.length > 0 && (
-        <div style={f.previewGrid}>
-          {imagePreviews.map((url, i) => (
-            <div key={i} style={f.previewWrap}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt="" style={f.previewImg} />
-              {i === 0 && <span style={f.coverBadge}>Cover</span>}
-              <button style={f.removeBtn} onClick={() => removeImage(i)} title="Remove">
-                <X size={11} />
-              </button>
-            </div>
-          ))}
-        </div>
+        <>
+          <p style={f.reorderHint}>Drag tiles to reorder — the first image becomes the cover shown in search results.</p>
+          <div style={f.previewGrid}>
+            {imagePreviews.map((url, i) => {
+              const isDragging = dragIndex === i;
+              const isTarget = overIndex === i && dragIndex !== null && dragIndex !== i;
+              return (
+                <div
+                  key={url}
+                  style={{
+                    ...f.previewWrap,
+                    ...(isDragging ? f.previewDragging : {}),
+                    ...(isTarget ? f.previewDropTarget : {}),
+                    cursor: "grab",
+                  }}
+                  draggable
+                  onDragStart={(e) => {
+                    setDragIndex(i);
+                    e.dataTransfer.effectAllowed = "move";
+                    // Firefox requires setData to actually start a drag.
+                    try { e.dataTransfer.setData("text/plain", String(i)); } catch { /* noop */ }
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                    if (overIndex !== i) setOverIndex(i);
+                  }}
+                  onDragLeave={() => {
+                    if (overIndex === i) setOverIndex(null);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (dragIndex !== null && dragIndex !== i) reorderImages(dragIndex, i);
+                    setDragIndex(null);
+                    setOverIndex(null);
+                  }}
+                  onDragEnd={() => {
+                    setDragIndex(null);
+                    setOverIndex(null);
+                  }}
+                  title="Drag to reorder"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt="" style={f.previewImg} draggable={false} />
+                  <span style={f.dragHandle} aria-hidden="true">
+                    <GripVertical size={12} />
+                  </span>
+                  {i === 0 && <span style={f.coverBadge}>Cover</span>}
+                  <button style={f.removeBtn} onClick={() => removeImage(i)} title="Remove">
+                    <X size={11} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {imagePreviews.length === 0 && (
@@ -923,15 +1168,129 @@ function StepPhotos({
   );
 }
 
+// ── Step 5: Documents ─────────────────────────────────────────────────────────
+
+function StepDocuments({
+  documents, addRow, updateRow, removeRow,
+}: {
+  documents: DocRow[];
+  addRow: () => void;
+  updateRow: (localId: string, patch: Partial<DocRow>) => void;
+  removeRow: (localId: string) => void;
+}) {
+  return (
+    <div style={f.wrapper}>
+      <StepHeader
+        title="Car Documents"
+        desc="Attach vehicle papers. Vehicle Registration, Roadworthiness, and Insurance Certificate are the Nigerian minimum — admin will verify these before your car is fully compliant."
+      />
+
+      {documents.length === 0 && (
+        <div style={f.docsEmpty}>
+          <FileText size={26} color="var(--muted-foreground)" strokeWidth={1.5} />
+          <p style={f.dropTitle}>No documents added yet</p>
+          <p style={f.dropHint}>You can add them now or later from the car&apos;s edit page.</p>
+        </div>
+      )}
+
+      {documents.length > 0 && (
+        <div style={f.docsList}>
+          {documents.map((row) => {
+            const fileInputId = `doc-file-${row.localId}`;
+            return (
+              <div key={row.localId} style={f.docRow}>
+                <div style={f.docGrid}>
+                  <Field label="Document Type">
+                    <select
+                      style={f.input}
+                      value={row.type}
+                      onChange={(e) => updateRow(row.localId, { type: e.target.value as CarDocumentType })}
+                    >
+                      {DOCUMENT_TYPES.map((t) => (
+                        <option key={t} value={t}>{DOCUMENT_TYPE_LABELS[t]}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Expiry Date (optional)">
+                    <input
+                      style={f.input}
+                      type="date"
+                      value={row.expiresAt}
+                      onChange={(e) => updateRow(row.localId, { expiresAt: e.target.value })}
+                    />
+                  </Field>
+                </div>
+
+                {row.type === "OTHER" && (
+                  <Field label="Label (describe this document)">
+                    <input
+                      style={f.input}
+                      placeholder="e.g. Fleet Sticker Renewal"
+                      value={row.label}
+                      onChange={(e) => updateRow(row.localId, { label: e.target.value })}
+                      maxLength={80}
+                    />
+                  </Field>
+                )}
+
+                <div style={f.docFileRow}>
+                  <input
+                    id={fileInputId}
+                    type="file"
+                    accept="image/*,application/pdf"
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      updateRow(row.localId, { file });
+                    }}
+                  />
+                  <button
+                    type="button"
+                    style={f.docFileBtn}
+                    onClick={() => document.getElementById(fileInputId)?.click()}
+                  >
+                    <Upload size={13} />
+                    {row.file ? "Replace file" : "Choose file"}
+                  </button>
+                  <span style={f.docFileName}>
+                    {row.file ? row.file.name : "No file selected — PDF or image"}
+                  </span>
+                  <button
+                    type="button"
+                    style={f.docRemoveBtn}
+                    onClick={() => removeRow(row.localId)}
+                    title="Remove row"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <button type="button" style={f.docAddBtn} onClick={addRow}>
+        + Add document
+      </button>
+
+      <p style={f.docHint}>
+        Documents upload after your car is created. Rows without a file are skipped.
+      </p>
+    </div>
+  );
+}
+
 // ── Step 5: Review ────────────────────────────────────────────────────────────
 
 function StepReview({
-  form, selectedFeatureIds, featureOptions, imageCount, locations, onEdit,
+  form, selectedFeatureIds, featureOptions, imageCount, documentCount, locations, onEdit,
 }: {
   form: CarForm;
   selectedFeatureIds: string[];
   featureOptions: Array<{ id: string; name: string; category?: string | null }>;
   imageCount: number;
+  documentCount: number;
   locations: Array<{ id: string; name: string }>;
   onEdit: (step: StepKey) => void;
 }) {
@@ -1004,6 +1363,15 @@ function StepReview({
           {imageCount === 0 && (
             <p style={{ margin: 0, fontSize: 12, color: "#f87171" }}>
               No photos uploaded. Adding photos improves bookings.
+            </p>
+          )}
+        </ReviewCard>
+
+        <ReviewCard title="Documents" onEdit={() => onEdit("documents")}>
+          <Row label="Attached" value={`${documentCount} document${documentCount !== 1 ? "s" : ""} attached`} />
+          {documentCount === 0 && (
+            <p style={{ margin: 0, fontSize: 12, color: "var(--muted-foreground, #94a3b8)" }}>
+              You can add vehicle registration, roadworthiness, and insurance later from the car&apos;s edit page.
             </p>
           )}
         </ReviewCard>
@@ -1492,10 +1860,76 @@ const f: Record<string, CSSProperties> = {
   photoHint: { margin: 0, fontSize: 12, color: "var(--muted-foreground)", textAlign: "center" },
 
   previewGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 12 },
-  previewWrap: { position: "relative", borderRadius: 10, overflow: "hidden", aspectRatio: "4/3", border: "1px solid var(--input-border)" },
-  previewImg: { width: "100%", height: "100%", objectFit: "cover" },
+  previewWrap: { position: "relative", borderRadius: 10, overflow: "hidden", aspectRatio: "4/3", border: "1px solid var(--input-border)", transition: "transform 0.15s, box-shadow 0.15s, opacity 0.15s" },
+  previewDragging: { opacity: 0.4 },
+  previewDropTarget: { boxShadow: "0 0 0 2px var(--brand-primary)", transform: "translateY(-2px)" },
+  previewImg: { width: "100%", height: "100%", objectFit: "cover", userSelect: "none", pointerEvents: "none" },
   coverBadge: { position: "absolute", bottom: 6, left: 6, background: "rgba(0,0,0,0.7)", color: "#fff", fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 4 },
   removeBtn: { position: "absolute", top: 5, right: 5, width: 22, height: 22, borderRadius: "50%", background: "rgba(0,0,0,0.7)", border: "none", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" },
+  dragHandle: { position: "absolute", top: 5, left: 5, background: "rgba(0,0,0,0.55)", color: "#fff", borderRadius: 6, padding: "2px 3px", display: "inline-flex", alignItems: "center", justifyContent: "center" },
+  reorderHint: { margin: 0, fontSize: 12, color: "var(--muted-foreground)" },
+
+  // Documents
+  docsEmpty: {
+    border: "2px dashed var(--input-border)",
+    borderRadius: 14,
+    padding: "32px 24px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 8,
+    textAlign: "center",
+  },
+  docsList: { display: "flex", flexDirection: "column", gap: 14 },
+  docRow: {
+    border: "1px solid var(--input-border)",
+    borderRadius: 12,
+    padding: 16,
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+    background: "var(--surface-2)",
+  },
+  docGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 },
+  docFileRow: { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" },
+  docFileBtn: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 7,
+    padding: "8px 14px",
+    borderRadius: 10,
+    border: "1px solid var(--input-border)",
+    background: "var(--surface-1)",
+    color: "var(--foreground)",
+    cursor: "pointer",
+    fontSize: 13,
+    fontWeight: 600,
+  },
+  docFileName: { fontSize: 12, color: "var(--muted-foreground)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  docRemoveBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    border: "1px solid var(--input-border)",
+    background: "transparent",
+    color: "var(--muted-foreground)",
+    cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  docAddBtn: {
+    alignSelf: "flex-start",
+    padding: "9px 16px",
+    borderRadius: 10,
+    border: "1px dashed var(--input-border)",
+    background: "transparent",
+    color: "var(--brand-primary)",
+    cursor: "pointer",
+    fontSize: 13,
+    fontWeight: 600,
+  },
+  docHint: { margin: 0, fontSize: 12, color: "var(--muted-foreground)" },
 
   // Review
   reviewGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 },

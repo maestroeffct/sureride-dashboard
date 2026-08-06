@@ -234,6 +234,10 @@ export type ProviderCreateCarPayload = {
   vin?: string;
   /** Exterior color as free-form text (e.g. "silver"). */
   color?: string;
+  /** Per-car security deposit override. Both set together, or both left
+   *  undefined to fall back to the platform PricingRule default. */
+  depositType?: "FIXED" | "PERCENTAGE";
+  depositValue?: number;
 };
 
 export type ProviderCarBrandOption = {
@@ -788,6 +792,35 @@ export function attachProviderCarFeatures(carId: string, featureIds: string[]) {
   return providerApiRequest<{ message: string }>(`/provider/cars/${carId}/features`, {
     method: "POST",
     body: JSON.stringify({ featureIds }),
+  });
+}
+
+// Car document types accepted by the backend. Values must match the
+// server-side enum in prisma/schema.prisma (CarDocType).
+export type CarDocumentType =
+  | "VEHICLE_REGISTRATION"
+  | "ROADWORTHINESS"
+  | "INSURANCE_CERTIFICATE"
+  | "HACKNEY_PERMIT"
+  | "PROOF_OF_OWNERSHIP"
+  | "CUSTOMS_DUTY"
+  | "OTHER";
+
+export function uploadCarDocument(
+  carId: string,
+  args: { file: File; type: CarDocumentType; label?: string; expiresAt?: string },
+) {
+  const formData = new FormData();
+  formData.append("file", args.file);
+  formData.append("type", args.type);
+  if (args.label) formData.append("label", args.label);
+  if (args.expiresAt) formData.append("expiresAt", args.expiresAt);
+
+  return providerApiRequest<{
+    document: { id: string; type: CarDocumentType; url: string };
+  }>(`/provider/cars/${carId}/documents`, {
+    method: "POST",
+    body: formData,
   });
 }
 
