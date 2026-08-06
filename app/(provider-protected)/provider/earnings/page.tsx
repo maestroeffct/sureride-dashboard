@@ -48,10 +48,18 @@ type PayoutStatus = ProviderEarningsOverview["recentPayouts"][number]["status"];
 function StatusPill({ status }: { status: PayoutStatus }) {
   const map: Record<PayoutStatus, CSSProperties> = {
     PENDING: { background: "rgba(251,191,36,0.14)", color: "#FCD34D", border: "1px solid rgba(251,191,36,0.22)" },
+    PROCESSING: { background: "rgba(96,165,250,0.14)", color: "#93C5FD", border: "1px solid rgba(96,165,250,0.22)" },
     PAID: { background: "rgba(52,211,153,0.14)", color: "#34D399", border: "1px solid rgba(52,211,153,0.22)" },
-    CANCELLED: { background: "rgba(239,68,68,0.14)", color: "#F87171", border: "1px solid rgba(239,68,68,0.22)" },
+    FAILED: { background: "rgba(239,68,68,0.14)", color: "#F87171", border: "1px solid rgba(239,68,68,0.22)" },
+    CANCELLED: { background: "rgba(148,163,184,0.14)", color: "#CBD5E1", border: "1px solid rgba(148,163,184,0.22)" },
   };
-  const labels: Record<PayoutStatus, string> = { PENDING: "Pending", PAID: "Paid", CANCELLED: "Rejected" };
+  const labels: Record<PayoutStatus, string> = {
+    PENDING: "Pending",
+    PROCESSING: "In transit",
+    PAID: "Paid",
+    FAILED: "Failed",
+    CANCELLED: "Rejected",
+  };
   return (
     <span style={{ ...s.pill, ...map[status] }}>{labels[status]}</span>
   );
@@ -189,6 +197,10 @@ function AccountModal({
         accountNumber: accountNumber.trim(),
         accountName,
         currency,
+        // Bank code is required to open a Paystack Transfer recipient
+        // when payouts run — pass it through so admin doesn't have to
+        // key it manually.
+        bankCode: bankCode || undefined,
       });
       toast.success("Payout account saved");
       onSaved(res.account);
@@ -463,33 +475,41 @@ export default function ProviderEarningsPage() {
       {/* KPI Strip */}
       <div style={s.kpiGrid}>
         <KpiCard
+          icon={<Wallet size={18} />}
+          tone="var(--brand-primary)"
+          label="Available Balance"
+          value={loading ? "…" : fmtMoney(overview?.availableBalance ?? 0)}
+          sub={
+            overview?.availableBookingCount
+              ? `${overview.availableBookingCount} booking${overview.availableBookingCount === 1 ? "" : "s"} · pays out Monday`
+              : "Nothing ready this week"
+          }
+          highlight
+        />
+        <KpiCard
+          icon={<Clock size={18} />}
+          tone="#FBBF24"
+          label="On Hold"
+          value={loading ? "…" : fmtMoney(overview?.onHoldBalance ?? 0)}
+          sub={`Ongoing rentals + ${overview?.holdHours ?? 24}h post-return hold`}
+        />
+        <KpiCard
           icon={<TrendingUp size={18} />}
-          tone="#14b8a6"
-          label="Total Earned"
-          value={loading ? "…" : fmtMoney(overview?.totalEarned ?? 0)}
-          sub="From completed rentals"
+          tone="#60A5FA"
+          label="In Transit"
+          value={loading ? "…" : fmtMoney(overview?.processingAmount ?? 0)}
+          sub="Transfer sent · awaiting bank confirmation"
         />
         <KpiCard
           icon={<CheckCircle size={18} />}
           tone="#22c55e"
           label="Total Paid Out"
           value={loading ? "…" : fmtMoney(overview?.totalPaid ?? 0)}
-          sub="Disbursed to your account"
-        />
-        <KpiCard
-          icon={<Clock size={18} />}
-          tone="#FBBF24"
-          label="Pending Requests"
-          value={loading ? "…" : fmtMoney(overview?.pendingAmount ?? 0)}
-          sub="Awaiting admin approval"
-        />
-        <KpiCard
-          icon={<Wallet size={18} />}
-          tone="var(--brand-primary)"
-          label="Available Balance"
-          value={loading ? "…" : fmtMoney(overview?.availableBalance ?? 0)}
-          sub="Ready to withdraw"
-          highlight
+          sub={
+            overview?.paidPayoutCount
+              ? `${overview.paidPayoutCount} payout${overview.paidPayoutCount === 1 ? "" : "s"} settled`
+              : "No payouts yet"
+          }
         />
       </div>
 
@@ -554,7 +574,15 @@ export default function ProviderEarningsPage() {
                 <div key={p.id} style={s.listRow}>
                   <div style={s.listLeft}>
                     <span style={s.listPrimary}>{fmtMoney(p.amount, p.currency)}</span>
-                    <span style={s.listSub}>{fmtDate(p.createdAt)}{p.note ? ` · ${p.note}` : ""}</span>
+                    <span style={s.listSub}>
+                      {fmtDate(p.createdAt)}
+                      {p.note ? ` · ${p.note}` : ""}
+                    </span>
+                    {p.status === "FAILED" && p.failureReason && (
+                      <span style={{ ...s.listSub, color: "#F87171" }}>
+                        {p.failureReason}
+                      </span>
+                    )}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <StatusPill status={p.status} />

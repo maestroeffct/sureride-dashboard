@@ -801,20 +801,31 @@ export function submitProviderCar(carId: string, note?: string) {
 /* ── Earnings & Payouts ── */
 
 export type ProviderEarningsOverview = {
-  totalEarned: number;
-  totalPaid: number;
-  pendingAmount: number;
   availableBalance: number;
+  onHoldBalance: number;
+  processingAmount: number;
+  totalPaid: number;
+  holdHours: number;
+  availableBookingCount?: number;
+  onHoldBookingCount?: number;
+  processingPayoutCount?: number;
+  paidPayoutCount?: number;
+  // Legacy fields kept for older callers
+  totalEarned: number;
+  pendingAmount: number;
   bookingCount?: number;
   pendingPayoutCount?: number;
   recentPayouts: Array<{
     id: string;
     amount: number;
     currency: string;
-    status: "PENDING" | "PAID" | "CANCELLED";
+    status: "PENDING" | "PROCESSING" | "PAID" | "FAILED" | "CANCELLED";
     reference: string | null;
     note: string | null;
     createdAt: string;
+    paidAt?: string | null;
+    failedAt?: string | null;
+    failureReason?: string | null;
   }>;
   recentBookings: Array<{
     id: string;
@@ -823,6 +834,7 @@ export type ProviderEarningsOverview = {
     status: string;
     pickupAt: string;
     returnAt: string;
+    payoutId?: string | null;
   }>;
 };
 
@@ -832,6 +844,8 @@ export type ProviderPayoutAccount = {
   accountNumber: string;
   accountName: string;
   currency?: string;
+  bankCode?: string | null;
+  paystackRecipientCode?: string | null;
   isVerified?: boolean;
 };
 
@@ -857,7 +871,9 @@ export function getProviderPayoutAccount() {
   return providerApiRequest<ProviderPayoutAccount | null>("/provider/payout-account");
 }
 
-export function upsertProviderPayoutAccount(payload: Omit<ProviderPayoutAccount, "id" | "isVerified">) {
+export function upsertProviderPayoutAccount(
+  payload: Omit<ProviderPayoutAccount, "id" | "isVerified" | "paystackRecipientCode">,
+) {
   return providerApiRequest<{ message: string; account: ProviderPayoutAccount }>(
     "/provider/payout-account",
     {

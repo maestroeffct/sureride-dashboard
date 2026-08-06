@@ -2,13 +2,13 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { DollarSign, CheckCircle, Clock, Filter } from "lucide-react";
+import { DollarSign, CheckCircle, Clock, Filter, PlayCircle, RefreshCw, AlertTriangle } from "lucide-react";
 import { apiRequest } from "@/src/lib/api";
 import type { CSSProperties } from "react";
 
 /* ─── Types ──────────────────────────────────────────────── */
 
-type PayoutStatus = "PENDING" | "PAID" | "CANCELLED";
+type PayoutStatus = "PENDING" | "PROCESSING" | "PAID" | "FAILED" | "CANCELLED";
 
 type PayoutRow = {
   id: string;
@@ -19,6 +19,12 @@ type PayoutRow = {
   note: string | null;
   createdAt: string;
   updatedAt: string;
+  paidAt?: string | null;
+  failedAt?: string | null;
+  failureReason?: string | null;
+  paystackTransferCode?: string | null;
+  batchDate?: string | null;
+  itemCount?: number;
   provider: {
     id: string;
     name: string;
@@ -31,6 +37,14 @@ type PayoutRow = {
       isVerified: boolean;
     } | null;
   } | null;
+};
+
+type BatchResult = {
+  attempted: number;
+  succeeded: number;
+  skipped: number;
+  failed: number;
+  minAmount: number;
 };
 
 type PayoutsResponse = {
@@ -60,6 +74,18 @@ function rejectPayout(payoutId: string, note: string) {
   });
 }
 
+function runBatch() {
+  return apiRequest<BatchResult & { message: string }>(`/admin/payouts/run-batch`, {
+    method: "POST",
+  });
+}
+
+function retryPayout(payoutId: string) {
+  return apiRequest<{ message: string }>(`/admin/payouts/${payoutId}/retry`, {
+    method: "POST",
+  });
+}
+
 /* ─── Helpers ────────────────────────────────────────────── */
 
 function fmtMoney(v: number, currency = "NGN") {
@@ -81,7 +107,9 @@ function fmt(iso: string) {
 const STATUS_TABS = [
   { key: "ALL", label: "All" },
   { key: "PENDING", label: "Pending" },
+  { key: "PROCESSING", label: "In transit" },
   { key: "PAID", label: "Paid" },
+  { key: "FAILED", label: "Failed" },
   { key: "CANCELLED", label: "Rejected" },
 ] as const;
 
@@ -94,6 +122,8 @@ export default function PayoutsPage() {
   const [tab, setTab] = useState<"ALL" | PayoutStatus>("ALL");
   const [markingId, setMarkingId] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [batchRunning, setBatchRunning] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -133,6 +163,46 @@ export default function PayoutsPage() {
     }
   };
 
+  const handleRunBatch = async () => {
+    if (batchRunning) return;
+    if (
+      !window.confirm(
+        "Run the weekly payout batch now?\n\nThis sweeps every provider with a released balance above the payout minimum and fires Paystack Transfers.",
+      )
+    )
+      return;
+    setBatchRunning(true);
+    try {
+      const res = await runBatch();
+      window.alert(
+        `Batch complete\n\n${res.succeeded} sent · ${res.failed} failed · ${res.skipped} skipped (of ${res.attempted} providers)`,
+      );
+      load();
+    } catch (e: any) {
+      window.alert(e?.message ?? "Batch failed");
+    } finally {
+      setBatchRunning(false);
+    }
+  };
+
+  const handleRetry = async (row: PayoutRow) => {
+    if (
+      !window.confirm(
+        `Retry the failed payout for ${row.provider?.name ?? "provider"}?`,
+      )
+    )
+      return;
+    setRetryingId(row.id);
+    try {
+      await retryPayout(row.id);
+      load();
+    } catch (e: any) {
+      window.alert(e?.message ?? "Retry failed");
+    } finally {
+      setRetryingId(null);
+    }
+  };
+
   const handleReject = async (row: PayoutRow) => {
     const note = window.prompt(
       `Reject payout request for ${row.provider?.name ?? "provider"}.\nReason (optional):`,
@@ -162,6 +232,15 @@ export default function PayoutsPage() {
           </div>
           <p style={s.pageSub}>Manage and track all provider payout requests</p>
         </div>
+        <button
+          style={{ ...s.runBatchBtn, opacity: batchRunning ? 0.5 : 1, cursor: batchRunning ? "not-allowed" : "pointer" }}
+          onClick={handleRunBatch}
+          disabled={batchRunning}
+          title="Sweep all providers with a released balance and fire Paystack transfers now (also runs automatically every Monday 04:00 UTC)."
+        >
+          <PlayCircle size={15} />
+          {batchRunning ? "Running batch…" : "Run batch now"}
+        </button>
       </div>
 
       {/* KPI strip */}
@@ -263,11 +342,32 @@ export default function PayoutsPage() {
                     <span
                       style={{
                         ...s.statusPill,
-                        ...(row.status === "PAID" ? s.statusPaid : row.status === "CANCELLED" ? s.statusCancelled : s.statusPending),
+                        ...(row.status === "PAID"
+                          ? s.statusPaid
+                          : row.status === "CANCELLED"
+                            ? s.statusCancelled
+                            : row.status === "PROCESSING"
+                              ? s.statusProcessing
+                              : row.status === "FAILED"
+                                ? s.statusFailed
+                                : s.statusPending),
                       }}
                     >
-                      {row.status === "PAID" ? "Paid" : row.status === "CANCELLED" ? "Rejected" : "Pending"}
+                      {row.status === "PAID"
+                        ? "Paid"
+                        : row.status === "CANCELLED"
+                          ? "Rejected"
+                          : row.status === "PROCESSING"
+                            ? "In transit"
+                            : row.status === "FAILED"
+                              ? "Failed"
+                              : "Pending"}
                     </span>
+                    {row.status === "FAILED" && row.failureReason && (
+                      <div style={{ ...s.secondaryText, marginTop: 4, color: "#F87171", display: "flex", alignItems: "center", gap: 4 }}>
+                        <AlertTriangle size={11} /> {row.failureReason}
+                      </div>
+                    )}
                   </td>
 
                   <td style={s.td}>
@@ -309,6 +409,20 @@ export default function PayoutsPage() {
                           {rejectingId === row.id ? "…" : "Reject"}
                         </button>
                       </div>
+                    )}
+                    {row.status === "FAILED" && (
+                      <button
+                        style={{
+                          ...s.markPaidBtn,
+                          opacity: retryingId === row.id ? 0.5 : 1,
+                          cursor: retryingId === row.id ? "not-allowed" : "pointer",
+                        }}
+                        disabled={retryingId === row.id}
+                        onClick={() => handleRetry(row)}
+                      >
+                        <RefreshCw size={14} />
+                        {retryingId === row.id ? "Retrying…" : "Retry"}
+                      </button>
                     )}
                   </td>
                 </tr>
@@ -387,8 +501,15 @@ const s: Record<string, CSSProperties> = {
     borderRadius: 999, fontSize: 11, fontWeight: 800,
   },
   statusPending: { background: "rgba(251,191,36,0.14)", color: "#FCD34D", border: "1px solid rgba(251,191,36,0.22)" },
+  statusProcessing: { background: "rgba(96,165,250,0.14)", color: "#93C5FD", border: "1px solid rgba(96,165,250,0.22)" },
   statusPaid: { background: "rgba(52,211,153,0.14)", color: "#34D399", border: "1px solid rgba(52,211,153,0.22)" },
-  statusCancelled: { background: "rgba(239,68,68,0.14)", color: "#F87171", border: "1px solid rgba(239,68,68,0.22)" },
+  statusFailed: { background: "rgba(239,68,68,0.14)", color: "#F87171", border: "1px solid rgba(239,68,68,0.22)" },
+  statusCancelled: { background: "rgba(148,163,184,0.14)", color: "#CBD5E1", border: "1px solid rgba(148,163,184,0.22)" },
+  runBatchBtn: {
+    display: "inline-flex", alignItems: "center", gap: 7, height: 40, padding: "0 16px",
+    borderRadius: 10, border: "1px solid rgba(58,237,225,0.35)", background: "rgba(58,237,225,0.1)",
+    color: "#3AEDE1", fontSize: 13, fontWeight: 700,
+  },
   markPaidBtn: {
     display: "inline-flex", alignItems: "center", gap: 6, height: 32, padding: "0 12px",
     borderRadius: 8, border: "1px solid rgba(52,211,153,0.35)", background: "rgba(52,211,153,0.1)",
