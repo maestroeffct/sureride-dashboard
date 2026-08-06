@@ -7,6 +7,7 @@ import KpiCard, { KpiGrid } from "@/src/components/admin/KpiCard";
 import {
   createDamage,
   listDamages,
+  uploadProviderPhotos,
   type DamageClaimRow,
   type DamageClaimStatus,
 } from "@/src/lib/providerOpsApi";
@@ -101,6 +102,22 @@ export default function DamagesPage() {
                   </div>
                 </div>
                 <p style={s.desc}>{r.description}</p>
+                {r.photos?.length > 0 && (
+                  <div style={s.thumbRow}>
+                    {r.photos.map((url) => (
+                      <a
+                        key={url}
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={s.thumbLink}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt="Damage" style={s.thumbImg} />
+                      </a>
+                    ))}
+                  </div>
+                )}
                 {r.resolutionNote && <div style={s.res}>Resolution: {r.resolutionNote}</div>}
                 {r.fine && <div style={{ ...s.res, color: "#fde68a" }}>Fine issued: {r.fine.amount.toLocaleString()} · {r.fine.status}</div>}
               </article>
@@ -119,6 +136,26 @@ function NewClaimModal({ onClose, onDone }: { onClose: () => void; onDone: () =>
   const [description, setDescription] = useState("");
   const [estimatedCost, setEstimatedCost] = useState("");
   const [busy, setBusy] = useState(false);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  const handleUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const arr = Array.from(files);
+    if (photos.length + arr.length > 12) {
+      toast.error("Max 12 photos per claim");
+      return;
+    }
+    try {
+      setUploading(true);
+      const uploaded = await uploadProviderPhotos(arr, "damages");
+      setPhotos((prev) => [...prev, ...uploaded.map((u) => u.url)]);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   useEffect(() => {
     listProviderBookings({ status: "COMPLETED", limit: 100 })
@@ -133,7 +170,12 @@ function NewClaimModal({ onClose, onDone }: { onClose: () => void; onDone: () =>
     if (description.trim().length < 10) return toast.error("Describe the damage (10+ chars)");
     try {
       setBusy(true);
-      await createDamage({ bookingId, description: description.trim(), estimatedCost: cost });
+      await createDamage({
+        bookingId,
+        description: description.trim(),
+        estimatedCost: cost,
+        photos,
+      });
       toast.success("Claim filed");
       onDone();
     } catch (e: any) { toast.error(e?.message ?? "Failed"); }
@@ -158,6 +200,42 @@ function NewClaimModal({ onClose, onDone }: { onClose: () => void; onDone: () =>
           <input style={m.input} type="number" value={estimatedCost} onChange={(e) => setEstimatedCost(e.target.value)} />
           <label style={m.label}>Description</label>
           <textarea style={{ ...m.input, height: 100 }} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Dent on passenger door, ~30cm. Scratched paintwork on rear bumper." />
+
+          <label style={m.label}>Photos ({photos.length}/12)</label>
+          <div style={m.photoGrid}>
+            {photos.map((url) => (
+              <div key={url} style={m.photoTile}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt="Damage" style={m.photoImg} />
+                <button
+                  type="button"
+                  style={m.photoRemove}
+                  onClick={() => setPhotos((prev) => prev.filter((p) => p !== url))}
+                  title="Remove"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+            {photos.length < 12 && (
+              <label style={m.photoAdd}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    handleUpload(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+                <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>
+                <span style={{ fontSize: 11 }}>
+                  {uploading ? "Uploading…" : "Add photo"}
+                </span>
+              </label>
+            )}
+          </div>
         </div>
         <div style={m.footer}>
           <button style={m.secondary} onClick={onClose} disabled={busy}>Cancel</button>
@@ -197,6 +275,9 @@ const s: Record<string, CSSProperties> = {
   meta: { fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 },
   desc: { margin: 0, padding: 10, background: "var(--surface-2)", borderRadius: 8, fontSize: 13, lineHeight: 1.5 },
   res: { fontSize: 12, color: "var(--muted-foreground)" },
+  thumbRow: { display: "flex", flexWrap: "wrap", gap: 6 },
+  thumbLink: { display: "block", width: 64, height: 64, borderRadius: 6, overflow: "hidden", border: "1px solid var(--input-border)" },
+  thumbImg: { width: "100%", height: "100%", objectFit: "cover" as const },
 };
 
 const m: Record<string, CSSProperties> = {
@@ -210,4 +291,9 @@ const m: Record<string, CSSProperties> = {
   footer: { display: "flex", justifyContent: "flex-end", gap: 10, padding: "12px 20px", borderTop: "1px solid var(--input-border)" },
   secondary: { padding: "10px 18px", borderRadius: 8, border: "1px solid var(--input-border)", background: "transparent", color: "var(--foreground)", fontSize: 13, fontWeight: 600, cursor: "pointer" },
   primary: { padding: "10px 22px", borderRadius: 8, border: "none", background: "var(--brand-primary)", color: "#022c22", fontSize: 13, fontWeight: 700, cursor: "pointer" },
+  photoGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(88px, 1fr))", gap: 8, marginTop: 4 },
+  photoTile: { position: "relative", aspectRatio: "1 / 1", borderRadius: 8, overflow: "hidden", border: "1px solid var(--input-border)" },
+  photoImg: { width: "100%", height: "100%", objectFit: "cover" as const },
+  photoRemove: { position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: 999, border: "none", background: "rgba(0,0,0,0.6)", color: "#fff", display: "grid", placeItems: "center", cursor: "pointer" },
+  photoAdd: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, aspectRatio: "1 / 1", borderRadius: 8, border: "1px dashed var(--input-border)", background: "var(--surface-2)", color: "var(--muted-foreground)", cursor: "pointer" },
 };

@@ -51,6 +51,11 @@ export const rentalsMenu: SidebarItem[] = [
     path: "/rentals/payouts",
     icon: sidebarIcons.payouts,
   },
+  {
+    label: "Damage Claims",
+    path: "/rentals/damage-claims",
+    icon: sidebarIcons.fines,
+  },
 
   {
     kind: "section",

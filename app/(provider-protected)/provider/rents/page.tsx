@@ -11,6 +11,7 @@ import {
   listHandovers,
   saveHandover,
   type HandoverRow,
+  uploadProviderPhotos,
   type HandoverType,
 } from "@/src/lib/providerOpsApi";
 
@@ -174,6 +175,8 @@ function HandoverModal({ booking, onClose }: { booking: ProviderBookingRow; onCl
   const [damage, setDamage] = useState(false);
   const [signed, setSigned] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -199,6 +202,7 @@ function HandoverModal({ booking, onClose }: { booking: ProviderBookingRow; onCl
       setIntNotes(found.interiorNotes ?? "");
       setDamage(found.damagesFound);
       setSigned(found.signedByCustomer);
+      setPhotos(found.photos ?? []);
     } else {
       setOdometer("");
       setFuel(100);
@@ -206,8 +210,30 @@ function HandoverModal({ booking, onClose }: { booking: ProviderBookingRow; onCl
       setIntNotes("");
       setDamage(false);
       setSigned(false);
+      setPhotos([]);
     }
   }, [tab, existing]);
+
+  const handleUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const arr = Array.from(files);
+    if (photos.length + arr.length > 12) {
+      toast.error("Max 12 photos per inspection");
+      return;
+    }
+    try {
+      setUploading(true);
+      const uploaded = await uploadProviderPhotos(arr, "handovers");
+      setPhotos((prev) => [...prev, ...uploaded.map((u) => u.url)]);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removePhoto = (url: string) =>
+    setPhotos((prev) => prev.filter((p) => p !== url));
 
   const submit = async () => {
     const km = Number(odometer);
@@ -222,6 +248,7 @@ function HandoverModal({ booking, onClose }: { booking: ProviderBookingRow; onCl
         interiorNotes: intNotes || undefined,
         damagesFound: damage,
         signedByCustomer: signed,
+        photos,
       });
       toast.success(`${tab === "PICKUP" ? "Pickup" : "Return"} inspection saved`);
       void load();
@@ -277,6 +304,43 @@ function HandoverModal({ booking, onClose }: { booking: ProviderBookingRow; onCl
             <div>
               <label style={m.label}>Interior notes</label>
               <textarea style={{ ...m.input, height: 60 }} value={intNotes} onChange={(e) => setIntNotes(e.target.value)} placeholder="Seats, dashboard, radio, cleanliness" />
+            </div>
+            <div>
+              <label style={m.label}>Photos ({photos.length}/12)</label>
+              <div style={m.photoGrid}>
+                {photos.map((url) => (
+                  <div key={url} style={m.photoTile}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt="Handover" style={m.photoImg} />
+                    <button
+                      type="button"
+                      style={m.photoRemove}
+                      onClick={() => removePhoto(url)}
+                      title="Remove"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+                {photos.length < 12 && (
+                  <label style={m.photoAdd}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        handleUpload(e.target.files);
+                        e.target.value = "";
+                      }}
+                    />
+                    <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>
+                    <span style={{ fontSize: 11 }}>
+                      {uploading ? "Uploading…" : "Add photo"}
+                    </span>
+                  </label>
+                )}
+              </div>
             </div>
             <label style={m.checkRow}>
               <input type="checkbox" checked={damage} onChange={(e) => setDamage(e.target.checked)} />
@@ -340,6 +404,11 @@ const m: Record<string, CSSProperties> = {
   label: { display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: "var(--muted-foreground)", marginBottom: 5 },
   input: { width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--input-border)", background: "var(--input-bg)", color: "var(--input-fg)", fontSize: 14, outline: "none", fontFamily: "inherit", resize: "vertical" as any },
   checkRow: { display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" },
+  photoGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(88px, 1fr))", gap: 8, marginTop: 6 },
+  photoTile: { position: "relative", aspectRatio: "1 / 1", borderRadius: 8, overflow: "hidden", border: "1px solid var(--input-border)" },
+  photoImg: { width: "100%", height: "100%", objectFit: "cover" as const },
+  photoRemove: { position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: 999, border: "none", background: "rgba(0,0,0,0.6)", color: "#fff", display: "grid", placeItems: "center", cursor: "pointer" },
+  photoAdd: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, aspectRatio: "1 / 1", borderRadius: 8, border: "1px dashed var(--input-border)", background: "var(--surface-2)", color: "var(--muted-foreground)", cursor: "pointer" },
   footer: { display: "flex", justifyContent: "flex-end", gap: 10, padding: "12px 20px", borderTop: "1px solid var(--input-border)" },
   secondary: { padding: "10px 18px", borderRadius: 8, border: "1px solid var(--input-border)", background: "transparent", color: "var(--foreground)", fontSize: 13, fontWeight: 600, cursor: "pointer" },
   primary: { padding: "10px 22px", borderRadius: 8, border: "none", background: "var(--brand-primary)", color: "#022c22", fontSize: 13, fontWeight: 700, cursor: "pointer" },

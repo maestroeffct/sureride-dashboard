@@ -171,6 +171,28 @@ export function deleteAvailabilityBlock(id: string) {
   return req<{ ok: true }>(`/provider/availability/${id}`, { method: "DELETE" });
 }
 
+// ─── Photo uploads (handover / damage) ───────────────────────────────────
+export type UploadedPhoto = { url: string; key: string };
+
+/**
+ * Uploads N image files to the provider's storage bucket via the
+ * admin-configured driver (Cloudinary / S3 / local). Returns the
+ * public URLs — pass them into saveHandover/createDamage's `photos`.
+ */
+export async function uploadProviderPhotos(
+  files: File[],
+  folder: "handovers" | "damages",
+): Promise<UploadedPhoto[]> {
+  const form = new FormData();
+  files.forEach((f) => form.append("files", f));
+  form.append("folder", folder);
+  const res = await req<{ items: UploadedPhoto[] }>(`/provider/uploads/photos`, {
+    method: "POST",
+    body: form,
+  });
+  return res.items;
+}
+
 // ─── Handovers ────────────────────────────────────────────────────────────
 export type HandoverType = "PICKUP" | "RETURN";
 export type HandoverRow = {
