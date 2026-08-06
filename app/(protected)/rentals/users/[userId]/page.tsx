@@ -56,6 +56,7 @@ export default function UserDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [profileStatus, setProfileStatus] = useState<UserProfileStatus>("INCOMPLETE");
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   const loadUser = useCallback(async () => {
     if (!userId) return;
@@ -382,20 +383,40 @@ export default function UserDetailsPage() {
 
         <div style={styles.docGrid}>
           {kycDocLinks.map((doc) => (
-            <a
+            <button
               key={doc.label}
-              href={doc.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={styles.docLink}
+              type="button"
+              onClick={() => setLightbox(doc.url)}
+              style={styles.docThumb}
+              title={`Open ${doc.label}`}
             >
-              Open {doc.label}
-            </a>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={doc.url} alt={doc.label} style={styles.docThumbImg} />
+              <div style={styles.docThumbCaption}>{doc.label}</div>
+            </button>
           ))}
         </div>
 
         {kycDocLinks.length === 0 && (
           <span style={styles.muted}>No KYC documents available yet.</span>
+        )}
+
+        {lightbox && (
+          <div
+            style={styles.lightbox}
+            onClick={() => setLightbox(null)}
+          >
+            <button
+              type="button"
+              style={styles.lightboxClose}
+              onClick={() => setLightbox(null)}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={lightbox} alt="KYC document" style={styles.lightboxImg} />
+          </div>
         )}
 
         <div style={styles.block}>

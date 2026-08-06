@@ -106,29 +106,42 @@ export default function UsersManagementPage() {
 
   // 3-dot action menu — id of the row whose menu is open.
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  // Anchor coords for the actions popover — positioned fixed so table
+  // overflow never clips it.
+  const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number } | null>(null);
 
   const [exportOpen, setExportOpen] = useState(false);
   const [resetTarget, setResetTarget] = useState<AdminUser | null>(null);
   const [sendResetEmail, setSendResetEmail] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
 
-  // Close the open kebab menu when clicking outside or pressing Escape.
+  // Close the open kebab menu when clicking outside, pressing Escape,
+  // or scrolling/resizing (since it's position: fixed and the anchor
+  // coords would otherwise get stale).
   useEffect(() => {
     if (!openMenuId) return;
+    const close = () => {
+      setOpenMenuId(null);
+      setMenuAnchor(null);
+    };
     const onClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
       if (!target?.closest?.("[data-row-menu]") && !target?.closest?.("[data-row-menu-trigger]")) {
-        setOpenMenuId(null);
+        close();
       }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpenMenuId(null);
+      if (e.key === "Escape") close();
     };
     document.addEventListener("mousedown", onClick);
     document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
     return () => {
       document.removeEventListener("mousedown", onClick);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
     };
   }, [openMenuId]);
 
@@ -648,14 +661,31 @@ export default function UsersManagementPage() {
                             style={styles.actionBtn}
                             title="More actions"
                             disabled={anyBusy}
-                            onClick={() =>
-                              setOpenMenuId(menuOpen ? null : user.id)
-                            }
+                            onClick={(e) => {
+                              if (menuOpen) {
+                                setOpenMenuId(null);
+                                setMenuAnchor(null);
+                                return;
+                              }
+                              const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                              setMenuAnchor({
+                                top: rect.bottom + 4,
+                                right: window.innerWidth - rect.right,
+                              });
+                              setOpenMenuId(user.id);
+                            }}
                           >
                             <MoreHorizontal size={15} />
                           </button>
-                          {menuOpen ? (
-                            <div data-row-menu style={kebabMenu}>
+                          {menuOpen && menuAnchor ? (
+                            <div
+                              data-row-menu
+                              style={{
+                                ...kebabMenu,
+                                top: menuAnchor.top,
+                                right: menuAnchor.right,
+                              }}
+                            >
                               <Link
                                 href={`/rentals/users/${user.id}`}
                                 style={kebabItem}
@@ -913,16 +943,16 @@ const contactLineMuted: CSSPropertiesShort = {
 };
 
 const kebabMenu: CSSPropertiesShort = {
-  position: "absolute",
-  right: 0,
-  top: "calc(100% + 4px)",
+  // Fixed so the table row's overflow can't clip it. Top/right come from
+  // the trigger button's bounding rect (set on click).
+  position: "fixed",
   background: "var(--surface-1)",
   border: "1px solid var(--input-border)",
   borderRadius: 10,
   padding: 6,
-  minWidth: 200,
-  zIndex: 5,
-  boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+  minWidth: 220,
+  zIndex: 999,
+  boxShadow: "0 10px 30px rgba(0,0,0,0.45)",
   display: "flex",
   flexDirection: "column",
   gap: 2,

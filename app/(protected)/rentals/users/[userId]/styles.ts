@@ -149,8 +149,8 @@ const styles = {
 
   docGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-    gap: 10,
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: 12,
   },
 
   docLink: {
@@ -162,6 +162,63 @@ const styles = {
     padding: "10px 12px",
     fontSize: 13,
     fontWeight: 600,
+  },
+
+  docThumb: {
+    padding: 0,
+    borderRadius: 10,
+    border: "1px solid var(--glass-10)",
+    background: "var(--glass-04)",
+    overflow: "hidden",
+    cursor: "zoom-in",
+    display: "flex",
+    flexDirection: "column" as const,
+  },
+  docThumbImg: {
+    width: "100%",
+    aspectRatio: "4 / 3",
+    objectFit: "cover" as const,
+    display: "block",
+  },
+  docThumbCaption: {
+    padding: "8px 10px",
+    fontSize: 12,
+    fontWeight: 600,
+    color: "var(--foreground)",
+    textAlign: "left" as const,
+    borderTop: "1px solid var(--glass-08)",
+  },
+
+  lightbox: {
+    position: "fixed" as const,
+    inset: 0,
+    background: "rgba(0,0,0,0.92)",
+    zIndex: 100,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "zoom-out",
+  },
+  lightboxImg: {
+    maxWidth: "94vw",
+    maxHeight: "92vh",
+    objectFit: "contain" as const,
+  },
+  lightboxClose: {
+    position: "absolute" as const,
+    top: 20,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    border: "none",
+    background: "rgba(255,255,255,0.15)",
+    color: "#fff",
+    fontSize: 22,
+    lineHeight: 1,
+    cursor: "pointer",
+    display: "grid",
+    placeItems: "center",
   },
 
   muted: {
