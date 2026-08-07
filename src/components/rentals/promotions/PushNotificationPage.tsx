@@ -345,26 +345,41 @@ export default function PushNotificationPage() {
               </div>
             </Field>
 
-            {/* Preview */}
+            {/* Preview — approximates an Android bigPicture
+                notification card. Small icon + app name + time in the
+                header row; title + body next; expanded image below
+                (matches what Notifee renders in the tray). */}
             <div style={s.previewSection}>
-              <p style={s.previewLabel}>Live Preview</p>
+              <p style={s.previewLabel}>Live Preview — Android tray</p>
               <div style={s.phonePreview}>
-                <Bell size={16} color="var(--brand-primary)" style={{ flexShrink: 0, marginTop: 2 }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={s.previewTitle}>{title || "Your title appears here"}</p>
-                  <p style={s.previewBody}>{body || "Your message body appears here. Keep it short and actionable."}</p>
-                  {imageUrl && (
-                    <div style={{ marginTop: 8, borderRadius: 8, overflow: "hidden" }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={imageUrl}
-                        alt="Attachment"
-                        style={{ width: "100%", maxHeight: 140, objectFit: "cover", display: "block" }}
-                      />
-                    </div>
-                  )}
+                <div style={s.previewHeader}>
+                  <div style={s.previewAppIcon}>
+                    <Bell size={11} color="#fff" />
+                  </div>
+                  <span style={s.previewAppName}>SureRide</span>
+                  <span style={s.previewDot}>·</span>
+                  <span style={s.previewTime}>now</span>
                 </div>
+                <p style={s.previewTitle}>{title || "Your title appears here"}</p>
+                <p style={s.previewBody}>
+                  {body || "Your message body appears here. Keep it short and actionable."}
+                </p>
+                {imageUrl && (
+                  <div style={s.previewImageWrap}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={imageUrl}
+                      alt="Attachment"
+                      style={s.previewImage}
+                    />
+                  </div>
+                )}
               </div>
+              <span style={s.hint}>
+                Actual layout varies by device. iOS shows a compact
+                banner by default; expanded view + image needs the
+                Notification Service Extension.
+              </span>
             </div>
 
             <button
@@ -572,9 +587,58 @@ const s: Record<string, CSSProperties> = {
 
   previewSection: { display: "flex", flexDirection: "column", gap: 8, paddingTop: 8, borderTop: "1px solid var(--input-border)" },
   previewLabel: { margin: 0, fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.04em" },
-  phonePreview: { display: "flex", gap: 10, padding: "12px 14px", borderRadius: 12, background: "var(--surface-2)", border: "1px solid var(--input-border)" },
-  previewTitle: { margin: 0, fontSize: 13, fontWeight: 700, color: "var(--foreground)" },
-  previewBody: { margin: "2px 0 0", fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.45 },
+  phonePreview: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+    padding: "12px 14px",
+    borderRadius: 14,
+    background: "var(--surface-2)",
+    border: "1px solid var(--input-border)",
+  },
+  previewHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 4,
+  },
+  previewAppIcon: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    background: "#0A6A4B",
+    display: "grid",
+    placeItems: "center",
+  },
+  previewAppName: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: "var(--muted-foreground)",
+    letterSpacing: 0.2,
+    textTransform: "uppercase" as const,
+  },
+  previewDot: { fontSize: 11, color: "var(--muted-foreground)" },
+  previewTime: { fontSize: 11, color: "var(--muted-foreground)" },
+  previewTitle: { margin: 0, fontSize: 14, fontWeight: 700, color: "var(--foreground)" },
+  previewBody: {
+    margin: "2px 0 0",
+    fontSize: 13,
+    color: "var(--foreground)",
+    opacity: 0.85,
+    lineHeight: 1.45,
+  },
+  previewImageWrap: {
+    marginTop: 10,
+    borderRadius: 10,
+    overflow: "hidden",
+    border: "1px solid var(--input-border)",
+  },
+  previewImage: {
+    width: "100%",
+    aspectRatio: "16 / 9",
+    objectFit: "cover" as const,
+    display: "block",
+  },
 
   sendBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 20px", borderRadius: 10, border: "none", background: "var(--brand-primary)", color: "#fff", fontSize: 14, fontWeight: 700, marginTop: 4 },
 
