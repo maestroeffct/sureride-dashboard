@@ -13,6 +13,8 @@ import {
   AlertTriangle,
   RotateCw,
   Trash2,
+  Upload,
+  X as XIcon,
 } from "lucide-react";
 import {
   listPlatformSettingsDraft,
@@ -20,6 +22,7 @@ import {
 } from "@/src/lib/platformSettingsDraftApi";
 import {
   sendPromoPush,
+  uploadPromoPushImage,
   type PromoPushSegment,
 } from "@/src/lib/adminPromotionsApi";
 
@@ -29,11 +32,29 @@ type HistoryEntry = {
   body: string;
   segment: PromoPushSegment;
   deepLink: string | null;
+  imageUrl: string | null;
   sent: number;
   failed: number;
   totalDevices: number;
   sentAt: string;
 };
+
+/**
+ * Predefined deep-link targets — matches what the mobile
+ * routeFromNotificationData handler knows how to open. "Custom URL"
+ * unlocks the free-text input for edge cases (external URL, a
+ * specific booking id the admin knows, etc.).
+ */
+const DEEP_LINK_PRESETS: Array<{ value: string; label: string; hint?: string }> = [
+  { value: "", label: "None (opens inbox on tap)" },
+  { value: "/notifications", label: "Notifications Inbox" },
+  { value: "/bookings", label: "My Bookings" },
+  { value: "/home", label: "Home" },
+  { value: "/verify", label: "KYC / Verification" },
+  { value: "/profile", label: "Profile" },
+  { value: "/search", label: "Search cars" },
+  { value: "__custom__", label: "Custom URL…", hint: "External URL or a specific route with an ID" },
+];
 
 const SEGMENTS: { key: PromoPushSegment; label: string; desc: string; icon: React.ReactNode }[] = [
   { key: "ALL_USERS", label: "All Users", desc: "Every registered rider with a device", icon: <Users size={16} /> },
@@ -45,7 +66,14 @@ export default function PushNotificationPage() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [segment, setSegment] = useState<PromoPushSegment>("ALL_USERS");
-  const [deepLink, setDeepLink] = useState("");
+  // deepLink is either a preset value or, when linkPreset is "__custom__",
+  // whatever the admin types. Keep them separate so switching between
+  // presets doesn't blow away the custom entry.
+  const [linkPreset, setLinkPreset] = useState<string>("");
+  const [customDeepLink, setCustomDeepLink] = useState("");
+  const deepLink = linkPreset === "__custom__" ? customDeepLink : linkPreset;
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [sending, setSending] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -105,6 +133,7 @@ export default function PushNotificationPage() {
         body: entry.body,
         segment: entry.segment,
         deepLink: entry.deepLink ?? undefined,
+        imageUrl: entry.imageUrl ?? undefined,
       });
       if (result.message) {
         toast(result.message, { icon: "ℹ️" });
@@ -116,6 +145,19 @@ export default function PushNotificationPage() {
       toast.error(e instanceof Error ? e.message : "Resend failed");
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleImagePick = async (file: File | null) => {
+    if (!file) return;
+    try {
+      setUploadingImage(true);
+      const res = await uploadPromoPushImage(file);
+      setImageUrl(res.url);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -139,6 +181,7 @@ export default function PushNotificationPage() {
         body: body.trim(),
         segment,
         deepLink: deepLink.trim() || undefined,
+        imageUrl: imageUrl || undefined,
       });
       if (result.message) {
         toast(result.message, { icon: "ℹ️" });
@@ -148,7 +191,9 @@ export default function PushNotificationPage() {
       // Clear form + refresh history
       setTitle("");
       setBody("");
-      setDeepLink("");
+      setLinkPreset("");
+      setCustomDeepLink("");
+      setImageUrl("");
       await loadHistory();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Send failed");
@@ -214,14 +259,65 @@ export default function PushNotificationPage() {
               <span style={s.hint}>{body.length}/240 characters</span>
             </Field>
 
+            <Field label="Image (optional)">
+              {imageUrl ? (
+                <div style={s.imagePreviewWrap}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imageUrl} alt="Attached" style={s.imagePreview} />
+                  <button
+                    type="button"
+                    style={s.imageRemove}
+                    onClick={() => setImageUrl("")}
+                    aria-label="Remove image"
+                  >
+                    <XIcon size={12} />
+                  </button>
+                </div>
+              ) : (
+                <label style={s.imagePicker}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={(e) => handleImagePick(e.target.files?.[0] ?? null)}
+                    disabled={uploadingImage}
+                  />
+                  <Upload size={16} />
+                  <span>{uploadingImage ? "Uploading…" : "Choose an image (5MB max)"}</span>
+                </label>
+              )}
+              <span style={s.hint}>
+                Renders as a large image on Android; iOS shows it as an
+                attachment (needs Notification Service Extension).
+              </span>
+            </Field>
+
             <Field label="Deep Link (optional)">
-              <input
+              <select
                 style={s.input}
-                value={deepLink}
-                onChange={(e) => setDeepLink(e.target.value)}
-                placeholder="/promotions/holiday or https://…"
-              />
-              <span style={s.hint}>Where the notification leads when tapped</span>
+                value={linkPreset}
+                onChange={(e) => setLinkPreset(e.target.value)}
+              >
+                {DEEP_LINK_PRESETS.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+              {linkPreset === "__custom__" && (
+                <input
+                  style={{ ...s.input, marginTop: 8 }}
+                  value={customDeepLink}
+                  onChange={(e) => setCustomDeepLink(e.target.value)}
+                  placeholder="/bookings/abc123 or https://…"
+                />
+              )}
+              <span style={s.hint}>
+                Where the notification leads when tapped.
+                {DEEP_LINK_PRESETS.find((p) => p.value === linkPreset)?.hint
+                  ? ` ${DEEP_LINK_PRESETS.find((p) => p.value === linkPreset)?.hint}`
+                  : ""}
+              </span>
             </Field>
 
             <Field label="Target Segment">
@@ -257,6 +353,16 @@ export default function PushNotificationPage() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={s.previewTitle}>{title || "Your title appears here"}</p>
                   <p style={s.previewBody}>{body || "Your message body appears here. Keep it short and actionable."}</p>
+                  {imageUrl && (
+                    <div style={{ marginTop: 8, borderRadius: 8, overflow: "hidden" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={imageUrl}
+                        alt="Attachment"
+                        style={{ width: "100%", maxHeight: 140, objectFit: "cover", display: "block" }}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -301,6 +407,16 @@ export default function PushNotificationPage() {
                       </span>
                     </div>
                     <p style={s.historyBody}>{h.body}</p>
+                    {h.imageUrl && (
+                      <div style={{ marginBottom: 8, borderRadius: 8, overflow: "hidden", border: "1px solid var(--input-border)" }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={h.imageUrl}
+                          alt="Attachment"
+                          style={{ width: "100%", maxHeight: 120, objectFit: "cover", display: "block" }}
+                        />
+                      </div>
+                    )}
                     <div style={s.historyMeta}>
                       <span style={s.metaTag}>{h.segment}</span>
                       <span style={{ ...s.metaTag, color: "#22c55e" }}>
@@ -405,6 +521,47 @@ const s: Record<string, CSSProperties> = {
   textarea: { padding: "10px 12px", borderRadius: 10, border: "1px solid var(--input-border)", background: "var(--input-bg, var(--surface-2))", color: "var(--foreground)", fontSize: 13, outline: "none", width: "100%", boxSizing: "border-box", resize: "vertical", fontFamily: "inherit", lineHeight: 1.55 },
   label: { fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.04em" },
   hint: { fontSize: 11, color: "var(--muted-foreground)" },
+
+  imagePicker: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "14px 16px",
+    borderRadius: 10,
+    border: "1px dashed var(--input-border)",
+    background: "var(--surface-2)",
+    color: "var(--muted-foreground)",
+    cursor: "pointer",
+    fontSize: 13,
+    fontWeight: 600,
+  },
+  imagePreviewWrap: {
+    position: "relative",
+    width: "100%",
+    borderRadius: 10,
+    overflow: "hidden",
+    border: "1px solid var(--input-border)",
+  },
+  imagePreview: {
+    width: "100%",
+    maxHeight: 200,
+    objectFit: "cover" as const,
+    display: "block",
+  },
+  imageRemove: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 26,
+    height: 26,
+    borderRadius: 999,
+    border: "none",
+    background: "rgba(0,0,0,0.7)",
+    color: "#fff",
+    cursor: "pointer",
+    display: "grid",
+    placeItems: "center",
+  },
 
   segmentGrid: { display: "flex", flexDirection: "column", gap: 8 },
   segmentCard: { display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 10, border: "1px solid var(--input-border)", background: "var(--surface-2)", cursor: "pointer", textAlign: "left" },
