@@ -238,6 +238,9 @@ export type ProviderCreateCarPayload = {
    *  undefined to fall back to the platform PricingRule default. */
   depositType?: "FIXED" | "PERCENTAGE";
   depositValue?: number;
+  /** How many identical vehicles the provider has for this listing.
+   *  Defaults to 1 server-side when omitted. */
+  totalQuantity?: number;
 };
 
 export type ProviderCarBrandOption = {

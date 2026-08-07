@@ -42,6 +42,9 @@ type CarForm = {
   year: string;
   seats: string;
   bags: string;
+  // How many identical vehicles the provider has for this listing.
+  // Defaults to "1" — bump when they own multiple of the same car.
+  totalQuantity: string;
   transmission: Transmission;
   mileagePolicy: MileagePolicy;
   hasAC: boolean;
@@ -121,6 +124,7 @@ const INITIAL: CarForm = {
   year: String(new Date().getFullYear()),
   seats: "",
   bags: "",
+  totalQuantity: "1",
   transmission: "AUTOMATIC",
   mileagePolicy: "UNLIMITED",
   hasAC: true,
@@ -354,6 +358,7 @@ export default function ProviderAddCarPage() {
         year: Number(form.year) || new Date().getFullYear(),
         seats: Number(form.seats) || 5,
         bags: form.bags.trim() || "0",
+        totalQuantity: Math.max(1, Number(form.totalQuantity) || 1),
         hasAC: form.hasAC,
         transmission: form.transmission,
         mileagePolicy: form.mileagePolicy,
@@ -849,6 +854,22 @@ function StepSpecs({ form, set }: { form: CarForm; set: <K extends keyof CarForm
             onChange={(v) => set("hasAC", v === "yes")}
           />
         </Field>
+        <Field label="Quantity in fleet *">
+          <input
+            style={f.input}
+            type="number"
+            min="1"
+            max="500"
+            placeholder="1"
+            value={form.totalQuantity}
+            onChange={(e) => set("totalQuantity", e.target.value)}
+          />
+          <p style={{ margin: "6px 0 0", fontSize: 11, color: "var(--muted-foreground)" }}>
+            How many identical vehicles do you have for this listing?
+            One row per model — the app hides it when all copies are
+            booked for the customer's dates.
+          </p>
+        </Field>
       </div>
       <div style={f.grid2}>
         <Field label="Transmission">
@@ -1327,6 +1348,7 @@ function StepReview({
         <ReviewCard title="Specs" onEdit={() => onEdit("specs")}>
           <Row label="Seats" value={form.seats || "—"} />
           <Row label="Bags" value={form.bags || "—"} />
+          <Row label="Quantity" value={form.totalQuantity || "1"} />
           <Row label="Transmission" value={form.transmission} />
           <Row label="Mileage" value={form.mileagePolicy} />
           <Row label="AC" value={form.hasAC ? "Yes" : "No"} />

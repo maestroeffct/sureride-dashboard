@@ -196,6 +196,7 @@ export default function ProviderCarDetailPage() {
           <Detail label="Color" cap>{car.color ?? "—"}</Detail>
           <Detail label="Category">{car.category}</Detail>
           <Detail label="Seats">{car.seats ?? "—"}</Detail>
+          <Detail label="Quantity">{(car as any).totalQuantity ?? 1}</Detail>
           <Detail label="Transmission">{car.transmission}</Detail>
           <Detail label="Bags">{car.bags ?? "—"}</Detail>
           <Detail label="A/C">{car.hasAC ? "Yes" : "No"}</Detail>
