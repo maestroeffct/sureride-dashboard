@@ -1342,6 +1342,16 @@ export default function BusinessSettingsFeaturePage({
             />
             Prices include tax by default
           </label>
+          <p style={{
+            margin: "-4px 0 8px 24px",
+            fontSize: 12,
+            color: "var(--muted-foreground)",
+            lineHeight: 1.55,
+          }}>
+            {state.taxInclusivePricing
+              ? "ON: A ₦15,000 listing already includes tax. Customer pays ₦15,000; provider nets ~₦13,953 (of which ₦1,047 is tax at 7.5%)."
+              : "OFF (recommended): A ₦15,000 listing is pre-tax. Customer pays ₦15,000 + ₦1,125 tax = ₦16,125. Provider nets the full ₦15,000."}
+          </p>
 
           <div style={styles.stack}>
             {rows.map((row, index) => (
