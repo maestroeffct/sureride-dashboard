@@ -11,12 +11,17 @@ import {
   updateProviderCar,
   deleteProviderCarImage,
   uploadProviderCarImages,
+  reorderProviderCarImages,
   attachProviderCarFeatures,
   submitProviderCar,
   listProviderLocations,
   listProviderCarMetaBrands,
   listProviderCarMetaModels,
   listProviderFeatureOptions,
+  listProviderCarDocuments,
+  deleteProviderCarDocument,
+  uploadCarDocument,
+  type CarDocumentType,
   type ProviderCarDetail,
   type ProviderCarBrandOption,
   type ProviderCarModelOption,
@@ -47,7 +52,34 @@ type FormState = {
   licensePlate: string;
   vin: string;
   color: string;
+  // Fleet count (Car.totalQuantity). String so the input stays controlled.
+  totalQuantity: string;
+  // Per-car security-deposit override. Empty = fall back to the platform
+  // PricingRule. Values entered as whole percent for PERCENTAGE, stored
+  // as a fraction (0.30) on save.
+  depositType: "" | "FIXED" | "PERCENTAGE";
+  depositValue: string;
 };
+
+type CarDocumentRow = {
+  id: string;
+  type: CarDocumentType;
+  url: string;
+  label: string | null;
+  expiresAt: string | null;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  rejectionReason: string | null;
+};
+
+const DOC_TYPES: Array<{ value: CarDocumentType; label: string }> = [
+  { value: "VEHICLE_REGISTRATION", label: "Vehicle Registration" },
+  { value: "ROADWORTHINESS", label: "Roadworthiness" },
+  { value: "INSURANCE_CERTIFICATE", label: "Insurance Certificate" },
+  { value: "HACKNEY_PERMIT", label: "Hackney Permit" },
+  { value: "PROOF_OF_OWNERSHIP", label: "Proof of Ownership" },
+  { value: "CUSTOMS_DUTY", label: "Customs Duty" },
+  { value: "OTHER", label: "Other" },
+];
 
 export default function ProviderEditCarPage() {
   const { carId } = useParams<{ carId: string }>();
@@ -67,6 +99,19 @@ export default function ProviderEditCarPage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
+
+  // Drag-and-drop reorder state for existing images. Held locally and
+  // committed to the backend when reorderPending flips true.
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [reorderPending, setReorderPending] = useState(false);
+
+  // Documents
+  const [docs, setDocs] = useState<CarDocumentRow[]>([]);
+  const [newDocType, setNewDocType] = useState<CarDocumentType>("VEHICLE_REGISTRATION");
+  const [newDocLabel, setNewDocLabel] = useState("");
+  const [newDocExpiry, setNewDocExpiry] = useState("");
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -100,8 +145,23 @@ export default function ProviderEditCarPage() {
             (carData as { licensePlate?: string | null }).licensePlate ?? "",
           vin: (carData as { vin?: string | null }).vin ?? "",
           color: (carData as { color?: string | null }).color ?? "",
+          totalQuantity: String(
+            (carData as { totalQuantity?: number }).totalQuantity ?? 1,
+          ),
+          depositType:
+            ((carData as { depositType?: "FIXED" | "PERCENTAGE" | null }).depositType) ??
+            "",
+          depositValue:
+            (carData as unknown as { depositValue?: number | null }).depositValue != null
+              ? String((carData as unknown as { depositValue: number }).depositValue)
+              : "",
         });
         setSelectedFeatureIds(carData.features.map((f) => f.featureId));
+
+        // Load existing car documents alongside the rest of the form.
+        listProviderCarDocuments(carId)
+          .then((res) => setDocs(res.items))
+          .catch(() => {});
         setLocations(
           locationRows.map((row: ProviderLocation) => ({
             id: row.id,
@@ -168,6 +228,70 @@ export default function ProviderEditCarPage() {
     setNewImagePreviews(valid.map((f) => URL.createObjectURL(f)));
   };
 
+  // Native HTML5 drag-and-drop reorder. Committed to the backend on
+  // drop so the gallery order is instantly persistent.
+  const handleImageDrop = async (fromIndex: number, toIndex: number) => {
+    if (!car || fromIndex === toIndex || reorderPending) return;
+    const nextImages = [...car.images];
+    const [moved] = nextImages.splice(fromIndex, 1);
+    nextImages.splice(toIndex, 0, moved);
+    setCar((prev) => (prev ? { ...prev, images: nextImages } : prev));
+    setReorderPending(true);
+    try {
+      await reorderProviderCarImages(
+        carId,
+        nextImages.map((img) => img.id),
+      );
+      // Server returns the persisted order — pull fresh so isPrimary
+      // reflects the new index-0 winner.
+      const fresh = await getProviderCar(carId);
+      setCar(fresh);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Reorder failed");
+    } finally {
+      setReorderPending(false);
+    }
+  };
+
+  const handleUploadDoc = async (file: File | null) => {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Max 10MB per document");
+      return;
+    }
+    try {
+      setUploadingDoc(true);
+      await uploadCarDocument(carId, {
+        file,
+        type: newDocType,
+        label: newDocLabel || undefined,
+        expiresAt: newDocExpiry || undefined,
+      });
+      const res = await listProviderCarDocuments(carId);
+      setDocs(res.items);
+      setNewDocLabel("");
+      setNewDocExpiry("");
+      toast.success("Document uploaded — admin will verify");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploadingDoc(false);
+    }
+  };
+
+  const handleDeleteDoc = async (documentId: string) => {
+    if (!confirm("Delete this document?")) return;
+    try {
+      setDeletingDocId(documentId);
+      await deleteProviderCarDocument(carId, documentId);
+      setDocs((prev) => prev.filter((d) => d.id !== documentId));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setDeletingDocId(null);
+    }
+  };
+
   const handleDeleteImage = async (imageId: string) => {
     if (!car) return;
     if (!confirm("Delete this image?")) return;
@@ -217,6 +341,20 @@ export default function ProviderEditCarPage() {
     try {
       setSaving(true);
 
+      // Deposit override — both fields set, or both undefined so the
+      // pricing engine falls back to the platform PricingRule.
+      const depositType = form.depositType || undefined;
+      const depositValueRaw = form.depositValue.trim();
+      let depositValue: number | undefined;
+      if (depositType && depositValueRaw) {
+        depositValue = Number(depositValueRaw);
+        if (!Number.isFinite(depositValue)) {
+          toast.error("Deposit value must be a number");
+          setSaving(false);
+          return;
+        }
+      }
+
       await updateProviderCar(carId, {
         locationId: form.locationId,
         brand: form.brand.trim(),
@@ -238,6 +376,9 @@ export default function ProviderEditCarPage() {
         licensePlate: form.licensePlate.trim() || undefined,
         vin: form.vin.trim() || undefined,
         color: form.color.trim() || undefined,
+        totalQuantity: Math.max(1, Number(form.totalQuantity) || 1),
+        depositType,
+        depositValue,
       });
 
       await attachProviderCarFeatures(carId, selectedFeatureIds);
@@ -333,11 +474,33 @@ export default function ProviderEditCarPage() {
       {/* Images section */}
       <div style={s.card}>
         <h2 style={s.sectionTitle}>Car Images</h2>
+        <p style={{ margin: "-4px 0 12px", fontSize: 12, color: "#64748b" }}>
+          Drag tiles to reorder. The first image is the banner customers
+          see in search.
+        </p>
 
         {car.images.length > 0 && (
           <div style={s.imageGrid}>
-            {car.images.map((img) => (
-              <div key={img.id} style={s.imageItem}>
+            {car.images.map((img, index) => (
+              <div
+                key={img.id}
+                style={{
+                  ...s.imageItem,
+                  opacity: dragIndex === index ? 0.4 : 1,
+                  cursor: isFlagged ? "default" : "grab",
+                }}
+                draggable={!isFlagged}
+                onDragStart={() => setDragIndex(index)}
+                onDragEnd={() => setDragIndex(null)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (dragIndex !== null && dragIndex !== index) {
+                    void handleImageDrop(dragIndex, index);
+                  }
+                  setDragIndex(null);
+                }}
+              >
                 <div style={s.imageWrapper}>
                   <Image
                     src={img.url}
@@ -543,6 +706,25 @@ export default function ProviderEditCarPage() {
           </Field>
         </div>
 
+        <div style={s.grid2}>
+          <Field label="Quantity in fleet *">
+            <input
+              style={s.input}
+              type="number"
+              min="1"
+              max="500"
+              placeholder="1"
+              value={form.totalQuantity}
+              onChange={(e) => setField("totalQuantity", e.target.value)}
+              disabled={isFlagged}
+            />
+            <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b" }}>
+              How many identical vehicles you have for this listing. App
+              hides it when all copies are booked for the customer's dates.
+            </p>
+          </Field>
+        </div>
+
         <div style={s.grid3}>
           <Field label="Transmission">
             <select
@@ -631,6 +813,147 @@ export default function ProviderEditCarPage() {
           <strong>{currency.code}</strong>. Min daily {MIN_DAILY_RATE.toLocaleString()},
           min hourly {MIN_HOURLY_RATE.toLocaleString()}.
         </p>
+      </div>
+
+      {/* Security Deposit override */}
+      <div style={s.card}>
+        <h2 style={s.sectionTitle}>Security Deposit (Optional)</h2>
+        <p style={{ margin: "-4px 0 12px", fontSize: 13, color: "#64748b" }}>
+          Refundable hold on the customer's card at pickup. Leave blank
+          to use the platform default. Not part of the protection plan.
+        </p>
+        <div style={s.grid2}>
+          <Field label="Deposit type">
+            <select
+              style={s.input}
+              value={form.depositType}
+              onChange={(e) =>
+                setField("depositType", e.target.value as FormState["depositType"])
+              }
+              disabled={isFlagged}
+            >
+              <option value="">Platform default</option>
+              <option value="FIXED">Fixed amount</option>
+              <option value="PERCENTAGE">% of trip total</option>
+            </select>
+          </Field>
+          {form.depositType && (
+            <Field
+              label={
+                form.depositType === "PERCENTAGE"
+                  ? "Percentage (0–1, e.g. 0.30 = 30%)"
+                  : `Fixed amount (${currency.code})`
+              }
+            >
+              <input
+                style={s.input}
+                type="number"
+                min="0"
+                step={form.depositType === "PERCENTAGE" ? "0.01" : "1000"}
+                placeholder={form.depositType === "PERCENTAGE" ? "0.30" : "100000"}
+                value={form.depositValue}
+                onChange={(e) => setField("depositValue", e.target.value)}
+                disabled={isFlagged}
+              />
+            </Field>
+          )}
+        </div>
+      </div>
+
+      {/* Documents */}
+      <div style={s.card}>
+        <h2 style={s.sectionTitle}>Documents</h2>
+        <p style={{ margin: "-4px 0 12px", fontSize: 13, color: "#64748b" }}>
+          Vehicle Registration, Roadworthiness, and Insurance Certificate
+          are the Nigerian minimum — admin verifies them before your car
+          is fully compliant.
+        </p>
+
+        {docs.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+            {docs.map((d) => {
+              const label = DOC_TYPES.find((t) => t.value === d.type)?.label ?? d.type;
+              const statusColor =
+                d.status === "APPROVED" ? "#22c55e" :
+                d.status === "REJECTED" ? "#ef4444" : "#f59e0b";
+              return (
+                <div key={d.id} style={{
+                  display: "flex", alignItems: "center", gap: 12,
+                  padding: "10px 14px", border: "1px solid var(--input-border)",
+                  borderRadius: 10, background: "var(--surface-2)",
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>
+                      {label}{d.label ? ` · ${d.label}` : ""}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 3 }}>
+                      <span style={{ color: statusColor, fontWeight: 700 }}>{d.status}</span>
+                      {d.expiresAt ? ` · Expires ${new Date(d.expiresAt).toLocaleDateString()}` : ""}
+                      {d.rejectionReason ? ` · ${d.rejectionReason}` : ""}
+                    </div>
+                  </div>
+                  <a href={d.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "var(--brand-primary)" }}>View</a>
+                  <button
+                    type="button"
+                    style={s.deleteImgBtn}
+                    onClick={() => handleDeleteDoc(d.id)}
+                    disabled={deletingDocId === d.id}
+                  >
+                    <Trash2 size={13} />
+                    {deletingDocId === d.id ? "..." : ""}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div style={{ ...s.grid3, alignItems: "flex-end" }}>
+          <Field label="Type">
+            <select
+              style={s.input}
+              value={newDocType}
+              onChange={(e) => setNewDocType(e.target.value as CarDocumentType)}
+              disabled={isFlagged || uploadingDoc}
+            >
+              {DOC_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </Field>
+          {newDocType === "OTHER" && (
+            <Field label="Label">
+              <input
+                style={s.input}
+                placeholder="e.g. Insurance renewal"
+                value={newDocLabel}
+                onChange={(e) => setNewDocLabel(e.target.value)}
+                disabled={isFlagged || uploadingDoc}
+              />
+            </Field>
+          )}
+          <Field label="Expires (optional)">
+            <input
+              style={s.input}
+              type="date"
+              value={newDocExpiry}
+              onChange={(e) => setNewDocExpiry(e.target.value)}
+              disabled={isFlagged || uploadingDoc}
+            />
+          </Field>
+          <label style={{ ...s.uploadLabel, marginTop: 0 }}>
+            <Upload size={16} />
+            <span>{uploadingDoc ? "Uploading…" : "Upload"}</span>
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                handleUploadDoc(e.target.files?.[0] ?? null);
+                e.target.value = "";
+              }}
+              disabled={isFlagged || uploadingDoc}
+            />
+          </label>
+        </div>
       </div>
 
       {/* Features */}

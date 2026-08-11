@@ -762,6 +762,48 @@ export function setProviderCarBanner(carId: string, imageId: string) {
   });
 }
 
+/** Reorder the car's photo gallery. Backend assigns 0..N-1 as
+ *  sortOrder in the same sequence and promotes index 0 to primary. */
+export function reorderProviderCarImages(carId: string, imageIds: string[]) {
+  return providerApiRequest<{
+    message: string;
+    images: Array<{ id: string; url: string; isPrimary: boolean; sortOrder: number | null }>;
+  }>(`/provider/cars/${carId}/images/reorder`, {
+    method: "PATCH",
+    body: JSON.stringify({ imageIds }),
+  });
+}
+
+export function listProviderCarDocuments(carId: string) {
+  return providerApiRequest<{
+    items: Array<{
+      id: string;
+      type: CarDocumentType;
+      url: string;
+      label: string | null;
+      expiresAt: string | null;
+      status: "PENDING" | "APPROVED" | "REJECTED";
+      rejectionReason: string | null;
+    }>;
+  }>(`/provider/cars/${carId}/documents`);
+}
+
+export function deleteProviderCarDocument(carId: string, documentId: string) {
+  return providerApiRequest<{ ok: true }>(
+    `/provider/cars/${carId}/documents/${documentId}`,
+    { method: "DELETE" },
+  );
+}
+
+/** Hard delete of a car listing. Backend blocks if the car has any
+ *  PENDING or CONFIRMED bookings. */
+export function deleteProviderCar(carId: string) {
+  return providerApiRequest<{ message: string }>(
+    `/provider/cars/${carId}`,
+    { method: "DELETE" },
+  );
+}
+
 export function createProviderCar(payload: ProviderCreateCarPayload) {
   return providerApiRequest<{ message: string; car: { id: string } }>(
     "/provider/cars",

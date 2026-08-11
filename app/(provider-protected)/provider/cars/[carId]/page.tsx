@@ -14,6 +14,7 @@ import {
   Upload,
 } from "lucide-react";
 import {
+  deleteProviderCar,
   deleteProviderCarImage,
   getProviderCar,
   setProviderCarBanner,
@@ -28,6 +29,23 @@ export default function ProviderCarDetailPage() {
   const [car, setCar] = useState<ProviderCarDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteCar = async () => {
+    if (!car || deleteConfirmText !== "DELETE") return;
+    try {
+      setDeleting(true);
+      await deleteProviderCar(car.id);
+      toast.success("Car deleted");
+      router.push("/provider/cars");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to delete");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const load = useCallback(async () => {
     if (!carId) return;
@@ -111,9 +129,23 @@ export default function ProviderCarDetailPage() {
           <button style={s.iconBtn} onClick={toggleActive} title={car.isActive ? "Deactivate" : "Activate"}>
             <Ban size={16} color={car.isActive ? "#ef4444" : "var(--muted-foreground)"} />
           </button>
-          <Link href={`/provider/cars/${car.id}/edit`} style={{ ...s.iconBtn, borderColor: "rgba(239,68,68,0.35)", color: "#fca5a5" }} title="Delete via edit page">
+          <button
+            type="button"
+            style={{
+              ...s.iconBtn,
+              borderColor: "rgba(239,68,68,0.35)",
+              color: "#fca5a5",
+              background: "transparent",
+              cursor: "pointer",
+            }}
+            title="Delete this car"
+            onClick={() => {
+              setDeleteConfirmText("");
+              setDeleteModalOpen(true);
+            }}
+          >
             <Trash2 size={16} />
-          </Link>
+          </button>
         </div>
       </header>
 
@@ -235,6 +267,54 @@ export default function ProviderCarDetailPage() {
           <p style={{ fontSize: 13, lineHeight: 1.55, margin: "8px 0 0", color: "var(--foreground)" }}>{car.moderationNote}</p>
         </section>
       )}
+
+      {/* Delete confirmation modal — requires typing DELETE to arm the
+          button, so a click can't nuke a listing by accident. */}
+      {deleteModalOpen && (
+        <div style={s.modalBackdrop} onClick={() => !deleting && setDeleteModalOpen(false)}>
+          <div style={s.modalCard} onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Delete this car?</h2>
+            <p style={{ fontSize: 13, color: "var(--muted-foreground)", lineHeight: 1.55, marginTop: 8 }}>
+              This removes the <strong>{car.brand} {car.model}</strong> listing from
+              customer search permanently. Booking history stays. Cannot be undone.
+            </p>
+            <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 14, marginBottom: 6 }}>
+              Type <strong style={{ color: "#ef4444", letterSpacing: 1 }}>DELETE</strong> to confirm:
+            </p>
+            <input
+              autoFocus
+              style={{ ...s.iconBtn, width: "100%", height: 42, padding: "0 12px", justifyContent: "flex-start", background: "var(--surface-2)" }}
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="DELETE"
+              disabled={deleting}
+            />
+            <div style={{ display: "flex", gap: 10, marginTop: 16, justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                style={{ ...s.iconBtn, width: "auto", padding: "0 16px", cursor: "pointer" }}
+                onClick={() => setDeleteModalOpen(false)}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                style={{
+                  padding: "0 18px", height: 42, borderRadius: 10, border: "none",
+                  background: deleteConfirmText === "DELETE" ? "#dc2626" : "rgba(239,68,68,0.35)",
+                  color: "#fff", fontSize: 13, fontWeight: 700,
+                  cursor: deleteConfirmText === "DELETE" && !deleting ? "pointer" : "not-allowed",
+                }}
+                onClick={handleDeleteCar}
+                disabled={deleteConfirmText !== "DELETE" || deleting}
+              >
+                {deleting ? "Deleting…" : "Delete permanently"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -278,4 +358,7 @@ const s: Record<string, CSSProperties> = {
   detailLabel: { fontSize: 12, color: "var(--muted-foreground)", marginBottom: 4 },
   detailValue: { fontSize: 14, color: "var(--foreground)", fontWeight: 500 },
   pill: { display: "inline-block", padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: "var(--surface-2)", color: "var(--foreground)", border: "1px solid var(--input-border)" },
+
+  modalBackdrop: { position: "fixed", inset: 0, background: "rgba(2,6,23,0.7)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 },
+  modalCard: { background: "var(--surface-1)", border: "1px solid var(--input-border)", borderRadius: 14, padding: 24, width: "100%", maxWidth: 460 },
 };
