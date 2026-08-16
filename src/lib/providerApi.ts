@@ -15,7 +15,14 @@ type PaginatedResponse<T> = {
 
 type ProviderRawBooking = {
   id: string;
-  status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
+  status: "PENDING" | "CONFIRMED" | "IN_TRIP" | "CANCELLED" | "COMPLETED";
+  // Two-tap pickup / return confirmation chain — nullable for legacy rows
+  pickupCode?: string | null;
+  returnCode?: string | null;
+  providerMarkedReadyAt?: string | null;
+  customerConfirmedPickupAt?: string | null;
+  customerMarkedReturnAt?: string | null;
+  providerConfirmedReturnAt?: string | null;
   paymentStatus:
     | "UNPAID"
     | "REQUIRES_ACTION"
@@ -211,6 +218,15 @@ export type ProviderBookingRow = {
   status: ProviderRawBooking["status"];
   imageUrl: string;
   createdAt: string;
+  // Two-tap pickup / return confirmation chain state, mirrored to the
+  // provider portal so operations staff can see where a booking is
+  // and hit the right action without opening a modal.
+  pickupCode: string | null;
+  returnCode: string | null;
+  providerMarkedReadyAt: string | null;
+  customerConfirmedPickupAt: string | null;
+  customerMarkedReturnAt: string | null;
+  providerConfirmedReturnAt: string | null;
 };
 
 export type ProviderCreateCarPayload = {
@@ -486,7 +502,28 @@ function mapBookingToRow(booking: ProviderRawBooking): ProviderBookingRow {
     status: booking.status,
     imageUrl: booking.car?.images?.[0]?.url || "",
     createdAt: booking.createdAt,
+    pickupCode: booking.pickupCode ?? null,
+    returnCode: booking.returnCode ?? null,
+    providerMarkedReadyAt: booking.providerMarkedReadyAt ?? null,
+    customerConfirmedPickupAt: booking.customerConfirmedPickupAt ?? null,
+    customerMarkedReturnAt: booking.customerMarkedReturnAt ?? null,
+    providerConfirmedReturnAt: booking.providerConfirmedReturnAt ?? null,
   };
+}
+
+// ── Two-tap pickup / return confirmation chain endpoints ──────────
+export async function providerMarkPickupReady(bookingId: string) {
+  return providerApiRequest<{ message: string; booking: unknown }>(
+    `/provider/bookings/${bookingId}/pickup/mark-ready`,
+    { method: "POST" },
+  );
+}
+
+export async function providerConfirmReturn(bookingId: string, code: string) {
+  return providerApiRequest<{ message: string; booking: unknown }>(
+    `/provider/bookings/${bookingId}/return/confirm`,
+    { method: "POST", body: JSON.stringify({ code }) },
+  );
 }
 
 export function loginProvider(

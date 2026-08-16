@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import toast from "react-hot-toast";
-import { ClipboardCheck, Search, X } from "lucide-react";
+import { ClipboardCheck, Key, Search, ShieldCheck, X } from "lucide-react";
 import {
   listProviderBookings,
+  providerConfirmReturn,
+  providerMarkPickupReady,
   type ProviderBookingRow,
 } from "@/src/lib/providerApi";
 import {
@@ -22,27 +24,29 @@ export default function ProviderRentsPage() {
   const [loading, setLoading] = useState(true);
   const [handoverBooking, setHandoverBooking] = useState<ProviderBookingRow | null>(null);
 
+  const loadRents = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await listProviderBookings({
+        q: query.trim() || undefined,
+        status: status || undefined,
+        page: 1,
+        limit: 100,
+      });
+      setRows(response.items);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to load provider rents");
+    } finally {
+      setLoading(false);
+    }
+  }, [query, status]);
+
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      void (async () => {
-        try {
-          setLoading(true);
-          const response = await listProviderBookings({
-            q: query.trim() || undefined,
-            status: status || undefined,
-            page: 1,
-            limit: 100,
-          });
-          setRows(response.items);
-        } catch (error) {
-          toast.error(error instanceof Error ? error.message : "Failed to load provider rents");
-        } finally {
-          setLoading(false);
-        }
-      })();
+      void loadRents();
     }, 250);
     return () => window.clearTimeout(timeout);
-  }, [query, status]);
+  }, [loadRents]);
 
   const totalRevenue = useMemo(
     () =>
@@ -78,6 +82,7 @@ export default function ProviderRentsPage() {
           <option value="">All statuses</option>
           <option value="PENDING">Pending</option>
           <option value="CONFIRMED">Confirmed</option>
+          <option value="IN_TRIP">In trip</option>
           <option value="COMPLETED">Completed</option>
           <option value="CANCELLED">Cancelled</option>
         </select>
@@ -138,13 +143,16 @@ export default function ProviderRentsPage() {
                     <span style={statusPill(row.status)}>{row.status}</span>
                   </td>
                   <td style={styles.td}>
-                    {row.status === "CONFIRMED" || row.status === "COMPLETED" ? (
-                      <button style={styles.handoverBtn} onClick={() => setHandoverBooking(row)}>
-                        <ClipboardCheck size={13} /> Inspect
-                      </button>
-                    ) : (
-                      <span style={styles.muted}>—</span>
-                    )}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      <ChainWidget row={row} onChanged={loadRents} />
+                      {(row.status === "CONFIRMED" ||
+                        row.status === "IN_TRIP" ||
+                        row.status === "COMPLETED") && (
+                        <button style={styles.handoverBtn} onClick={() => setHandoverBooking(row)}>
+                          <ClipboardCheck size={13} /> Inspect
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
@@ -485,10 +493,193 @@ function HandoverModal({ booking, onClose }: { booking: ProviderBookingRow; onCl
 
 function statusPill(status: string): React.CSSProperties {
   if (status === "COMPLETED") return { ...styles.pill, background: "rgba(34,197,94,0.14)", color: "#86EFAC" };
+  if (status === "IN_TRIP") return { ...styles.pill, background: "rgba(59,130,246,0.14)", color: "#93C5FD" };
   if (status === "CONFIRMED") return { ...styles.pill, background: "color-mix(in srgb, var(--brand-primary) 14%, transparent)", color: "var(--brand-primary)" };
   if (status === "CANCELLED") return { ...styles.pill, background: "rgba(239,68,68,0.14)", color: "#FCA5A5" };
   return { ...styles.pill, background: "rgba(250,204,21,0.14)", color: "#FDE68A" };
 }
+
+/**
+ * Two-tap pickup / return chain widget for the rents table.
+ *
+ * States:
+ *   confirmed, unpaid           — nothing to do
+ *   confirmed + paid + not ready → "Mark ready for pickup" button
+ *   ready, awaiting customer     → "Waiting on customer" + code peek
+ *   in-trip                      — trip in progress
+ *   customer marked returned     — return code input + "Confirm return"
+ *   completed                    — success chip
+ */
+function ChainWidget({
+  row,
+  onChanged,
+}: {
+  row: ProviderBookingRow;
+  onChanged: () => Promise<void> | void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [returnCodeInput, setReturnCodeInput] = useState("");
+
+  const handleMarkReady = async () => {
+    try {
+      setBusy(true);
+      const res = await providerMarkPickupReady(row.id);
+      toast.success(res.message);
+      await onChanged();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not mark ready");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleConfirmReturn = async () => {
+    if (!/^\d{6}$/.test(returnCodeInput)) {
+      toast.error("Enter the customer's 6-digit return code");
+      return;
+    }
+    try {
+      setBusy(true);
+      const res = await providerConfirmReturn(row.id, returnCodeInput);
+      toast.success(res.message);
+      setReturnCodeInput("");
+      await onChanged();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not confirm return");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Completed — chain closed
+  if (row.providerConfirmedReturnAt || row.status === "COMPLETED") {
+    return (
+      <span style={{ ...chainW.chip, background: "rgba(34,197,94,0.14)", color: "#86EFAC" }}>
+        <ShieldCheck size={11} /> Trip closed
+      </span>
+    );
+  }
+
+  // Customer says returned — provider needs to enter return code
+  if (row.customerMarkedReturnAt) {
+    return (
+      <div style={chainW.row}>
+        <input
+          value={returnCodeInput}
+          onChange={(e) => setReturnCodeInput(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+          placeholder="000000"
+          inputMode="numeric"
+          maxLength={6}
+          style={chainW.codeInput}
+        />
+        <button style={chainW.actionBtn} onClick={handleConfirmReturn} disabled={busy}>
+          <ShieldCheck size={12} /> {busy ? "…" : "Close trip"}
+        </button>
+      </div>
+    );
+  }
+
+  // In trip
+  if (row.status === "IN_TRIP") {
+    return (
+      <span style={{ ...chainW.chip, background: "rgba(59,130,246,0.14)", color: "#93C5FD" }}>
+        Trip in progress
+      </span>
+    );
+  }
+
+  // Ready — waiting on customer to enter pickup code
+  if (row.providerMarkedReadyAt && row.pickupCode) {
+    return (
+      <div style={chainW.stack}>
+        <span style={chainW.hintLabel}>PICKUP CODE (customer enters)</span>
+        <span style={chainW.codePeek}>{row.pickupCode}</span>
+        <span style={chainW.muted}>Waiting for customer confirmation</span>
+      </div>
+    );
+  }
+
+  // Confirmed + paid — provider can mark ready
+  if (row.status === "CONFIRMED" && row.paymentStatus === "SUCCEEDED") {
+    return (
+      <button style={chainW.primaryBtn} onClick={handleMarkReady} disabled={busy}>
+        <Key size={12} /> {busy ? "…" : "Mark ready for pickup"}
+      </button>
+    );
+  }
+
+  return <span style={styles.muted}>—</span>;
+}
+
+const chainW: Record<string, React.CSSProperties> = {
+  row: { display: "flex", alignItems: "center", gap: 6 },
+  stack: { display: "flex", flexDirection: "column", gap: 3 },
+  chip: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    padding: "4px 10px",
+    borderRadius: 999,
+    fontSize: 11,
+    fontWeight: 700,
+    alignSelf: "flex-start",
+  },
+  hintLabel: {
+    fontSize: 9,
+    fontWeight: 800,
+    letterSpacing: 0.6,
+    color: "var(--muted-foreground)",
+  },
+  codePeek: {
+    fontSize: 15,
+    fontWeight: 800,
+    letterSpacing: 3,
+    color: "var(--brand-primary)",
+    fontFamily: "ui-monospace, SFMono-Regular, monospace",
+  },
+  codeInput: {
+    width: 88,
+    height: 30,
+    padding: "0 8px",
+    borderRadius: 6,
+    border: "1px solid var(--input-border)",
+    background: "var(--input-bg)",
+    color: "var(--input-fg)",
+    fontFamily: "ui-monospace, SFMono-Regular, monospace",
+    fontSize: 14,
+    fontWeight: 700,
+    letterSpacing: 2,
+    textAlign: "center",
+  },
+  primaryBtn: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    padding: "6px 10px",
+    borderRadius: 8,
+    border: "none",
+    background: "var(--brand-primary)",
+    color: "#022c22",
+    fontSize: 11,
+    fontWeight: 800,
+    cursor: "pointer",
+    alignSelf: "flex-start",
+  },
+  actionBtn: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    padding: "6px 10px",
+    borderRadius: 8,
+    border: "none",
+    background: "var(--brand-primary)",
+    color: "#022c22",
+    fontSize: 11,
+    fontWeight: 800,
+    cursor: "pointer",
+  },
+  muted: { fontSize: 11, color: "var(--muted-foreground)" },
+};
 
 const styles: Record<string, React.CSSProperties> = {
   page: { display: "flex", flexDirection: "column", gap: 18, maxWidth: 1280 },
