@@ -322,7 +322,7 @@ const s: Record<string, CSSProperties> = {
   spinner: {
     width: 24,
     height: 24,
-    border: "3px solid var(--glass-10)",
+    border: "3px solid var(--input-border)",
     borderTopColor: "#3AEDE1",
     borderRadius: "50%",
     animation: "spin 0.8s linear infinite",
@@ -352,14 +352,19 @@ const s: Record<string, CSSProperties> = {
     color: "var(--fg-65)",
   },
   commBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
     padding: "8px 14px",
-    borderRadius: 10,
-    background: "rgba(167,139,250,0.1)",
-    border: "1px solid rgba(167,139,250,0.22)",
-    color: "#A78BFA",
-    fontSize: 13,
-    fontWeight: 700,
+    borderRadius: 999,
+    background: "color-mix(in srgb, var(--brand-primary) 14%, transparent)",
+    border: "1px solid color-mix(in srgb, var(--brand-primary) 24%, transparent)",
+    color: "var(--brand-primary)",
+    fontSize: 12,
+    fontWeight: 800,
+    letterSpacing: 0.3,
     marginTop: 4,
+    textTransform: "uppercase",
   },
 
   /* stat grid */
@@ -374,8 +379,8 @@ const s: Record<string, CSSProperties> = {
     gap: 16,
     padding: "18px 20px",
     borderRadius: 16,
-    background: "var(--glass-04)",
-    border: "1px solid var(--glass-08)",
+    background: "var(--surface-1)",
+    border: "1px solid var(--input-border)",
   },
   statIcon: {
     width: 44,
@@ -416,8 +421,8 @@ const s: Record<string, CSSProperties> = {
   },
   card: {
     borderRadius: 16,
-    background: "var(--glass-04)",
-    border: "1px solid var(--glass-08)",
+    background: "var(--surface-1)",
+    border: "1px solid var(--input-border)",
     overflow: "hidden",
   },
   cardHeader: {
@@ -425,7 +430,7 @@ const s: Record<string, CSSProperties> = {
     alignItems: "center",
     gap: 10,
     padding: "14px 20px",
-    borderBottom: "1px solid var(--glass-08)",
+    borderBottom: "1px solid var(--input-border)",
   },
   cardTitle: {
     fontSize: 13,
@@ -479,7 +484,7 @@ const s: Record<string, CSSProperties> = {
     flex: 1,
     height: 6,
     borderRadius: 3,
-    background: "var(--glass-08)",
+    background: "var(--input-border)",
     overflow: "hidden",
   },
   breakdownFill: {
@@ -544,7 +549,7 @@ const s: Record<string, CSSProperties> = {
     borderSpacing: 0,
   },
   trHead: {
-    background: "var(--glass-03)",
+    background: "var(--surface-2)",
   },
   th: {
     textAlign: "left",
@@ -552,7 +557,7 @@ const s: Record<string, CSSProperties> = {
     fontWeight: 700,
     color: "var(--fg-65)",
     padding: "12px 16px",
-    borderBottom: "1px solid var(--glass-08)",
+    borderBottom: "1px solid var(--input-border)",
     whiteSpace: "nowrap",
   },
   thRight: {
@@ -561,7 +566,7 @@ const s: Record<string, CSSProperties> = {
     fontWeight: 700,
     color: "var(--fg-65)",
     padding: "12px 16px",
-    borderBottom: "1px solid var(--glass-08)",
+    borderBottom: "1px solid var(--input-border)",
     whiteSpace: "nowrap",
   },
   tr: {},
@@ -569,14 +574,14 @@ const s: Record<string, CSSProperties> = {
     padding: "14px 16px",
     fontSize: 13,
     color: "var(--fg-85)",
-    borderBottom: "1px solid var(--glass-06)",
+    borderBottom: "1px solid var(--input-border)",
   },
   tdStrong: {
     padding: "14px 16px",
     fontSize: 13,
     fontWeight: 700,
     color: "var(--foreground)",
-    borderBottom: "1px solid var(--glass-06)",
+    borderBottom: "1px solid var(--input-border)",
   },
   tdRight: {
     padding: "14px 16px",
@@ -584,7 +589,7 @@ const s: Record<string, CSSProperties> = {
     fontWeight: 700,
     color: "var(--foreground)",
     textAlign: "right",
-    borderBottom: "1px solid var(--glass-06)",
+    borderBottom: "1px solid var(--input-border)",
     fontVariantNumeric: "tabular-nums",
   },
 };

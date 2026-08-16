@@ -425,6 +425,22 @@ async function providerApiRequest<T = any>(
     ? await response.json()
     : await response.text();
 
+  // Provider session expired — clear the stale token and bounce to
+  // the provider login. Otherwise "Invalid token or Expired Token"
+  // leaks straight into the page as a text error.
+  if (response.status === 401 && typeof window !== "undefined") {
+    localStorage.removeItem("sureride_provider_token");
+    const path = window.location.pathname + window.location.search;
+    const next = encodeURIComponent(path);
+    if (
+      !window.location.pathname.startsWith("/provider/login") &&
+      !window.location.pathname.startsWith("/provider/register")
+    ) {
+      window.location.href = `/provider/login?next=${next}`;
+    }
+    throw new Error("Session expired");
+  }
+
   if (!response.ok) {
     // Surface field-level zod errors when the server returns them, so the
     // user sees "Daily rate must be at least ₦5000" instead of generic

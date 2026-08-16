@@ -35,6 +35,22 @@ export async function apiRequest<T = any>(
   const isJson = contentType.includes("application/json");
   const data = isJson ? await res.json() : await res.text();
 
+  // Unauthorized / expired token — the admin dashboard previously
+  // threw the raw "Invalid token or Expired Token" string into the
+  // page instead of returning the user to login. Clear the stale
+  // token and bounce to /login with a next= param so the user lands
+  // back on the same page after re-auth.
+  if (res.status === 401 && typeof window !== "undefined") {
+    localStorage.removeItem("sureride_admin_token");
+    const path = window.location.pathname + window.location.search;
+    const next = encodeURIComponent(path);
+    // Guard against redirect loops if the user is already on /login.
+    if (!window.location.pathname.startsWith("/login")) {
+      window.location.href = `/login?next=${next}`;
+    }
+    throw new Error("Session expired");
+  }
+
   if (!res.ok) {
     const message =
       typeof data === "object" &&

@@ -19,6 +19,8 @@ import {
   CreditCard,
   Wallet,
   ShieldCheck,
+  Settings2,
+  Timer,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -26,6 +28,10 @@ import {
   markAdminNotificationRead,
   markAllAdminNotificationsRead,
   deleteAdminNotification,
+  deleteReadAdminNotifications,
+  sweepExpiredAdminNotifications,
+  getAdminNotificationRetention,
+  setAdminNotificationRetention,
   type AdminInboxNotification,
 } from "@/src/lib/adminNotificationsApi";
 
@@ -97,6 +103,10 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [tab, setTab] = useState<FilterTab>("all");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [retentionDays, setRetentionDays] = useState<number>(0);
+  const [retentionSaving, setRetentionSaving] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -116,6 +126,69 @@ export default function NotificationsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Pull the admin-configured retention window once on mount so the
+  // settings dropdown is preseeded with the current value.
+  useEffect(() => {
+    void getAdminNotificationRetention()
+      .then((r) => setRetentionDays(r.retentionDays))
+      .catch(() => setRetentionDays(0));
+  }, []);
+
+  const handleDeleteRead = useCallback(async () => {
+    const readCount = items.filter((i) => i.readAt !== null).length;
+    if (readCount === 0) {
+      toast("Nothing to clear — no read notifications");
+      return;
+    }
+    if (!window.confirm(`Delete ${readCount} read notification${readCount === 1 ? "" : "s"}?`)) return;
+    try {
+      setBulkBusy(true);
+      const r = await deleteReadAdminNotifications();
+      toast.success(`${r.deleted} deleted`);
+      setItems((prev) => prev.filter((n) => n.readAt === null));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Bulk delete failed");
+    } finally {
+      setBulkBusy(false);
+    }
+  }, [items]);
+
+  const handleSaveRetention = useCallback(async (days: number) => {
+    try {
+      setRetentionSaving(true);
+      const r = await setAdminNotificationRetention(days);
+      setRetentionDays(r.retentionDays);
+      toast.success(
+        r.retentionDays === 0
+          ? "Retention off — notifications kept forever"
+          : `Auto-delete notifications older than ${r.retentionDays} day${r.retentionDays === 1 ? "" : "s"}`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save retention");
+    } finally {
+      setRetentionSaving(false);
+    }
+  }, []);
+
+  const handleSweepNow = useCallback(async () => {
+    if (retentionDays === 0) {
+      toast("Set a retention window first — nothing to sweep");
+      return;
+    }
+    if (!window.confirm(`Run retention now — delete notifications older than ${retentionDays} day${retentionDays === 1 ? "" : "s"}?`))
+      return;
+    try {
+      setBulkBusy(true);
+      const r = await sweepExpiredAdminNotifications();
+      toast.success(`${r.deleted} deleted`);
+      await load(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Sweep failed");
+    } finally {
+      setBulkBusy(false);
+    }
+  }, [retentionDays, load]);
 
   const filtered = useMemo(() => {
     if (tab === "unread") return items.filter((n) => n.readAt === null);
@@ -249,6 +322,107 @@ export default function NotificationsPage() {
             <CheckCheck size={14} />
             Mark all read
           </button>
+          <div style={{ position: "relative" }}>
+            <button
+              style={{ ...s.iconBtn, position: "relative" }}
+              onClick={() => setSettingsOpen((v) => !v)}
+              title="Notification settings"
+            >
+              <Settings2 size={15} />
+              {retentionDays > 0 && (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: -4,
+                    right: -4,
+                    padding: "0 5px",
+                    height: 14,
+                    borderRadius: 999,
+                    background: "var(--brand-primary)",
+                    color: "#022c22",
+                    fontSize: 9,
+                    fontWeight: 800,
+                    lineHeight: "14px",
+                  }}
+                >
+                  {retentionDays}d
+                </span>
+              )}
+            </button>
+            {settingsOpen && (
+              <>
+                <div
+                  onClick={() => setSettingsOpen(false)}
+                  style={{ position: "fixed", inset: 0, zIndex: 40 }}
+                />
+                <div style={settingsPanel.card}>
+                  <div style={settingsPanel.section}>
+                    <div style={settingsPanel.sectionHead}>
+                      <Timer size={13} />
+                      <strong style={{ fontSize: 12, letterSpacing: 0.3, textTransform: "uppercase" }}>
+                        Auto-delete
+                      </strong>
+                    </div>
+                    <p style={settingsPanel.hint}>
+                      Automatically remove notifications older than the selected
+                      window. Runs opportunistically on each page load.
+                    </p>
+                    <div style={settingsPanel.chipRow}>
+                      {[
+                        { days: 0, label: "Off" },
+                        { days: 7, label: "7 days" },
+                        { days: 30, label: "30 days" },
+                        { days: 90, label: "90 days" },
+                        { days: 180, label: "6 months" },
+                        { days: 365, label: "1 year" },
+                      ].map((o) => {
+                        const active = retentionDays === o.days;
+                        return (
+                          <button
+                            key={o.days}
+                            style={{
+                              ...settingsPanel.chip,
+                              ...(active ? settingsPanel.chipActive : {}),
+                            }}
+                            disabled={retentionSaving}
+                            onClick={() => void handleSaveRetention(o.days)}
+                          >
+                            {o.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <button
+                      style={{
+                        ...settingsPanel.linkBtn,
+                        opacity: retentionDays === 0 || bulkBusy ? 0.5 : 1,
+                      }}
+                      disabled={retentionDays === 0 || bulkBusy}
+                      onClick={() => void handleSweepNow()}
+                    >
+                      {bulkBusy ? "Working…" : "Run sweep now"}
+                    </button>
+                  </div>
+                  <div style={{ height: 1, background: "var(--input-border)" }} />
+                  <div style={settingsPanel.section}>
+                    <div style={settingsPanel.sectionHead}>
+                      <Trash2 size={13} />
+                      <strong style={{ fontSize: 12, letterSpacing: 0.3, textTransform: "uppercase" }}>
+                        Bulk actions
+                      </strong>
+                    </div>
+                    <button
+                      style={settingsPanel.dangerBtn}
+                      disabled={bulkBusy}
+                      onClick={() => void handleDeleteRead()}
+                    >
+                      {bulkBusy ? "Working…" : `Clear ${items.filter((i) => i.readAt !== null).length} read`}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -595,5 +769,64 @@ const s: Record<string, CSSProperties> = {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
+  },
+};
+
+const settingsPanel: Record<string, CSSProperties> = {
+  card: {
+    position: "absolute",
+    top: 40,
+    right: 0,
+    zIndex: 50,
+    width: 300,
+    borderRadius: 14,
+    border: "1px solid var(--input-border)",
+    background: "var(--surface-1)",
+    boxShadow: "0 12px 32px rgba(0,0,0,0.28)",
+    overflow: "hidden",
+  },
+  section: { padding: 14, display: "flex", flexDirection: "column", gap: 10 },
+  sectionHead: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    color: "var(--muted-foreground)",
+  },
+  hint: { margin: 0, fontSize: 11.5, lineHeight: 1.5, color: "var(--muted-foreground)" },
+  chipRow: { display: "flex", flexWrap: "wrap", gap: 6 },
+  chip: {
+    padding: "5px 10px",
+    borderRadius: 999,
+    border: "1px solid var(--input-border)",
+    background: "var(--surface-2)",
+    color: "var(--foreground)",
+    fontSize: 11,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  chipActive: {
+    background: "var(--brand-primary)",
+    color: "#022c22",
+    borderColor: "var(--brand-primary)",
+  },
+  linkBtn: {
+    background: "transparent",
+    border: "none",
+    color: "var(--brand-primary)",
+    padding: 0,
+    fontSize: 11.5,
+    fontWeight: 700,
+    cursor: "pointer",
+    alignSelf: "flex-start",
+  },
+  dangerBtn: {
+    padding: "8px 12px",
+    borderRadius: 8,
+    border: "1px solid rgba(239,68,68,0.35)",
+    background: "rgba(239,68,68,0.08)",
+    color: "#FCA5A5",
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
   },
 };

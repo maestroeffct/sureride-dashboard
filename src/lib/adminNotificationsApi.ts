@@ -47,3 +47,26 @@ export async function deleteAdminNotification(id: string) {
     method: "DELETE",
   });
 }
+
+export async function deleteReadAdminNotifications() {
+  return apiRequest<{ deleted: number }>("/admin/notifications/delete-read", {
+    method: "POST",
+  });
+}
+
+export async function sweepExpiredAdminNotifications() {
+  return apiRequest<{ deleted: number }>("/admin/notifications/sweep-expired", {
+    method: "POST",
+  });
+}
+
+export async function getAdminNotificationRetention() {
+  return apiRequest<{ retentionDays: number }>("/admin/notifications/retention");
+}
+
+export async function setAdminNotificationRetention(retentionDays: number) {
+  return apiRequest<{ retentionDays: number }>(
+    "/admin/notifications/retention",
+    { method: "PUT", body: JSON.stringify({ retentionDays }) },
+  );
+}
