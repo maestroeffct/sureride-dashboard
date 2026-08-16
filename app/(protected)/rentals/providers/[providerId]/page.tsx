@@ -50,6 +50,7 @@ export default function ProviderDetailPage() {
   const [provider, setProvider] = useState<ProviderDetailApi | null>(null);
   const [docBusyId, setDocBusyId] = useState<string | null>(null);
   const [bankBusy, setBankBusy] = useState(false);
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   const handleSetBankVerification = async (isVerified: boolean) => {
     const verb = isVerified ? "Approve this bank account for payouts?" : "Revoke bank-account verification? The provider will need to re-add or re-verify.";
@@ -514,7 +515,10 @@ export default function ProviderDetailPage() {
             <div style={styles.empty}>No provider documents uploaded yet.</div>
           ) : (
             <div style={styles.docsGrid}>
-              {provider.documents.map((doc) => (
+              {provider.documents.map((doc) => {
+                const isImage = /\.(png|jpe?g|gif|webp|avif|heic|heif)(\?|$)/i.test(doc.url) || doc.url.includes("/image/upload/");
+                const isPdf = /\.pdf(\?|$)/i.test(doc.url) || doc.url.includes("/raw/upload/");
+                return (
                 <article key={doc.id} style={styles.docCard}>
                   <div style={styles.docHeader}>
                     <strong style={styles.locationTitle}>
@@ -522,6 +526,26 @@ export default function ProviderDetailPage() {
                     </strong>
                     <span style={statusPillStyle(doc.status)}>{doc.status}</span>
                   </div>
+
+                  {/* Inline preview — image thumbnail (click → lightbox) or PDF embed */}
+                  {isImage ? (
+                    <button
+                      type="button"
+                      onClick={() => setLightbox(doc.url)}
+                      style={styles.docPreviewBtn}
+                      title="Click to enlarge"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={doc.url} alt={DOC_TYPE_LABELS[doc.type] ?? doc.type} style={styles.docPreviewImg} />
+                    </button>
+                  ) : isPdf ? (
+                    <object data={doc.url} type="application/pdf" style={styles.docPreviewPdf}>
+                      <div style={styles.docPreviewFallback}>PDF preview unavailable — use Open File.</div>
+                    </object>
+                  ) : (
+                    <div style={styles.docPreviewFallback}>Preview not available for this file type.</div>
+                  )}
+
                   <p style={styles.docMeta}>
                     Submitted {new Date(doc.createdAt).toLocaleString()}
                   </p>
@@ -554,7 +578,23 @@ export default function ProviderDetailPage() {
                     </button>
                   </div>
                 </article>
-              ))}
+                );
+              })}
+            </div>
+          )}
+
+          {lightbox && (
+            <div style={styles.lightbox} onClick={() => setLightbox(null)}>
+              <button
+                type="button"
+                style={styles.lightboxClose}
+                onClick={() => setLightbox(null)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={lightbox} alt="Document" style={styles.lightboxImg} />
             </div>
           )}
         </section>
@@ -1038,6 +1078,70 @@ const styles: Record<string, CSSProperties> = {
     gap: 10,
     flexWrap: "wrap",
     alignItems: "center",
+  },
+  docPreviewBtn: {
+    display: "block",
+    padding: 0,
+    border: "1px solid var(--input-border)",
+    borderRadius: 10,
+    overflow: "hidden",
+    background: "var(--surface-1)",
+    cursor: "zoom-in",
+    width: "100%",
+  },
+  docPreviewImg: {
+    display: "block",
+    width: "100%",
+    maxHeight: 220,
+    objectFit: "cover",
+    background: "#000",
+  },
+  docPreviewPdf: {
+    width: "100%",
+    height: 240,
+    border: "1px solid var(--input-border)",
+    borderRadius: 10,
+    background: "#111",
+  },
+  docPreviewFallback: {
+    padding: "18px 12px",
+    textAlign: "center",
+    color: "var(--muted-foreground)",
+    fontSize: 12,
+    border: "1px dashed var(--input-border)",
+    borderRadius: 10,
+    background: "var(--surface-1)",
+  },
+  lightbox: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.85)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 9999,
+    padding: 24,
+    cursor: "zoom-out",
+  },
+  lightboxClose: {
+    position: "absolute",
+    top: 20,
+    right: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    border: "none",
+    background: "rgba(255,255,255,0.15)",
+    color: "#fff",
+    fontSize: 28,
+    lineHeight: "40px",
+    cursor: "pointer",
+  },
+  lightboxImg: {
+    maxWidth: "100%",
+    maxHeight: "90vh",
+    objectFit: "contain",
+    borderRadius: 8,
   },
   statusPill: {
     borderRadius: 999,
