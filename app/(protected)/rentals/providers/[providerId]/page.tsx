@@ -516,8 +516,14 @@ export default function ProviderDetailPage() {
           ) : (
             <div style={styles.docsGrid}>
               {provider.documents.map((doc) => {
-                const isImage = /\.(png|jpe?g|gif|webp|avif|heic|heif)(\?|$)/i.test(doc.url) || doc.url.includes("/image/upload/");
-                const isPdf = /\.pdf(\?|$)/i.test(doc.url) || doc.url.includes("/raw/upload/");
+                // Check the *filename* first — a PDF uploaded to Cloudinary's
+                // /image/upload/ endpoint 401s when we try to render it as an
+                // image, so pdf-in-filename must win over path heuristics.
+                const isPdf = /\.pdf(\?|$)/i.test(doc.url);
+                const isImage = !isPdf && (
+                  /\.(png|jpe?g|gif|webp|avif|heic|heif)(\?|$)/i.test(doc.url) ||
+                  doc.url.includes("/image/upload/")
+                );
                 return (
                 <article key={doc.id} style={styles.docCard}>
                   <div style={styles.docHeader}>
@@ -527,7 +533,7 @@ export default function ProviderDetailPage() {
                     <span style={statusPillStyle(doc.status)}>{doc.status}</span>
                   </div>
 
-                  {/* Inline preview — image thumbnail (click → lightbox) or PDF embed */}
+                  {/* Inline preview — image thumbnail (click → lightbox) or PDF tile */}
                   {isImage ? (
                     <button
                       type="button"
@@ -539,9 +545,21 @@ export default function ProviderDetailPage() {
                       <img src={doc.url} alt={DOC_TYPE_LABELS[doc.type] ?? doc.type} style={styles.docPreviewImg} />
                     </button>
                   ) : isPdf ? (
-                    <object data={doc.url} type="application/pdf" style={styles.docPreviewPdf}>
-                      <div style={styles.docPreviewFallback}>PDF preview unavailable — use Open File.</div>
-                    </object>
+                    <a
+                      href={doc.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={styles.docPdfTile}
+                      title="Open PDF in new tab"
+                    >
+                      <div style={styles.docPdfIcon}>PDF</div>
+                      <div style={styles.docPdfMeta}>
+                        <strong style={styles.docPdfName}>
+                          {decodeURIComponent(doc.url.split("/").pop() ?? "document.pdf")}
+                        </strong>
+                        <span style={styles.docPdfHint}>Click to open in a new tab</span>
+                      </div>
+                    </a>
                   ) : (
                     <div style={styles.docPreviewFallback}>Preview not available for this file type.</div>
                   )}
@@ -1102,6 +1120,48 @@ const styles: Record<string, CSSProperties> = {
     border: "1px solid var(--input-border)",
     borderRadius: 10,
     background: "#111",
+  },
+  docPdfTile: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: 10,
+    border: "1px solid var(--input-border)",
+    background: "var(--surface-1)",
+    textDecoration: "none",
+    color: "var(--foreground)",
+  },
+  docPdfIcon: {
+    width: 44,
+    height: 54,
+    display: "grid",
+    placeItems: "center",
+    borderRadius: 6,
+    background: "rgba(239,68,68,0.14)",
+    color: "#FCA5A5",
+    fontSize: 11,
+    fontWeight: 900,
+    letterSpacing: 1,
+  },
+  docPdfMeta: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+    minWidth: 0,
+    flex: 1,
+  },
+  docPdfName: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: "var(--foreground)",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  docPdfHint: {
+    fontSize: 11,
+    color: "var(--muted-foreground)",
   },
   docPreviewFallback: {
     padding: "18px 12px",
