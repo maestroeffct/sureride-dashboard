@@ -128,6 +128,8 @@ export function mapCarToRow(car: RawCarApi): RentalCarRow {
     color: car.color ?? null,
     vin: car.vin ?? null,
     currentlyRented: car.currentlyRented === true,
+    licensePlateVerifiedAt: car.licensePlateVerifiedAt ?? null,
+    licensePlateVerifiedByAdminEmail: car.licensePlateVerifiedByAdminEmail ?? null,
   };
 }
 
@@ -199,6 +201,13 @@ export function approveAdminCar(carId: string, note?: string) {
       method: "PATCH",
       body: JSON.stringify({ note }),
     },
+  );
+}
+
+export function verifyAdminCarPlate(carId: string) {
+  return apiRequest<{ message: string; car: RawCarApi }>(
+    `/admin/cars/${carId}/verify-plate`,
+    { method: "PATCH" },
   );
 }
 

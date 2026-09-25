@@ -34,6 +34,8 @@ export type RentalCarRow = {
   color: string | null;
   vin: string | null;
   currentlyRented: boolean;
+  licensePlateVerifiedAt: string | null;
+  licensePlateVerifiedByAdminEmail: string | null;
 };
 
 export type RawCarApi = {
@@ -55,6 +57,8 @@ export type RawCarApi = {
   color?: string | null;
   vin?: string | null;
   currentlyRented?: boolean;
+  licensePlateVerifiedAt?: string | null;
+  licensePlateVerifiedByAdminEmail?: string | null;
   provider?: {
     id?: string;
     name?: string;

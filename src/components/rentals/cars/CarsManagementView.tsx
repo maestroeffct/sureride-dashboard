@@ -14,6 +14,7 @@ import {
   RotateCcw,
   Search,
   ShieldOff,
+  ShieldCheck,
   CarFront,
   CheckCircle2,
   Clock,
@@ -29,6 +30,7 @@ import {
   listCars,
   rejectAdminCar,
   unflagAdminCar,
+  verifyAdminCarPlate,
 } from "@/src/lib/carsApi";
 import { bookingsTableTheme } from "@/src/components/rentals/table/sharedTableStyles";
 import type { DashboardCarStatus, RentalCarRow } from "@/src/types/rentalCar";
@@ -167,6 +169,28 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
     );
   };
 
+  const handleVerifyPlate = (car: RentalCarRow) => {
+    openModal(
+      {
+        title: "Verify License Plate",
+        description: `Confirm you've checked "${car.licensePlate}" against the relevant vehicle registry before marking it verified. This car can't be approved until this step is done.`,
+        placeholder: "",
+        required: false,
+        confirmLabel: "Mark Verified",
+        confirmDanger: false,
+        defaultValue: "",
+      },
+      () => {
+        closeModal();
+        void runAction(
+          `${car.id}:verify-plate`,
+          () => verifyAdminCarPlate(car.id),
+          "Plate verified",
+        );
+      },
+    );
+  };
+
   const handleReject = (car: RentalCarRow) => {
     openModal(
       {
@@ -278,12 +302,32 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
             <Eye size={15} />
             <span>View</span>
           </button>
+          {!car.licensePlateVerifiedAt ? (
+            <button
+              type="button"
+              style={{ ...styles.actionBtn, ...styles.restoreBtn }}
+              onClick={() => handleVerifyPlate(car)}
+              disabled={Boolean(isBusy) || !car.licensePlate}
+              title={
+                car.licensePlate
+                  ? "Verify license plate"
+                  : "No license plate on file"
+              }
+            >
+              <ShieldCheck size={15} />
+              <span>Verify Plate</span>
+            </button>
+          ) : null}
           <button
             type="button"
             style={{ ...styles.actionBtn, ...styles.approveBtn }}
             onClick={() => handleApprove(car)}
             disabled={Boolean(isBusy)}
-            title="Approve"
+            title={
+              car.licensePlateVerifiedAt
+                ? "Approve"
+                : "Plate must be verified first — you'll be blocked with a clear reason if other checks are missing too"
+            }
           >
             <Check size={15} />
             <span>{isBusy ? "Working..." : "Approve"}</span>
@@ -554,7 +598,27 @@ export default function CarsManagementView({ mode }: { mode: ViewMode }) {
                       </div>
                     </td>
 
-                    <td style={{ ...styles.td, fontWeight: 700 }}>{car.licensePlate || "—"}</td>
+                    <td style={{ ...styles.td, fontWeight: 700 }}>
+                      {car.licensePlate ? (
+                        <span
+                          title={
+                            car.licensePlateVerifiedAt
+                              ? `Verified by ${car.licensePlateVerifiedByAdminEmail ?? "admin"}`
+                              : "Not yet verified"
+                          }
+                          style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+                        >
+                          {car.licensePlate}
+                          {car.licensePlateVerifiedAt ? (
+                            <ShieldCheck size={13} color="#16a34a" />
+                          ) : (
+                            <ShieldOff size={13} color="#d97706" />
+                          )}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
 
                     <td style={styles.td}>
                       <div style={styles.twoLine}>
