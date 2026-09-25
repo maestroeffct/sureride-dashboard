@@ -29,7 +29,7 @@ import {
   type ProviderInsurancePackage,
   type UpsertProviderInsurancePayload,
 } from "@/src/lib/providerApi";
-import { formatMoney } from "@/src/lib/currencyForCountry";
+import { formatMoney, SUPPORTED_CURRENCIES } from "@/src/lib/currencyForCountry";
 
 type FormState = {
   name: string;
@@ -392,7 +392,18 @@ function PlanModal({
             </div>
             <div>
               <label style={m.label}>Currency</label>
-              <input style={m.input} maxLength={3} value={form.currency} onChange={(e) => set("currency", e.target.value.toUpperCase())} placeholder="NGN" />
+              <select style={m.input} value={form.currency} onChange={(e) => set("currency", e.target.value)}>
+                <option value="">Currency…</option>
+                {SUPPORTED_CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code} ({c.symbol})
+                  </option>
+                ))}
+                {/* Keeps an existing plan's currency selectable even if it predates this list (e.g. a stray value from the old free-text input). */}
+                {form.currency && !SUPPORTED_CURRENCIES.some((c) => c.code === form.currency) ? (
+                  <option value={form.currency}>{form.currency}</option>
+                ) : null}
+              </select>
             </div>
           </div>
           {form.pricingModel === "PER_DAY" ? (

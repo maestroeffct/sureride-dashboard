@@ -19,6 +19,7 @@ const CURRENCY_BY_COUNTRY: Record<string, CurrencyInfo> = {
   MA: { code: "MAD", symbol: "د.م." },
   SN: { code: "XOF", symbol: "CFA" },
   CI: { code: "XOF", symbol: "CFA" },
+  TG: { code: "XOF", symbol: "CFA" },
   CM: { code: "XAF", symbol: "FCFA" },
   US: { code: "USD", symbol: "$" },
   GB: { code: "GBP", symbol: "£" },
