@@ -173,10 +173,11 @@ export default function Topbar() {
   const profileRef = useRef<HTMLDivElement>(null);
   const bellRef = useRef<HTMLDivElement>(null);
 
-  const { notifications, readSet, unreadCount, loading, markRead, markAllRead } =
-    useNotifications();
-
   const isProviderRoute = pathname.startsWith("/provider");
+
+  const { notifications, readSet, unreadCount, loading, markRead, markAllRead } =
+    useNotifications(isProviderRoute);
+
   const canToggleSidebar =
     pathname.startsWith("/rentals") || pathname.startsWith("/provider");
 

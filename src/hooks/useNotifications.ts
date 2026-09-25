@@ -8,7 +8,19 @@ import {
   markAllAdminNotificationsRead,
   type AdminInboxNotification,
 } from "@/src/lib/adminNotificationsApi";
+import {
+  listMyNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+} from "@/src/lib/notificationsApi";
 import { alertNewNotification } from "@/src/lib/notificationAlerts";
+
+// Common shape both the admin inbox and the user/provider inbox share —
+// everything the hook actually reads off an item.
+type InboxItem = Pick<
+  AdminInboxNotification,
+  "id" | "event" | "title" | "body" | "data" | "readAt" | "createdAt"
+>;
 
 export type NotificationKind =
   | "booking"
@@ -86,8 +98,8 @@ function kindForEvent(event: string): NotificationKind {
   return "user";
 }
 
-// Map an AdminInboxNotification → the legacy Notification shape the bell expects
-function toNotification(item: AdminInboxNotification): Notification {
+// Map an inbox item (admin or provider/user) → the legacy Notification shape the bell expects
+function toNotification(item: InboxItem): Notification {
   const data = item.data ?? {};
   const href =
     typeof data.href === "string"
@@ -122,7 +134,7 @@ function hrefFallback(kind: NotificationKind): string {
   }
 }
 
-export function useNotifications() {
+export function useNotifications(isProviderRoute: boolean = false) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [readSet, setReadSet] = useState<Set<string>>(new Set());
   const [unreadCount, setUnreadCount] = useState(0);
@@ -140,7 +152,7 @@ export function useNotifications() {
   const isFirstLoadRef = useRef(true);
 
   // Stable alert helper — used by both the poller and the SSE listener.
-  const fireAlert = useCallback((item: AdminInboxNotification) => {
+  const fireAlert = useCallback((item: InboxItem) => {
     if (seenIdsRef.current.has(item.id)) return;
     seenIdsRef.current.add(item.id);
     if (isFirstLoadRef.current) return; // seed only on first load
@@ -163,14 +175,14 @@ export function useNotifications() {
   }, []);
 
   const fetchNotifications = useCallback(async (isInitial = false) => {
-    // Topbar is shared between admin and provider portals. The admin
-    // notifications endpoint requires an ADMIN token — if there isn't one
-    // in localStorage we'd just spam 401s. Short-circuit silently.
+    // Topbar is shared between admin and provider portals. Each portal
+    // uses its own token/endpoint — pick the right one so providers
+    // actually get notifications instead of this silently no-op'ing
+    // against the admin-only token that never exists in their session.
+    const tokenKey = isProviderRoute ? "sureride_provider_token" : "sureride_admin_token";
     if (typeof window !== "undefined") {
-      const adminToken = window.localStorage
-        .getItem("sureride_admin_token")
-        ?.trim();
-      if (!adminToken) {
+      const token = window.localStorage.getItem(tokenKey)?.trim();
+      if (!token) {
         setLoading(false);
         return;
       }
@@ -178,7 +190,9 @@ export function useNotifications() {
 
     if (isInitial) setLoading(true);
     try {
-      const data = await listAdminNotifications({ limit: 30 });
+      const data = isProviderRoute
+        ? await listMyNotifications({ limit: 30 })
+        : await listAdminNotifications({ limit: 30 });
       const mapped = data.items.map(toNotification);
       setNotifications(mapped);
       setUnreadCount(data.unreadCount);
@@ -228,7 +242,7 @@ export function useNotifications() {
       // first response, errors, anything.
       setLoading(false);
     }
-  }, [fireAlert]);
+  }, [fireAlert, isProviderRoute]);
 
   // Initial load
   useEffect(() => {
@@ -255,6 +269,10 @@ export function useNotifications() {
   // Replaces polling for sub-second delivery. The poller stays as a 5-min
   // safety net for reconciliation when the stream silently drops.
   useEffect(() => {
+    // No SSE stream endpoint exists for the provider/user inbox yet — only
+    // /admin/notifications/stream. Providers fall back to the 5-min poller
+    // and focus-refetch below instead of a dead connection attempt.
+    if (isProviderRoute) return;
     if (typeof window === "undefined" || typeof EventSource === "undefined") {
       return;
     }
@@ -301,7 +319,7 @@ export function useNotifications() {
     return () => {
       es.close();
     };
-  }, [fireAlert]);
+  }, [fireAlert, isProviderRoute]);
 
   const markRead = useCallback(async (id: string) => {
     // Optimistic update
@@ -312,22 +330,24 @@ export function useNotifications() {
     });
     setUnreadCount((c) => Math.max(0, c - 1));
     try {
-      await markAdminNotificationRead(id);
+      if (isProviderRoute) await markNotificationRead(id);
+      else await markAdminNotificationRead(id);
     } catch {
       // Reconcile on next poll if it failed
     }
-  }, []);
+  }, [isProviderRoute]);
 
   const markAllRead = useCallback(async () => {
     // Optimistic
     setReadSet(new Set(notifications.map((n) => n.id)));
     setUnreadCount(0);
     try {
-      await markAllAdminNotificationsRead();
+      if (isProviderRoute) await markAllNotificationsRead();
+      else await markAllAdminNotificationsRead();
     } catch {
       // Will reconcile on next fetch
     }
-  }, [notifications]);
+  }, [notifications, isProviderRoute]);
 
   return {
     notifications,
